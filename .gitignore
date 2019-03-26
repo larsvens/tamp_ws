@@ -1,0 +1,5 @@
+# ignore external packages
+catkin_simple/
+
+# ignore generated code
+saasqp/rtisqp_export/
