@@ -4,9 +4,11 @@ import scipy.io as sio # for loading .mat file
 import rospy
 from std_msgs.msg import String
 from common.msg import Trajectory
+from common.msg import State
 
 def trajhat_publisher():
-    pub = rospy.Publisher('trajhat', Trajectory, queue_size=10)
+    traj_pub = rospy.Publisher('trajhat', Trajectory, queue_size=10)
+    state_pub = rospy.Publisher('state', State, queue_size=10)
     rospy.init_node('trajhat_publisher', anonymous=True)
     rate = rospy.Rate(10) # 10hz
 
@@ -15,7 +17,9 @@ def trajhat_publisher():
     mat = sio.loadmat(filename,struct_as_record=False, squeeze_me=True)
     
     while not rospy.is_shutdown():
+        
         trajhat = Trajectory()
+        trajhat.header.stamp = rospy.Time.now()
         trajhat.t = mat['traj_hat'].t
         trajhat.kappac = mat['traj_hat'].kappa_c
         trajhat.s  = mat['traj_hat'].s
@@ -41,8 +45,25 @@ def trajhat_publisher():
         trajhat.valid = mat['traj_hat'].valid
         trajhat.coll_cost = mat['traj_hat'].coll_cost
         trajhat.cost = mat['traj_hat'].cost
-        trajhat.header.stamp = rospy.Time.now()
-        pub.publish(trajhat)
+        traj_pub.publish(trajhat)
+        
+        state = State()
+        state.header.stamp = rospy.Time.now()
+        state.X = trajhat.X[0]
+        state.Y = trajhat.Y[0]
+        state.psi = trajhat.psi[0]
+        state.s = trajhat.s[0]
+        state.d = trajhat.d[0]
+        state.deltapsi = trajhat.deltapsi[0]
+        state.psidot = trajhat.psidot[0]
+        state.vx = trajhat.vx[0]
+        state.vy = trajhat.vy[0]
+        state.ax = trajhat.ax[0]
+        state.ay = trajhat.ay[0]
+        state.stop = False
+        state_pub.publish(state)
+        
+        # end of loop
         rate.sleep()
 
 if __name__ == '__main__':
