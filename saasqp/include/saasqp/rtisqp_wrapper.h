@@ -20,6 +20,7 @@ using namespace std;
 // ros
 #include "common/Trajectory.h"
 #include "common/State.h"
+#include "common/cpp_utils.h"
 
 // define variables
 #define NX         ACADO_NX	/* number of differential states */
@@ -48,6 +49,7 @@ public:
     bool shiftStateAndControls();
     bool doPreparationStep();
     int  doFeedbackStep();
+    std::vector<double> polyfit(const std::vector<double>, const std::vector<double>, int order);
     common::Trajectory getTrajectory();
 };
 

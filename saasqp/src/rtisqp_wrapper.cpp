@@ -4,15 +4,6 @@
 RtisqpWrapper::RtisqpWrapper()
 {
 
-    unsigned  i, j, iter;
-    acado_timer t;
-    real_t t1, t2;
-    real_t fdbSum = 0.0;
-    real_t prepSum = 0.0;
-    int status;
-
-    t1 = t2 = 0;
-
     // Reset all solver memory
     memset(&acadoWorkspace, 0, sizeof( acadoWorkspace ));
     memset(&acadoVariables, 0, sizeof( acadoVariables ));
@@ -20,140 +11,34 @@ RtisqpWrapper::RtisqpWrapper()
     // Initialize the solver
     acado_initializeSolver();
 
-    // Prepare a consistent initial guess
-    for (i = 0; i < N + 1; ++i)
-    {
-        acadoVariables.x[i * NX + 0] = 1;
-        acadoVariables.x[i * NX + 1] = sqrt(1.0 - 0.1 * 0.1);
-        acadoVariables.x[i * NX + 2] = 0.9;
-        acadoVariables.x[i * NX + 3] = 0;
-        acadoVariables.x[i * NX + 4] = 0;
-        acadoVariables.x[i * NX + 5] = 0;
-    }
-
-    //
-    // Prepare references
-    //
-
-    for (i = 0; i < N; ++i)
-    {
-        acadoVariables.y[i * NY + 0] = 0; // x
-        acadoVariables.y[i * NY + 1] = 1.0; // y
-        acadoVariables.y[i * NY + 2] = 0; // w
-        acadoVariables.y[i * NY + 3] = 0;
-        acadoVariables.y[i * NY + 4] = 0;
-        acadoVariables.y[i * NY + 5] = 0;
-        acadoVariables.y[i * NY + 6] = 0; // u
-    }
-
-    acadoVariables.yN[ 0 ] = 0; // x
-    acadoVariables.yN[ 1 ] = 1.0; // y
-    acadoVariables.yN[ 2 ] = 0; // w
-    acadoVariables.yN[ 3 ] = 0;
-    acadoVariables.yN[ 4 ] = 0;
-    acadoVariables.yN[ 5 ] = 0;
-
-    //
-    // Current state feedback
-    //
-    for (i = 0; i < NX; ++i)
-        acadoVariables.x0[ i ] = acadoVariables.x[ i ];
-
-    //
-    // Logger initialization
-    //
-    std::vector< std::vector< double > > log;
-
-    log.resize(NUM_STEPS);
-    for (i = 0; i < log.size(); ++i)
-        log[ i ].resize(NX + NXA + NU + 5, 0.0);
-
-
-    //
-    // Warm-up the solver
-    //
-    acado_preparationStep();
-
-    //
-    // Real-time iterations loop
-    //
-    for( iter = 0; iter < NUM_STEPS; iter++ )
-    {
-        acado_tic( &t );
-        status = acado_feedbackStep( );
-        t2 = acado_toc( &t );
-
-#if VERBOSE
-        acado_printDifferentialVariables();
-        acado_printControlVariables();
-#endif // VERBOSE
-
-        if ( status )
-        {
-            cout << "Iteration:" << iter << ", QP problem! QP status: " << status << endl;
-
-            break;
-        }
-
-        //
-        // Logging
-        //
-
-        for(i = 0; i < NX; i++)
-            log[ iter ][ i ] = acadoVariables.x[ i ];
-        for(j = 0;  i < NX + NXA + NU; i++, j++)
-            log[ iter ][ i ] = acadoVariables.u[ j ];
-
-        log[ iter ][ i++ ] = t1;
-        log[ iter ][ i++ ] = t2;
-        log[ iter ][ i++ ] = acado_getObjective();
-        log[ iter ][ i++ ] = acado_getKKT();
-        log[ iter ][ i++ ] = acado_getNWSR();
-
-#if VERBOSE
-        cout	<< "Iteration #" << setw( 4 ) << iter
-                << ", KKT value: " << scientific << acado_getKKT()
-                << ", objective value: " << scientific << acado_getObjective()
-                << endl;
-#endif // VERBOSE
-
-        //
-        // Prepare for the next iteration
-        //
-
-        // In this simple example, we feed the NMPC with an ideal feedback signal
-        // i.e. what NMPC really expects in the next sampling interval
-        for (i = 0; i < NX; ++i)
-            acadoVariables.x0[ i ] = acadoVariables.x[NX + i];
-
-        // Shift states and control and prepare for the next iteration
-        acado_shiftStates(2, 0, 0);
-        acado_shiftControls( 0 );
-
-
-        acado_preparationStep();
-
-    }
-
-#if VERBOSE
-    cout << "Average feedback time:    " << scientific << fdbSum / NUM_STEPS * 1e6 << " microseconds" << endl;
-    cout << "Average preparation time: " << scientific << prepSum / NUM_STEPS * 1e6 << " microseconds" << endl;
-#endif // VERBOSE
-
-
 }
 
 bool RtisqpWrapper::setInitialGuess(common::Trajectory traj){
+    // set state trajectory guess
     for (uint k = 0; k < N + 1; ++k)
     {
+        //std::cout << "k = " << k << "     traj.s.at(k) = " << traj.s.at(k) << std::endl;
         acadoVariables.x[k * NX + 0] = double(traj.s.at(k)); // s
         acadoVariables.x[k * NX + 1] = double(traj.d.at(k)); // d
         acadoVariables.x[k * NX + 2] = double(traj.deltapsi.at(k)); // deltapsi
         acadoVariables.x[k * NX + 3] = double(traj.psidot.at(k)); // psidot
         acadoVariables.x[k * NX + 4] = double(traj.vx.at(k)); // vx
         acadoVariables.x[k * NX + 5] = double(traj.vy.at(k)); // vy
-        acadoVariables.x[k * NX + 6] = double(traj.kappac.at(k)); // kappac
     }
+    //std::cout << "state traj guess set sucessfully" << std::endl;
+
+    // set kappac
+    for (uint k = 0; k < N + 1; ++k)
+    {
+        acadoVariables.od[k] = double(traj.kappac.at(k));
+    }
+    //std::cout << "kappac set sucessfully" << std::endl;
+
+    // set kappac polynomial coeffs
+    //std::vector<double> s = cpp_utils::tcast_vector<float,double>(traj.s);
+    //std::vector<double> kappac = cpp_utils::tcast_vector<float,double>(traj.kappac);
+    //std::vector<double> a = polyfit(s,kappac,3);
+
     return true;
 }
 
@@ -166,7 +51,6 @@ bool RtisqpWrapper::setReference(common::Trajectory traj){
         acadoVariables.y[k * NY + 3] = double(traj.psidot.at(k)); // psidot
         acadoVariables.y[k * NY + 4] = double(traj.vx.at(k)); // vx
         acadoVariables.y[k * NY + 5] = double(traj.vy.at(k)); // vy
-        acadoVariables.y[k * NY + 6] = double(traj.kappac.at(k)); // kappac
         acadoVariables.y[k * NY + 7] = double(traj.Fyf.at(k)); // Fyf
         acadoVariables.y[k * NY + 8] = double(traj.Fx.at(k)); // Fx
     }
@@ -177,7 +61,8 @@ bool RtisqpWrapper::setReference(common::Trajectory traj){
     acadoVariables.yN[ 3 ] = double(traj.psidot.at(N)); // psidot
     acadoVariables.yN[ 4 ] = double(traj.vx.at(N)); // vx
     acadoVariables.yN[ 5 ] = double(traj.vy.at(N)); // vy
-    // acadoVariables.yN[ 6 ] = double(traj.kappac.at(N)); // kappac
+
+    //std::cout << "reference set sucessfully" << std::endl;
 
     return true;
 }
@@ -199,20 +84,60 @@ bool RtisqpWrapper::shiftStateAndControls(){
 }
 
 bool RtisqpWrapper::doPreparationStep(){
-    // todo: put timer
     acado_preparationStep();
     return true;
 }
 
 int RtisqpWrapper::doFeedbackStep(){
-    // todo: put timer
     int status = acado_feedbackStep();
+    std::cout << "KKT value: " << scientific << acado_getKKT()
+              << ", objective value: " << scientific << acado_getObjective()
+              << endl;
     return status;
 }
 
-common::Trajectory getTrajectory(){
+common::Trajectory RtisqpWrapper::getTrajectory(){
     common::Trajectory traj;
-    // todo
+
+    // get state variables from acadovariables
+    for (uint k = 0; k < N + 1; ++k){
+        traj.s.push_back(float(acadoVariables.x[k * NX + 0]));
+        traj.d.push_back(float(acadoVariables.x[k * NX + 1]));
+        traj.deltapsi.push_back(float(acadoVariables.x[k * NX + 2]));
+        traj.psidot.push_back(float(acadoVariables.x[k * NX + 3]));
+        traj.vx.push_back(float(acadoVariables.x[k * NX + 4]));
+        traj.vy.push_back(float(acadoVariables.x[k * NX + 5]));
+    }
+
+    // get X Y by frenet -> cartesian transformation
+
+
     return traj;
 }
+
+// todo move to common, utils
+std::vector<double> polyfit(const std::vector<double> &xv, const std::vector<double> &yv, int order)
+{
+    Eigen::MatrixXd A(xv.size(), order+1);
+    Eigen::VectorXd yv_mapped = Eigen::VectorXd::Map(&yv.front(), yv.size());
+    Eigen::VectorXd result;
+
+    assert(xv.size() == yv.size());
+    assert(xv.size() >= order+1);
+
+    // create matrix
+    for (size_t i = 0; i < xv.size(); i++)
+        for (size_t j = 0; j < order+1; j++)
+            A(i, j) = pow(xv.at(i), j);
+
+    // solve for linear least squares fit
+    result = A.householderQr().solve(yv_mapped);
+
+    std::vector<double> coeff;
+    coeff.resize(order+1);
+    for (size_t i = 0; i < order+1; i++)
+        coeff[i] = result[i];
+    return coeff;
+}
+
 
