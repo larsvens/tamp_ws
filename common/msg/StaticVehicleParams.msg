@@ -1,0 +1,13 @@
+Header  header
+float32 l
+float32 w
+float32 m
+float32 Iz
+float32 lf
+float32 lr
+float32 Cf
+float32 Cr
+float32 Da
+float32 deltamin
+float32 deltamax
+float32 g

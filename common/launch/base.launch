@@ -1,0 +1,5 @@
+<launch>
+     <node pkg="common" type="dummy_state_and_trajhat_publisher.py" name="dummy_state_and_trajhat_publisher"> </node>
+     <node pkg="perception" type="perception.py" name="perception"> </node>
+     <node pkg="vehicle" type="vehicle_param_publisher.py" name="vehicle_param_publisher"> </node>
+</launch>

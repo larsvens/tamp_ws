@@ -1,7 +1,9 @@
 // ros
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include <common/PathLocal.h>
 #include <common/Trajectory.h>
+#include <common/State.h>
 #include <sstream>
 
 // saasqp
@@ -18,6 +20,10 @@ public:
         state_ = *msg;
     }
 
+    void pathlocal_callback(const common::PathLocal::ConstPtr& msg){
+        pathlocal_ = *msg;
+    }
+
     // constructor
     SAASQP(ros::NodeHandle nh){
         nh_ = nh;
@@ -26,6 +32,7 @@ public:
 
         // pubs & subs        
         trajstar_pub_ = nh.advertise<common::Trajectory>("trajstar",1);
+        pathlocal_sub_ = nh.subscribe("pathlocal", 1, &SAASQP::pathlocal_callback,this);
         trajhat_sub_  = nh.subscribe("trajhat", 1, &SAASQP::traj_callback,this);
         state_sub_ = nh.subscribe("state", 1,  &SAASQP::state_callback,this);
 
@@ -96,11 +103,13 @@ public:
 private:
     double dt;
     ros::NodeHandle nh_;
+    ros::Subscriber pathlocal_sub_;
     ros::Subscriber trajhat_sub_;
     ros::Subscriber state_sub_;
     ros::Publisher trajstar_pub_;
     //ACADOvariables acadoVariables;
     //ACADOworkspace acadoWorkspace;
+    common::PathLocal pathlocal_;
     common::Trajectory trajstar_;
     common::Trajectory trajhat_;
     common::State state_;

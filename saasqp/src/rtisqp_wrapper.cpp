@@ -1,4 +1,9 @@
+// Keep this general. Clean out ros stuff and problem specific things
+
+
 #include "saasqp/rtisqp_wrapper.h"
+
+
 
 // constructor
 RtisqpWrapper::RtisqpWrapper()
