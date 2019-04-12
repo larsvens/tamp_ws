@@ -45,6 +45,7 @@ public:
     RtisqpWrapper();
 
     // functions
+    bool setWeights(std::vector<double>, std::vector<double>);
     bool setInitialGuess(common::Trajectory);
     bool setInitialState(common::State);
     bool setReference(common::Trajectory);
@@ -52,6 +53,8 @@ public:
     bool doPreparationStep();
     int  doFeedbackStep();
     std::vector<double> polyfit(const std::vector<double>, const std::vector<double>, int order);
+    Eigen::MatrixXd getStateTrajectory();
+    Eigen::MatrixXd getControlTrajectory();
     common::Trajectory getTrajectory();
 };
 

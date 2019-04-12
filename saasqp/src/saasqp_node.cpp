@@ -4,6 +4,7 @@
 #include <common/PathLocal.h>
 #include <common/Trajectory.h>
 #include <common/State.h>
+#include <common/interp.h>
 #include <sstream>
 
 // saasqp
@@ -38,6 +39,11 @@ public:
 
         // init wrapper for rtisqp solver
         rtisqp_wrapper_ = RtisqpWrapper();
+
+        // set weights
+        std::vector<double> Wx{10000.0, 10000.0, 10000.0, 0.1, 0.1, 0.1};
+        std::vector<double> Wu{0.001, 0.001};
+        rtisqp_wrapper_.setWeights(Wx,Wu);
 
         // main loop
         while (ros::ok())
@@ -80,12 +86,52 @@ public:
                 }
 
                 // extract state and control trajs from acado
+                Eigen::MatrixXd Xstarx = rtisqp_wrapper_.getStateTrajectory();
+                Eigen::MatrixXd Xstaru = rtisqp_wrapper_.getControlTrajectory();
+                //std::cout << "Xstarx" << Xstarx << std::endl;
+                //std::cout << "Xstaru" << Xstaru << std::endl;
 
-                // get trajstar
-                // todo
+                // set trajstar
+                std::vector<float> Xstar_s;
+                for (uint k = 0; k < N; ++k){
+                    Xstar_s.push_back(float(Xstarx(0,k)));
+                }
+                std::vector<float> Xc = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.X,false);
+                std::vector<float> Yc = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.Y,false);
+                std::vector<float> psic = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.psi_c,false);
+                trajstar_.kappac = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.kappa_c,false);
+                //std::vector<float> kappac = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.kappa_c,false);
+
+                for (uint k = 0; k < N; ++k){
+                    // states
+                    trajstar_.s.push_back(float(Xstarx(0,k)));
+                    trajstar_.d.push_back(float(Xstarx(1,k)));
+                    trajstar_.deltapsi.push_back(float(Xstarx(2,k)));
+                    trajstar_.psidot.push_back(float(Xstarx(3,k)));
+                    trajstar_.vx.push_back(float(Xstarx(4,k)));
+                    trajstar_.vy.push_back(float(Xstarx(5,k)));
+
+                    // cartesian pose
+                    trajstar_.X.push_back(Xc.at(k) - trajstar_.d.at(k)*std::sin(psic.at(k)));
+                    trajstar_.Y.push_back(Yc.at(k) + trajstar_.d.at(k)*std::cos(psic.at(k)));
+                    trajstar_.psi.push_back(psic.at(k) + trajstar_.deltapsi.at(k));
+
+                    // forces
+                    trajstar_.Fyf.push_back(float(Xstaru(0,k)));
+                    trajstar_.Fx.push_back(float(Xstaru(1,k)));
+                    trajstar_.Fxf.push_back(0.5f*trajstar_.Fx.at(k));
+                    trajstar_.Fxr.push_back(0.5f*trajstar_.Fx.at(k));
+                }
+
+                //traj_star.X = traj_star.Xc - traj_star.d.*sin(traj_star.psi_c);
+                //traj_star.Y = traj_star.Yc + traj_star.d.*cos(traj_star.psi_c);
+                //traj_star.psi = traj_star.psi_c + traj_star.deltapsi;
+
+
+
 
                 // publish trajstar
-                trajstar_ = rtisqp_wrapper_.getTrajectory();
+                //trajstar_ = rtisqp_wrapper_.getTrajectory();
                 trajstar_.header.stamp = ros::Time::now();
                 trajstar_pub_.publish(trajstar_);
 

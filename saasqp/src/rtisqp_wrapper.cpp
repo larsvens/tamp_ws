@@ -18,6 +18,36 @@ RtisqpWrapper::RtisqpWrapper()
 
 }
 
+bool RtisqpWrapper::setWeights(std::vector<double> Wx, std::vector<double> Wu){
+    // set diagonal elements of acadoVariables.w matrix. Size [Nx+Nu,Nx+Nu] (row major format)
+    // states
+    acadoVariables.W[0*(NX+NU) + 0] = Wx.at(0);
+    acadoVariables.W[1*(NX+NU) + 1] = Wx.at(1);
+    acadoVariables.W[2*(NX+NU) + 2] = Wx.at(2);
+    acadoVariables.W[3*(NX+NU) + 3] = Wx.at(3);
+    acadoVariables.W[4*(NX+NU) + 4] = Wx.at(4);
+    acadoVariables.W[5*(NX+NU) + 5] = Wx.at(5);
+    // controls
+    acadoVariables.W[6*(NX+NU) + 6] = Wu.at(0);
+    acadoVariables.W[7*(NX+NU) + 7] = Wu.at(1);
+
+    // construct eigen matrix to check
+    Eigen::MatrixXd W(NX+NU,NX+NU);
+    uint row = 0;
+    uint col = 0;
+    for (uint i = 0;i<(NX+NU)*(NX+NU);i++) {
+        W(row,col) = acadoVariables.W[i];
+        col++;
+        if(col >= (NX+NU)){
+            col = 0;
+            row++;
+        }
+    }
+
+    std::cout << "Setting Weigth matrix W: " << std::endl << W  << std::endl;
+    return true;
+}
+
 bool RtisqpWrapper::setInitialGuess(common::Trajectory traj){
     // set state trajectory guess
     for (uint k = 0; k < N + 1; ++k)
@@ -99,6 +129,31 @@ int RtisqpWrapper::doFeedbackStep(){
               << ", objective value: " << scientific << acado_getObjective()
               << endl;
     return status;
+}
+
+Eigen::MatrixXd RtisqpWrapper::getStateTrajectory(){
+    // row: state, column: time
+    // todo: put as loops s.t. not problem dependent
+    Eigen::MatrixXd Xstarx(NX,N+1);
+    for (uint k = 0; k < N + 1; ++k){
+        Xstarx(0,k) = acadoVariables.x[k * NX + 0]; // s
+        Xstarx(1,k) = acadoVariables.x[k * NX + 1];
+        Xstarx(2,k) = acadoVariables.x[k * NX + 2];
+        Xstarx(3,k) = acadoVariables.x[k * NX + 3];
+        Xstarx(4,k) = acadoVariables.x[k * NX + 4];
+        Xstarx(5,k) = acadoVariables.x[k * NX + 5];
+    }
+    return Xstarx;
+}
+
+Eigen::MatrixXd RtisqpWrapper::getControlTrajectory(){
+    // row: control variable, column: time
+    Eigen::MatrixXd Xstaru(NU,N);
+    for (uint k = 0; k < N; ++k){
+        Xstaru(0,k) = acadoVariables.u[k * NU + 0];
+        Xstaru(1,k) = acadoVariables.u[k * NU + 1];
+    }
+    return Xstaru;
 }
 
 common::Trajectory RtisqpWrapper::getTrajectory(){
