@@ -7,7 +7,7 @@ from common.msg import Trajectory
 from common.msg import State
 
 def trajhat_publisher():
-    traj_pub = rospy.Publisher('trajhat', Trajectory, queue_size=10)
+    traj_pub = rospy.Publisher('tmp_trajhat', Trajectory, queue_size=10)
     state_pub = rospy.Publisher('state', State, queue_size=10)
     rospy.init_node('trajhat_publisher', anonymous=True)
     rate = rospy.Rate(10) # 10hz

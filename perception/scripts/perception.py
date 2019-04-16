@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 # Descrition: Publishes local path and object list
-
-# todo publish object list
+# subscribes to state and extracts local path from global path
 
 import scipy.io as sio # for loading .mat file
 import rospy
 from common.msg import PathLocal
+from common.msg import Obstacles
 
 class PerceptionSimple:
     # constructor
@@ -14,19 +14,27 @@ class PerceptionSimple:
         # init node subs pubs
         rospy.init_node('perception', anonymous=True)
         self.pathlocalpub = rospy.Publisher('pathlocal', PathLocal, queue_size=10)
+        self.obstaclespub = rospy.Publisher('obstacles', Obstacles, queue_size=10)
         self.rate = rospy.Rate(10) # 10hz
-        
-        # init internal vars
+            
+        # init local path
         self.pathlocal = PathLocal()
-        
-        # load .mat file
-        self.loadPathLocalFromFile();
+        self.loadPathLocalFromFile()
+
+        # init obstacle list
+        self.obstacles = Obstacles()
+        self.obstacles.s = [540]
+        self.obstacles.d = [-1.5]
+        self.obstacles.R = [0.5]
+        self.obstacles.Rmgn = [2.5] 
         
         # Main loop
         while not rospy.is_shutdown():
             print("in main loop")
             self.pathlocal.header.stamp = rospy.Time.now()
-            self.pathlocalpub.publish(self.pathlocal)
+            self.pathlocalpub.publish(self.pathlocal)            
+            self.obstacles.header.stamp = rospy.Time.now()
+            self.obstaclespub.publish(self.obstacles)            
             self.rate.sleep()          
 
     def loadPathLocalFromFile(self):

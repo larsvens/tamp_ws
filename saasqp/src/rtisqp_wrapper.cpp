@@ -60,19 +60,12 @@ bool RtisqpWrapper::setInitialGuess(common::Trajectory traj){
         acadoVariables.x[k * NX + 4] = double(traj.vx.at(k)); // vx
         acadoVariables.x[k * NX + 5] = double(traj.vy.at(k)); // vy
     }
-    //std::cout << "state traj guess set sucessfully" << std::endl;
 
     // set kappac
     for (uint k = 0; k < N + 1; ++k)
     {
-        acadoVariables.od[k] = double(traj.kappac.at(k));
+        acadoVariables.od[k * NOD + 0] = double(traj.kappac.at(k));
     }
-    //std::cout << "kappac set sucessfully" << std::endl;
-
-    // set kappac polynomial coeffs
-    //std::vector<double> s = cpp_utils::tcast_vector<float,double>(traj.s);
-    //std::vector<double> kappac = cpp_utils::tcast_vector<float,double>(traj.kappac);
-    //std::vector<double> a = polyfit(s,kappac,3);
 
     return true;
 }
@@ -99,6 +92,31 @@ bool RtisqpWrapper::setReference(common::Trajectory traj){
 
     //std::cout << "reference set sucessfully" << std::endl;
 
+    return true;
+}
+
+bool RtisqpWrapper::setStateConstraints(common::Trajectory &traj){
+    for (uint k = 0; k < N + 1; ++k)
+    {
+        float s_diff = 2;
+        float d_diff = 1;
+
+        // todo adjust diffs for obstacles
+
+
+
+        // add lb and ub to traj struct for visualization
+        traj.slb.push_back(traj.s.at(k) - s_diff);
+        traj.sub.push_back(traj.s.at(k) + s_diff);
+        traj.dlb.push_back(traj.d.at(k) - d_diff);
+        traj.dub.push_back(traj.d.at(k) + d_diff);
+
+        // set acadovariable
+        acadoVariables.od[k * NOD + 1] = double(traj.slb.at(k));
+        acadoVariables.od[k * NOD + 2] = double(traj.sub.at(k));
+        acadoVariables.od[k * NOD + 3] = double(traj.dlb.at(k));
+        acadoVariables.od[k * NOD + 4] = double(traj.dub.at(k));
+    }
     return true;
 }
 

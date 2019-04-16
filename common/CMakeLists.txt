@@ -55,6 +55,7 @@ find_package(catkin REQUIRED COMPONENTS
    PathLocal.msg
    StaticVehicleParams.msg
    DynamicVehicleParams.msg
+   Obstacles.msg
  )
 
 ## Generate services in the 'srv' folder

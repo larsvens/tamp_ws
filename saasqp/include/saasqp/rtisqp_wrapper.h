@@ -31,6 +31,7 @@ using namespace std;
 #define N          ACADO_N	/* number of control intervals */
 #define NY	   ACADO_NY	/* number of references, nodes 0..N - 1 */
 #define NYN	   ACADO_NYN
+#define NOD        ACADO_NOD
 #define NUM_STEPS  100		/* number of simulation steps */
 #define VERBOSE    1		/* show iterations: 1, silent: 0 */
 
@@ -49,6 +50,7 @@ public:
     bool setInitialGuess(common::Trajectory);
     bool setInitialState(common::State);
     bool setReference(common::Trajectory);
+    bool setStateConstraints(common::Trajectory &traj);
     bool shiftStateAndControls();
     bool doPreparationStep();
     int  doFeedbackStep();

@@ -21,6 +21,10 @@ float32[] alphaf
 float32[] alphar
 float32[] Crtilde
 float32[] delta
+float32[] slb
+float32[] sub
+float32[] dlb
+float32[] dub
 int32 valid
 float32 coll_cost
 float32 cost
