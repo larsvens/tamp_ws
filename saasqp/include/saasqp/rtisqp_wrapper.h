@@ -19,10 +19,12 @@ using namespace std;
 #include "acado_common.h"
 #include "acado_auxiliary_functions.h"
 
-// ros
+// ros (todo replace with internals structs)
 #include "common/Trajectory.h"
 #include "common/State.h"
 #include "common/cpp_utils.h"
+#include "common/Obstacles.h"
+#include "common/PathLocal.h"
 
 // define variables
 #define NX         ACADO_NX	/* number of differential states */
@@ -49,8 +51,8 @@ public:
     bool setWeights(std::vector<double>, std::vector<double>);
     bool setInitialGuess(common::Trajectory);
     bool setInitialState(common::State);
-    bool setReference(common::Trajectory);
-    bool setStateConstraints(common::Trajectory &traj);
+    bool setReference(common::Trajectory, int ctrlmode);
+    bool setStateConstraints(common::Trajectory &traj, common::Obstacles obs, std::vector<float> lld, std::vector<float> rld);
     bool shiftStateAndControls();
     bool doPreparationStep();
     int  doFeedbackStep();

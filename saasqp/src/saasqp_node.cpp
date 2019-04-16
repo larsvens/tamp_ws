@@ -2,6 +2,7 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include <common/PathLocal.h>
+#include <common/Obstacles.h>
 #include <common/Trajectory.h>
 #include <common/State.h>
 #include <common/interp.h>
@@ -25,6 +26,10 @@ public:
         pathlocal_ = *msg;
     }
 
+    void obstacles_callback(const common::Obstacles::ConstPtr& msg){
+        obstacles_ = *msg;
+    }
+
     // constructor
     SAASQP(ros::NodeHandle nh){
         nh_ = nh;
@@ -35,6 +40,7 @@ public:
         trajhat_pub_ = nh.advertise<common::Trajectory>("trajhat",1);
         trajstar_pub_ = nh.advertise<common::Trajectory>("trajstar",1);
         pathlocal_sub_ = nh.subscribe("pathlocal", 1, &SAASQP::pathlocal_callback,this);
+        obstacles_sub_ = nh.subscribe("obstacles", 1, &SAASQP::obstacles_callback,this);
         tmp_trajhat_sub_  = nh.subscribe("tmp_trajhat", 1, &SAASQP::tmp_trajhat_callback,this);
         state_sub_ = nh.subscribe("state", 1,  &SAASQP::state_callback,this);
 
@@ -72,11 +78,14 @@ public:
 
                 // set reference
                 ROS_INFO_STREAM("setting reference..");
-                rtisqp_wrapper_.setReference(trajhat);
+                int ctrlmode = 2; // 0: tracking, 1: min s, 2: max s,
+                rtisqp_wrapper_.setReference(trajhat,ctrlmode);
 
                 // set state constraint
                 ROS_INFO_STREAM("setting state constraints..");
-                rtisqp_wrapper_.setStateConstraints(trajhat); // todo add obstacle list as input
+                std::vector<float> lld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dub,false);
+                std::vector<float> rld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dlb,false);
+                rtisqp_wrapper_.setStateConstraints(trajhat,obstacles_,lld,rld);
 
                 // do preparation step // todo: put timer
                 ROS_INFO_STREAM("calling acado prep step..");
@@ -158,6 +167,7 @@ private:
     double dt;
     ros::NodeHandle nh_;
     ros::Subscriber pathlocal_sub_;
+    ros::Subscriber obstacles_sub_;
     ros::Subscriber tmp_trajhat_sub_;
     ros::Subscriber state_sub_;
     ros::Publisher trajstar_pub_;
@@ -165,6 +175,7 @@ private:
     //ACADOvariables acadoVariables;
     //ACADOworkspace acadoWorkspace;
     common::PathLocal pathlocal_;
+    common::Obstacles obstacles_;
     //common::Trajectory trajstar_;
     common::Trajectory tmp_trajhat_;
     common::State state_;

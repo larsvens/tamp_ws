@@ -26,7 +26,7 @@ class PerceptionSimple:
         self.obstacles.s = [540]
         self.obstacles.d = [-1.5]
         self.obstacles.R = [0.5]
-        self.obstacles.Rmgn = [2.5] 
+        self.obstacles.Rmgn = [3.0] # 2.5 
         
         # Main loop
         while not rospy.is_shutdown():

@@ -70,10 +70,26 @@ bool RtisqpWrapper::setInitialGuess(common::Trajectory traj){
     return true;
 }
 
-bool RtisqpWrapper::setReference(common::Trajectory traj){
+bool RtisqpWrapper::setReference(common::Trajectory traj, int ctrlmode){
+    std::vector<float> sref;
+    switch (ctrlmode) {
+    case 0: // tracking
+        std::cout << "case 0, ctrlmode = " << ctrlmode << std::endl;
+        sref = traj.s;
+        break;
+    case 1: // minimize s
+        std::cout << "case 1, ctrlmode = " << ctrlmode << std::endl;
+        sref.assign(N+1,0.0);
+        break;
+    case 2: // maximize s
+        std::cout << "case 2, ctrlmode = " << ctrlmode << std::endl;
+        sref.assign(N+1, traj.s.at(0) + 200);
+        break;
+    }
+
     for (uint k = 0; k < N; ++k)
     {
-        acadoVariables.y[k * NY + 0] = double(traj.s.at(k)); // s
+        acadoVariables.y[k * NY + 0] = double(sref.at(k)); // s
         acadoVariables.y[k * NY + 1] = double(traj.d.at(k)); // d
         acadoVariables.y[k * NY + 2] = double(traj.deltapsi.at(k)); // deltapsi
         acadoVariables.y[k * NY + 3] = double(traj.psidot.at(k)); // psidot
@@ -83,7 +99,7 @@ bool RtisqpWrapper::setReference(common::Trajectory traj){
         acadoVariables.y[k * NY + 8] = double(traj.Fx.at(k)); // Fx
     }
 
-    acadoVariables.yN[ 0 ] = double(traj.s.at(N)); // s
+    acadoVariables.yN[ 0 ] = double(sref.at(N)); // s
     acadoVariables.yN[ 1 ] = double(traj.d.at(N)); // d
     acadoVariables.yN[ 2 ] = double(traj.deltapsi.at(N)); // deltapsi
     acadoVariables.yN[ 3 ] = double(traj.psidot.at(N)); // psidot
@@ -95,27 +111,55 @@ bool RtisqpWrapper::setReference(common::Trajectory traj){
     return true;
 }
 
-bool RtisqpWrapper::setStateConstraints(common::Trajectory &traj){
+bool RtisqpWrapper::setStateConstraints(common::Trajectory &traj,
+                                        common::Obstacles obs,
+                                        std::vector<float> lld,
+                                        std::vector<float> rld){
+    float s_diff_default = 2;
+    float d_diff_default = 2;
+
     for (uint k = 0; k < N + 1; ++k)
     {
-        float s_diff = 2;
-        float d_diff = 1;
+        float slb = traj.s.at(k)-s_diff_default;
+        float sub = traj.s.at(k)+s_diff_default;
+        float dlb = traj.d.at(k)-d_diff_default;
+        float dub = traj.d.at(k)+d_diff_default;
 
-        // todo adjust diffs for obstacles
-
-
+        // adjust lbs and ubs for obstacles
+        uint Nobs = uint(obs.s.size());
+        for (uint i = 0; i<Nobs; i++) {
+            float sobs = obs.s.at(i);
+            float dobs = obs.d.at(i);
+            float Rmgn = obs.Rmgn.at(i);
+            if (slb - Rmgn <= sobs && sobs <= sub + Rmgn){
+                if(dobs >= traj.d.at(k)){ // obs left of vehicle, adjust dub
+                    dub = std::min(dub, dobs-Rmgn);
+                    dub = std::max(dub,traj.d.at(k)); // s.t. d-interval is nonzero
+                } else{ // obs right of vehicle, adjust dlb
+                    dlb = std::max(dlb, dobs+Rmgn);
+                    dlb = std::min(dlb, traj.d.at(k)); // s.t. d-interval is nonzero
+                }
+            }
+            // adjust for lane boundaries
+            if(dub > lld.at(k)){ // left lane boundary
+                dub = lld.at(k);
+            }
+            if(dlb < rld.at(k)){ // right lane boundary
+                dlb = rld.at(k);
+            }
+        }
 
         // add lb and ub to traj struct for visualization
-        traj.slb.push_back(traj.s.at(k) - s_diff);
-        traj.sub.push_back(traj.s.at(k) + s_diff);
-        traj.dlb.push_back(traj.d.at(k) - d_diff);
-        traj.dub.push_back(traj.d.at(k) + d_diff);
+        traj.slb.push_back(slb);
+        traj.sub.push_back(sub);
+        traj.dlb.push_back(dlb);
+        traj.dub.push_back(dub);
 
         // set acadovariable
-        acadoVariables.od[k * NOD + 1] = double(traj.slb.at(k));
-        acadoVariables.od[k * NOD + 2] = double(traj.sub.at(k));
-        acadoVariables.od[k * NOD + 3] = double(traj.dlb.at(k));
-        acadoVariables.od[k * NOD + 4] = double(traj.dub.at(k));
+        acadoVariables.od[k * NOD + 1] = double(slb);
+        acadoVariables.od[k * NOD + 2] = double(sub);
+        acadoVariables.od[k * NOD + 3] = double(dlb);
+        acadoVariables.od[k * NOD + 4] = double(dub);
     }
     return true;
 }
