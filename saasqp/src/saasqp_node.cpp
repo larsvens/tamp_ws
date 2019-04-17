@@ -50,13 +50,15 @@ public:
         // set weights
         std::vector<double> Wx{100.0, 100.0, 100.0, 0.1, 0.1, 0.1};
         std::vector<double> Wu{0.001, 0.001};
-        rtisqp_wrapper_.setWeights(Wx,Wu);
+        double Wslack = 100000;
+        rtisqp_wrapper_.setWeights(Wx,Wu,Wslack);
 
         // main loop
         while (ros::ok())
         {
             std::cout << std::endl;
             ROS_INFO_STREAM("main loop");
+            ros::Time t_start = ros::Time::now();
 
             // todo: selection step (gives trajhat)
 
@@ -78,7 +80,7 @@ public:
 
                 // set reference
                 ROS_INFO_STREAM("setting reference..");
-                int ctrlmode = 2; // 0: tracking, 1: min s, 2: max s,
+                int ctrlmode = 1; // 0: tracking, 1: min s, 2: max s,
                 rtisqp_wrapper_.setReference(trajhat,ctrlmode);
 
                 // set state constraint
@@ -138,11 +140,6 @@ public:
                     trajstar.Fxr.push_back(0.5f*trajstar.Fx.at(k));
                 }
 
-                //traj_star.X = traj_star.Xc - traj_star.d.*sin(traj_star.psi_c);
-                //traj_star.Y = traj_star.Yc + traj_star.d.*cos(traj_star.psi_c);
-                //traj_star.psi = traj_star.psi_c + traj_star.deltapsi;
-
-
 
                 // publish trajhat
                 trajhat.header.stamp = ros::Time::now();
@@ -154,6 +151,10 @@ public:
 
                 // todo shift X and U
 
+
+                // print loop time
+                ros::Duration planningtime = ros::Time::now() - t_start;
+                ROS_INFO_STREAM("planningtime = " << planningtime);
 
             } else {
                 ROS_INFO_STREAM("waiting for state and tmp_trajhat");
@@ -172,11 +173,8 @@ private:
     ros::Subscriber state_sub_;
     ros::Publisher trajstar_pub_;
     ros::Publisher trajhat_pub_;
-    //ACADOvariables acadoVariables;
-    //ACADOworkspace acadoWorkspace;
     common::PathLocal pathlocal_;
     common::Obstacles obstacles_;
-    //common::Trajectory trajstar_;
     common::Trajectory tmp_trajhat_;
     common::State state_;
     RtisqpWrapper rtisqp_wrapper_;

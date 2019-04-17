@@ -18,18 +18,20 @@ RtisqpWrapper::RtisqpWrapper()
 
 }
 
-bool RtisqpWrapper::setWeights(std::vector<double> Wx, std::vector<double> Wu){
+bool RtisqpWrapper::setWeights(std::vector<double> Wx, std::vector<double> Wu, double Wslack){
     // set diagonal elements of acadoVariables.w matrix. Size [Nx+Nu,Nx+Nu] (row major format)
     // states
-    acadoVariables.W[0*(NX+NU) + 0] = Wx.at(0);
-    acadoVariables.W[1*(NX+NU) + 1] = Wx.at(1);
-    acadoVariables.W[2*(NX+NU) + 2] = Wx.at(2);
-    acadoVariables.W[3*(NX+NU) + 3] = Wx.at(3);
-    acadoVariables.W[4*(NX+NU) + 4] = Wx.at(4);
-    acadoVariables.W[5*(NX+NU) + 5] = Wx.at(5);
+    acadoVariables.W[0*(NX+NU) + 0] = Wx.at(0); // s
+    acadoVariables.W[1*(NX+NU) + 1] = Wx.at(1); // d
+    acadoVariables.W[2*(NX+NU) + 2] = Wx.at(2); // deltapsi
+    acadoVariables.W[3*(NX+NU) + 3] = Wx.at(3); // psidot
+    acadoVariables.W[4*(NX+NU) + 4] = Wx.at(4); // vx
+    acadoVariables.W[5*(NX+NU) + 5] = Wx.at(5); // vy
+    acadoVariables.W[6*(NX+NU) + 6] = 0.0;      // dummy state for slack
     // controls
-    acadoVariables.W[6*(NX+NU) + 6] = Wu.at(0);
-    acadoVariables.W[7*(NX+NU) + 7] = Wu.at(1);
+    acadoVariables.W[7*(NX+NU) + 7] = Wu.at(0); // Fyf
+    acadoVariables.W[8*(NX+NU) + 8] = Wu.at(1); // Fx
+    acadoVariables.W[9*(NX+NU) + 9] = Wslack;   // slack variable
 
     // construct eigen matrix to check
     Eigen::MatrixXd W(NX+NU,NX+NU);
@@ -52,13 +54,13 @@ bool RtisqpWrapper::setInitialGuess(common::Trajectory traj){
     // set state trajectory guess
     for (uint k = 0; k < N + 1; ++k)
     {
-        //std::cout << "k = " << k << "     traj.s.at(k) = " << traj.s.at(k) << std::endl;
         acadoVariables.x[k * NX + 0] = double(traj.s.at(k)); // s
         acadoVariables.x[k * NX + 1] = double(traj.d.at(k)); // d
         acadoVariables.x[k * NX + 2] = double(traj.deltapsi.at(k)); // deltapsi
         acadoVariables.x[k * NX + 3] = double(traj.psidot.at(k)); // psidot
         acadoVariables.x[k * NX + 4] = double(traj.vx.at(k)); // vx
         acadoVariables.x[k * NX + 5] = double(traj.vy.at(k)); // vy
+        acadoVariables.x[k * NX + 6] = 0.0;                   // dummy
     }
 
     // set kappac
@@ -74,40 +76,41 @@ bool RtisqpWrapper::setReference(common::Trajectory traj, int ctrlmode){
     std::vector<float> sref;
     switch (ctrlmode) {
     case 0: // tracking
-        std::cout << "case 0, ctrlmode = " << ctrlmode << std::endl;
+        //std::cout << "case 0, ctrlmode = " << ctrlmode << std::endl;
         sref = traj.s;
         break;
     case 1: // minimize s
-        std::cout << "case 1, ctrlmode = " << ctrlmode << std::endl;
+        //std::cout << "case 1, ctrlmode = " << ctrlmode << std::endl;
         sref.assign(N+1,0.0);
         break;
     case 2: // maximize s
-        std::cout << "case 2, ctrlmode = " << ctrlmode << std::endl;
+        //std::cout << "case 2, ctrlmode = " << ctrlmode << std::endl;
         sref.assign(N+1, traj.s.at(0) + 200);
         break;
     }
 
+    // set ref for intermediate states
     for (uint k = 0; k < N; ++k)
     {
-        acadoVariables.y[k * NY + 0] = double(sref.at(k)); // s
-        acadoVariables.y[k * NY + 1] = double(traj.d.at(k)); // d
-        acadoVariables.y[k * NY + 2] = double(traj.deltapsi.at(k)); // deltapsi
-        acadoVariables.y[k * NY + 3] = double(traj.psidot.at(k)); // psidot
-        acadoVariables.y[k * NY + 4] = double(traj.vx.at(k)); // vx
-        acadoVariables.y[k * NY + 5] = double(traj.vy.at(k)); // vy
-        acadoVariables.y[k * NY + 7] = double(traj.Fyf.at(k)); // Fyf
-        acadoVariables.y[k * NY + 8] = double(traj.Fx.at(k)); // Fx
+        acadoVariables.y[k * NY + 0] = double(sref.at(k));           // s
+        acadoVariables.y[k * NY + 1] = double(traj.d.at(k));         // d
+        acadoVariables.y[k * NY + 2] = double(traj.deltapsi.at(k));  // deltapsi
+        acadoVariables.y[k * NY + 3] = double(traj.psidot.at(k));    // psidot
+        acadoVariables.y[k * NY + 4] = double(traj.vx.at(k));        // vx
+        acadoVariables.y[k * NY + 5] = double(traj.vy.at(k));        // vy
+        acadoVariables.y[k * NY + 6] = 0.0;                          // dummy
+        acadoVariables.y[k * NY + 7] = double(traj.Fyf.at(k));       // Fyf
+        acadoVariables.y[k * NY + 8] = double(traj.Fx.at(k));        // Fx
+        acadoVariables.y[k * NY + 9] = 0.0;                          // slack
     }
-
-    acadoVariables.yN[ 0 ] = double(sref.at(N)); // s
-    acadoVariables.yN[ 1 ] = double(traj.d.at(N)); // d
-    acadoVariables.yN[ 2 ] = double(traj.deltapsi.at(N)); // deltapsi
-    acadoVariables.yN[ 3 ] = double(traj.psidot.at(N)); // psidot
-    acadoVariables.yN[ 4 ] = double(traj.vx.at(N)); // vx
-    acadoVariables.yN[ 5 ] = double(traj.vy.at(N)); // vy
-
-    //std::cout << "reference set sucessfully" << std::endl;
-
+    // set ref for final state
+    acadoVariables.yN[ 0 ] = double(sref.at(N));           // s
+    acadoVariables.yN[ 1 ] = double(traj.d.at(N));         // d
+    acadoVariables.yN[ 2 ] = double(traj.deltapsi.at(N));  // deltapsi
+    acadoVariables.yN[ 3 ] = double(traj.psidot.at(N));    // psidot
+    acadoVariables.yN[ 4 ] = double(traj.vx.at(N));        // vx
+    acadoVariables.yN[ 5 ] = double(traj.vy.at(N));        // vy
+    acadoVariables.yN[ 6 ] = 0;                            // dummy
     return true;
 }
 
@@ -171,6 +174,7 @@ bool RtisqpWrapper::setInitialState(common::State state){
     acadoVariables.x0[3] = double(state.psidot);
     acadoVariables.x0[4] = double(state.vx);
     acadoVariables.x0[5] = double(state.vy);
+    acadoVariables.x0[6] = 0.0; // dummy
     return true;
 }
 
@@ -187,9 +191,9 @@ bool RtisqpWrapper::doPreparationStep(){
 
 int RtisqpWrapper::doFeedbackStep(){
     int status = acado_feedbackStep();
-    std::cout << "KKT value: " << scientific << acado_getKKT()
-              << ", objective value: " << scientific << acado_getObjective()
-              << endl;
+//    std::cout << "KKT value: " << scientific << acado_getKKT()
+//              << ", objective value: " << scientific << acado_getObjective()
+//              << endl;
     return status;
 }
 
@@ -217,49 +221,4 @@ Eigen::MatrixXd RtisqpWrapper::getControlTrajectory(){
     }
     return Xstaru;
 }
-
-common::Trajectory RtisqpWrapper::getTrajectory(){
-    common::Trajectory traj;
-
-    // get state variables from acadovariables
-    for (uint k = 0; k < N + 1; ++k){
-        traj.s.push_back(float(acadoVariables.x[k * NX + 0]));
-        traj.d.push_back(float(acadoVariables.x[k * NX + 1]));
-        traj.deltapsi.push_back(float(acadoVariables.x[k * NX + 2]));
-        traj.psidot.push_back(float(acadoVariables.x[k * NX + 3]));
-        traj.vx.push_back(float(acadoVariables.x[k * NX + 4]));
-        traj.vy.push_back(float(acadoVariables.x[k * NX + 5]));
-    }
-
-    // get X Y by frenet -> cartesian transformation
-
-
-    return traj;
-}
-
-// todo move to common, utils
-std::vector<double> polyfit(const std::vector<double> &xv, const std::vector<double> &yv, int order)
-{
-    Eigen::MatrixXd A(xv.size(), order+1);
-    Eigen::VectorXd yv_mapped = Eigen::VectorXd::Map(&yv.front(), yv.size());
-    Eigen::VectorXd result;
-
-    assert(xv.size() == yv.size());
-    assert(xv.size() >= order+1);
-
-    // create matrix
-    for (size_t i = 0; i < xv.size(); i++)
-        for (size_t j = 0; j < order+1; j++)
-            A(i, j) = pow(xv.at(i), j);
-
-    // solve for linear least squares fit
-    result = A.householderQr().solve(yv_mapped);
-
-    std::vector<double> coeff;
-    coeff.resize(order+1);
-    for (size_t i = 0; i < order+1; i++)
-        coeff[i] = result[i];
-    return coeff;
-}
-
 
