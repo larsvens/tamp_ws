@@ -19,7 +19,16 @@ class VehicleModel:
         self.state = State()
         self.sp = StaticVehicleParams()
         self.dp = DynamicVehicleParams()
-
+        
+        # main loop
+        while not rospy.is_shutdown():
+            print("in main loop")
+            
+            
+            # end of main loop
+            self.rate.sleep()
+            
+            
     def state_callback(self, msg):
         #print("in state callback")
         self.state = msg
