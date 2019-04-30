@@ -2,7 +2,7 @@
 
 # Descrition: Publishes state, local path and dynamic params
 
-import scipy.io as sio # for loading .mat file
+import numpy as np
 import rospy
 from common.msg import State
 from common.msg import PathLocal
@@ -36,12 +36,9 @@ class LocAndStateEst:
         self.state.ay = 2.4374
         self.state.stop = False
         
-        # init global path
+        # init local and global path
         self.loadPathGlobalFromFile()
-        
-        # init local path
         self.pathlocal = PathLocal()
-        self.loadPathLocalFromFile()
 
         # init dynamic params
         while(self.sp.m <= 0):
@@ -59,58 +56,53 @@ class LocAndStateEst:
         
         # Main loop
         while not rospy.is_shutdown():
-            #print("in main loop")
+            # get new vehicle state
+            self.propagateVehicle()
             self.state.header.stamp = rospy.Time.now()
             self.statepub.publish(self.state)
-            self.pathlocal.header.stamp = rospy.Time.now()
-            self.pathlocalpub.publish(self.pathlocal)        
+
+            # update dynamic vehicle params
             self.dynamic_params.header.stamp = rospy.Time.now()
             self.dynamic_param_pub.publish(self.dynamic_params)
+            
+            # update local path around new state 
+            self.updateLocalPath()
+            self.pathlocal.header.stamp = rospy.Time.now()
+            self.pathlocalpub.publish(self.pathlocal)
+            
 
             self.rate.sleep()          
 
 
-    def propagateVehicle(state0):
-        print("propagating vehicle")
+    def propagateVehicle(self):
+        print("todo: propagate vehicle")
         #return state1
 
     def loadPathGlobalFromFile(self):
-        filename = '/home/larsvens/ros/saasqp_ws/src/perception/data/pathglobal_th.mat'
-        mat = sio.loadmat(filename,struct_as_record=False, squeeze_me=True)
+        filename = '/home/larsvens/ros/saasqp_ws/src/perception/data/pathglobal.npy'
+        pathglobal_npy = np.load(filename)
+        self.pathglobal = pathglobal_npy.item()
+
+    def updateLocalPath(self): # todo make sure s is continous when running several laps
+        #print("updating local path")
         
-        self.pathglobal =	{
-          "X":          mat['path_global'].X,
-          "Y":          mat['path_global'].Y,
-          "s":          mat['path_global'].s,
-          "psi_c":      mat['path_global'].psi_c,
-          "theta_c":    mat['path_global'].theta_c,
-          "phi_c":      mat['path_global'].phi_c,
-          "dub":        mat['path_global'].dub,
-          "dlb":        mat['path_global'].dlb
-        }
+        # define length of local path and params for interp
+        smin = self.state.s - 1
+        smax = smin+100
+        N = 200
+        s = np.linspace(smin,smax,N)
         
+        # interpolate on global path
+        self.pathlocal.X =              np.interp(s,self.pathglobal['s'],self.pathglobal['X'])
+        self.pathlocal.Y =              np.interp(s,self.pathglobal['s'],self.pathglobal['Y'])
+        self.pathlocal.s =              s
+        self.pathlocal.psi_c =          np.interp(s,self.pathglobal['s'],self.pathglobal['psi_c'])
+        self.pathlocal.theta_c =        np.interp(s,self.pathglobal['s'],self.pathglobal['theta_c'])
+        self.pathlocal.kappa_c =        np.interp(s,self.pathglobal['s'],self.pathglobal['kappa_c'])
+        self.pathlocal.kappaprime_c =  np.interp(s,self.pathglobal['s'],self.pathglobal['kappaprime_c'])
+        self.pathlocal.dub =            np.interp(s,self.pathglobal['s'],self.pathglobal['dub'])
+        self.pathlocal.dlb =            np.interp(s,self.pathglobal['s'],self.pathglobal['dlb'])
         
-#        self.pathglobal.X =              mat['path_global'].X
-#        self.pathglobal.Y =              mat['path_global'].Y
-#        self.pathglobal.s =              mat['path_global'].s
-#        self.pathglobal.psi_c =          mat['path_global'].psi_c
-#        self.pathglobal.theta_c =        mat['path_global'].theta_c
-#        self.pathglobal.phi_c =          mat['path_global'].phi_c
-#        self.pathglobal.dub =            mat['path_global'].dub
-#        self.pathglobal.dlb =            mat['path_global'].dlb               
-        
-    def loadPathLocalFromFile(self): # todo, replace
-        filename = '/home/larsvens/ros/saasqp_ws/src/perception/data/path_local_example.mat'
-        mat = sio.loadmat(filename,struct_as_record=False, squeeze_me=True)
-        self.pathlocal.X =              mat['path_local'].X
-        self.pathlocal.Y =              mat['path_local'].Y
-        self.pathlocal.s =              mat['path_local'].s
-        self.pathlocal.psi_c =          mat['path_local'].psi_c
-        self.pathlocal.theta_c =        mat['path_local'].theta_c
-        self.pathlocal.kappa_c =        mat['path_local'].kappa_c
-        self.pathlocal.kappa_c_prime =  mat['path_local'].kappa_c_prime
-        self.pathlocal.dub =            mat['path_local'].dub
-        self.pathlocal.dlb =            mat['path_local'].dlb
 
     #callbacks
     def staticparams_callback(self, msg):

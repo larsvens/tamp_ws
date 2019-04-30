@@ -68,7 +68,7 @@ class LivePlotter:
             N = len(self.trajstar.s)
             
             # plot lane lines
-            nplot = int(0.4*len(self.pathlocal.s))                   
+            nplot = int(1.0*len(self.pathlocal.s))                   
             llX, llY = ptsFrenetToCartesian(np.array(self.pathlocal.X[0:nplot]), \
                                             np.array(self.pathlocal.Y[0:nplot]), \
                                             np.array(self.pathlocal.psi_c[0:nplot]), \
