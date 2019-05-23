@@ -14,11 +14,13 @@ class ObjectDetection:
         self.rate = rospy.Rate(10) # 10hz
 
         # init obstacle list
+        have_obstacles = False
         self.obstacles = Obstacles()
-        self.obstacles.s = [540]
-        self.obstacles.d = [-1.5]
-        self.obstacles.R = [0.5]
-        self.obstacles.Rmgn = [3.0] # 2.5 
+        if(have_obstacles):     
+            self.obstacles.s = [540]
+            self.obstacles.d = [-1.5]
+            self.obstacles.R = [0.5]
+            self.obstacles.Rmgn = [3.0] # 2.5 
         
         # Main loop
         while not rospy.is_shutdown():

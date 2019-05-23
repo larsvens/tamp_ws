@@ -43,7 +43,7 @@ class LivePlotter:
         self.staticparamsub = rospy.Subscriber("static_vehicle_params", StaticVehicleParams, self.staticparams_callback)
         self.dynamicparamsub = rospy.Subscriber("dynamic_vehicle_params", DynamicVehicleParams, self.dynamicparams_callback)
         self.dt = 1.0
-        self.rate = rospy.Rate(1.0/self.dt) 
+        self.rate = rospy.Rate(0.5/self.dt) 
         # init internal variables
         self.counter = 0 # use this to reduce plot update rate
         self.pathlocal = PathLocal()
@@ -64,6 +64,9 @@ class LivePlotter:
         while not rospy.is_shutdown():
             tm = time.time()
 
+            # clear figure
+            a0.cla()
+            a1.cla()
             
             N = len(self.trajstar.s)
             
@@ -148,9 +151,12 @@ class LivePlotter:
             
             # plot trajhat forces
             a1.plot(self.trajhat.Fxf, self.trajstar.Fyf, 'xr')
-            
+
             # plot trajstar forces
             a1.plot(self.trajstar.Fxf, self.trajstar.Fyf, 'xb')
+
+            a1.set_xlabel('Fxf')
+            a1.set_ylabel('Fyf')
                       
             # redraw plot
             plt.draw() 

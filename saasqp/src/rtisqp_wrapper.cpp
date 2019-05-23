@@ -74,18 +74,28 @@ bool RtisqpWrapper::setInitialGuess(common::Trajectory traj){
 
 bool RtisqpWrapper::setReference(common::Trajectory traj, int ctrlmode){
     std::vector<float> sref;
+    std::vector<float> vxref;
     switch (ctrlmode) {
     case 0: // tracking
         //std::cout << "case 0, ctrlmode = " << ctrlmode << std::endl;
         sref = traj.s;
+        vxref = traj.vx;
         break;
     case 1: // minimize s
         //std::cout << "case 1, ctrlmode = " << ctrlmode << std::endl;
-        sref.assign(N+1,0.0);
+
+        //minimize s
+        //sref.assign(N+1, traj.s.at(0));
+        //vxref = traj.vx;
+
+        // minimize vx
+        sref = traj.s;
+        vxref.assign(N+1,0.0);
         break;
     case 2: // maximize s
         //std::cout << "case 2, ctrlmode = " << ctrlmode << std::endl;
         sref.assign(N+1, traj.s.at(0) + 200);
+        vxref = traj.vx;
         break;
     }
 
@@ -96,7 +106,7 @@ bool RtisqpWrapper::setReference(common::Trajectory traj, int ctrlmode){
         acadoVariables.y[k * NY + 1] = double(traj.d.at(k));         // d
         acadoVariables.y[k * NY + 2] = double(traj.deltapsi.at(k));  // deltapsi
         acadoVariables.y[k * NY + 3] = double(traj.psidot.at(k));    // psidot
-        acadoVariables.y[k * NY + 4] = double(traj.vx.at(k));        // vx
+        acadoVariables.y[k * NY + 4] = double(vxref.at(k));          // vx
         acadoVariables.y[k * NY + 5] = double(traj.vy.at(k));        // vy
         acadoVariables.y[k * NY + 6] = 0.0;                          // dummy
         acadoVariables.y[k * NY + 7] = double(traj.Fyf.at(k));       // Fyf
@@ -118,6 +128,12 @@ bool RtisqpWrapper::setStateConstraints(common::Trajectory &traj,
                                         common::Obstacles obs,
                                         std::vector<float> lld,
                                         std::vector<float> rld){
+
+    std::vector <float> slb_vec;
+    std::vector <float> sub_vec;
+    std::vector <float> dlb_vec;
+    std::vector <float> dub_vec;
+
     float s_diff_default = 2;
     float d_diff_default = 2;
 
@@ -143,20 +159,32 @@ bool RtisqpWrapper::setStateConstraints(common::Trajectory &traj,
                     dlb = std::min(dlb, traj.d.at(k)); // s.t. d-interval is nonzero
                 }
             }
-            // adjust for lane boundaries
-            if(dub > lld.at(k)){ // left lane boundary
-                dub = lld.at(k);
+        }
+
+        // adjust for lane boundaries
+        if(dub > lld.at(k)){ // left lane boundary
+            dub = lld.at(k);
+            if(dub-dlb < d_diff_default){
+                dlb = dub-d_diff_default;
             }
-            if(dlb < rld.at(k)){ // right lane boundary
-                dlb = rld.at(k);
+        }
+        if(dlb < rld.at(k)){ // right lane boundary
+            dlb = rld.at(k);
+            if(dub-dlb < d_diff_default){
+                dub = dlb + d_diff_default;
             }
         }
 
         // add lb and ub to traj struct for visualization
-        traj.slb.push_back(slb);
-        traj.sub.push_back(sub);
-        traj.dlb.push_back(dlb);
-        traj.dub.push_back(dub);
+        slb_vec.push_back(slb);
+        sub_vec.push_back(sub);
+        dlb_vec.push_back(dlb);
+        dub_vec.push_back(dub);
+
+        traj.slb = slb_vec;
+        traj.sub = sub_vec;
+        traj.dlb = dlb_vec;
+        traj.dub = dub_vec;
 
         // set acadovariable
         acadoVariables.od[k * NOD + 1] = double(slb);

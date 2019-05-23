@@ -16,13 +16,18 @@ class LocAndStateEst:
         rospy.init_node('loc_est', anonymous=True)
         self.sp = StaticVehicleParams()
         self.staticparamsub = rospy.Subscriber("static_vehicle_params", StaticVehicleParams, self.staticparams_callback)
-        self.statepub = rospy.Publisher('state', State, queue_size=10)
         self.pathlocalpub = rospy.Publisher('pathlocal', PathLocal, queue_size=10)
         self.dynamic_param_pub = rospy.Publisher('dynamic_vehicle_params', DynamicVehicleParams, queue_size=10)
-        self.rate = rospy.Rate(10) # 10hz
+        self.state_sub = rospy.Subscriber("state", State, self.state_callback)
+        self.dt = 0.1
+        self.rate = rospy.Rate(1/self.dt) # 10hz
 
+ 
+        # init local vars
+        self.loadPathGlobalFromFile()
+        self.pathlocal = PathLocal()
         # init state
-        self.state = State()
+        self.state = State() # tmp to avoid chicken and egg. rempve after propagating vehicle in cartesian
         self.state.X = 301.4733
         self.state.Y = -299.9720
         self.state.psi = 0.0920
@@ -34,11 +39,7 @@ class LocAndStateEst:
         self.state.vy = 0.2352
         self.state.ax = -1.6650
         self.state.ay = 2.4374
-        self.state.stop = False
-        
-        # init local and global path
-        self.loadPathGlobalFromFile()
-        self.pathlocal = PathLocal()
+        self.state.stop = False 
 
         # init dynamic params
         while(self.sp.m <= 0):
@@ -56,10 +57,6 @@ class LocAndStateEst:
         
         # Main loop
         while not rospy.is_shutdown():
-            # get new vehicle state
-            self.propagateVehicle()
-            self.state.header.stamp = rospy.Time.now()
-            self.statepub.publish(self.state)
 
             # update dynamic vehicle params
             self.dynamic_params.header.stamp = rospy.Time.now()
@@ -69,15 +66,11 @@ class LocAndStateEst:
             self.updateLocalPath()
             self.pathlocal.header.stamp = rospy.Time.now()
             self.pathlocalpub.publish(self.pathlocal)
-            
 
             self.rate.sleep()          
 
-
-    def propagateVehicle(self):
-        print("todo: propagate vehicle")
-        #return state1
-
+            
+            
     def loadPathGlobalFromFile(self):
         filename = '/home/larsvens/ros/saasqp_ws/src/perception/data/pathglobal.npy'
         pathglobal_npy = np.load(filename)
@@ -88,7 +81,7 @@ class LocAndStateEst:
         
         # define length of local path and params for interp
         smin = self.state.s - 1
-        smax = smin+100
+        smax = smin+300
         N = 200
         s = np.linspace(smin,smax,N)
         
@@ -99,7 +92,7 @@ class LocAndStateEst:
         self.pathlocal.psi_c =          np.interp(s,self.pathglobal['s'],self.pathglobal['psi_c'])
         self.pathlocal.theta_c =        np.interp(s,self.pathglobal['s'],self.pathglobal['theta_c'])
         self.pathlocal.kappa_c =        np.interp(s,self.pathglobal['s'],self.pathglobal['kappa_c'])
-        self.pathlocal.kappaprime_c =  np.interp(s,self.pathglobal['s'],self.pathglobal['kappaprime_c'])
+        self.pathlocal.kappaprime_c =   np.interp(s,self.pathglobal['s'],self.pathglobal['kappaprime_c'])
         self.pathlocal.dub =            np.interp(s,self.pathglobal['s'],self.pathglobal['dub'])
         self.pathlocal.dlb =            np.interp(s,self.pathglobal['s'],self.pathglobal['dlb'])
         
@@ -108,6 +101,10 @@ class LocAndStateEst:
     def staticparams_callback(self, msg):
         #print("in static params callback")
         self.sp = msg
+        
+    def state_callback(self, msg):
+        #print("in static params callback")
+        self.state = msg
 
 if __name__ == '__main__':
     lse = LocAndStateEst()
