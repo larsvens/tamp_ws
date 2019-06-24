@@ -94,7 +94,7 @@ bool RtisqpWrapper::setReference(common::Trajectory traj, int ctrlmode){
         break;
     case 2: // maximize s
         //std::cout << "case 2, ctrlmode = " << ctrlmode << std::endl;
-        sref.assign(N+1, traj.s.at(0) + 200);
+        sref.assign(N+1, traj.s.at(0) + 300);
         vxref = traj.vx;
         break;
     }
@@ -134,11 +134,12 @@ bool RtisqpWrapper::setStateConstraints(common::Trajectory &traj,
     std::vector <float> dlb_vec;
     std::vector <float> dub_vec;
 
-    float s_diff_default = 2;
-    float d_diff_default = 2;
-
     for (uint k = 0; k < N + 1; ++k)
     {
+        // "funnel" - larger deviation allowed farther ahead
+        float s_diff_default = 2+(k*0.20f);
+        float d_diff_default = 2+(k*0.04f);
+
         float slb = traj.s.at(k)-s_diff_default;
         float sub = traj.s.at(k)+s_diff_default;
         float dlb = traj.d.at(k)-d_diff_default;
@@ -210,6 +211,28 @@ bool RtisqpWrapper::shiftStateAndControls(){
     acado_shiftStates(2, 0, 0);
     acado_shiftControls( 0 );
     return true;
+}
+
+bool RtisqpWrapper::shiftTrajectoryFwdSimple(common::Trajectory &traj){
+    // will shift all states fwd except the final one that is duplicated
+    for (uint k = 0; k < N-1; ++k){
+        traj.X.at(k) = traj.X.at(k+1);
+        traj.Y.at(k) = traj.Y.at(k+1);
+        traj.psi.at(k) = traj.psi.at(k+1);
+        traj.s.at(k) = traj.s.at(k+1);
+        traj.d.at(k) = traj.d.at(k+1);
+        traj.deltapsi.at(k) = traj.deltapsi.at(k+1);
+        traj.psidot.at(k) = traj.psidot.at(k+1);
+        traj.vx.at(k) = traj.vx.at(k+1);
+        traj.vy.at(k) = traj.vy.at(k+1);
+        //traj.ax.at(k) = traj.ax.at(k+1);
+        //traj.ay.at(k) = traj.ay.at(k+1);
+        //traj.Fxf.at(k) = traj.Fxf.at(k+1);
+        traj.Fyf.at(k) = traj.Fyf.at(k+1);
+        //traj.Fxr.at(k) = traj.Fxr.at(k+1);
+        //traj.Fyr.at(k) = traj.Fyr.at(k+1);
+        traj.Fx.at(k) = traj.Fx.at(k+1);
+    }
 }
 
 bool RtisqpWrapper::doPreparationStep(){

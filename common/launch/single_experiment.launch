@@ -1,0 +1,16 @@
+<!-- Runs single experiment for a specified time -->
+
+<launch>
+     <!-- params -->
+     <param name="use_sim_time" value="true" />
+     <rosparam command="load" file="$(find common)/config/single_experiment_config.yaml" />
+
+     <!-- experiment manager -->
+     <node pkg="common" type="experiment_manager.py" name="experiment_manager" output="screen" required="true"> </node>
+
+     <!-- vehicle, localization, object detect -->
+     <include file="$(find common)/launch/base.launch" />
+
+     <!-- planner node -->
+     <node pkg="saasqp" type="saasqp_node" name="saasqp"> </node>
+</launch>

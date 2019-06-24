@@ -54,6 +54,7 @@ public:
     bool setReference(common::Trajectory, int ctrlmode);
     bool setStateConstraints(common::Trajectory &traj, common::Obstacles obs, std::vector<float> lld, std::vector<float> rld);
     bool shiftStateAndControls();
+    bool shiftTrajectoryFwdSimple(common::Trajectory &traj);
     bool doPreparationStep();
     int  doFeedbackStep();
     Eigen::MatrixXd getStateTrajectory();

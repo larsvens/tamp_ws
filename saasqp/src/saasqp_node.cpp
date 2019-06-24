@@ -48,13 +48,13 @@ public:
         rtisqp_wrapper_ = RtisqpWrapper();
 
         // set weights
-        std::vector<double> Wx{100.0, 100.0, 100.0, 0.1, 0.1, 0.1};
-        std::vector<double> Wu{0.001, 0.001};
-        double Wslack = 100000;
+        std::vector<double> Wx{10.0, 1.0, 1.0, 0.01, 0.01, 0.01};
+        std::vector<double> Wu{0.1, 0.1};
+        double Wslack = 10000000;
         rtisqp_wrapper_.setWeights(Wx,Wu,Wslack);
 
-        // wait until tmp_trajhat and state is received
-        while((tmp_trajhat_.s.size() == 0) || !(state_.s > 0) ){
+        // wait until tmp_trajhat, state and path_local is received
+        while((tmp_trajhat_.s.size() == 0) || !(state_.s > 0) || pathlocal_.s.size() == 0 ){
             ROS_INFO_STREAM("waiting for state and tmp_trajhat");
             ros::spinOnce();
             loop_rate.sleep();
@@ -175,8 +175,9 @@ public:
             trajstar.header.stamp = ros::Time::now();
             trajstar_pub_.publish(trajstar);
 
-            // store trajstar for next iteration
+            // store fwd shifted trajstar for next iteration
             trajstar_last = trajstar;
+            rtisqp_wrapper_.shiftTrajectoryFwdSimple(trajstar_last);
 
             // print loop time
             ros::Duration planningtime = ros::Time::now() - t_start;

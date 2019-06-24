@@ -26,21 +26,10 @@ class LocAndStateEst:
         # init local vars
         self.loadPathGlobalFromFile()
         self.pathlocal = PathLocal()
+        
         # init state
-        self.state = State() # tmp to avoid chicken and egg. rempve after propagating vehicle in cartesian
-        self.state.X = 301.4733
-        self.state.Y = -299.9720
-        self.state.psi = 0.0920
-        self.state.s = 515.2127
-        self.state.d = -0.9293
-        self.state.deltapsi = 0.0163
-        self.state.psidot = 0.1656
-        self.state.vx = 14.5600
-        self.state.vy = 0.2352
-        self.state.ax = -1.6650
-        self.state.ay = 2.4374
-        self.state.stop = False 
-
+        self.setInitState()
+        
         # init dynamic params
         while(self.sp.m <= 0):
             print("waiting for static params")
@@ -69,11 +58,26 @@ class LocAndStateEst:
 
             self.rate.sleep()          
 
+
+    def setInitState(self): # tmp
+        self.state = State()
+        self.state.X = rospy.get_param('/initstate_X')
+        self.state.Y = rospy.get_param('/initstate_Y')
+        self.state.psi = rospy.get_param('/initstate_psi')
+        self.state.s = rospy.get_param('/initstate_s')
+        self.state.d = rospy.get_param('/initstate_d')
+        self.state.deltapsi = rospy.get_param('/initstate_deltapsi')
+        self.state.psidot = rospy.get_param('/initstate_psidot')
+        self.state.vx = rospy.get_param('/initstate_vx')
+        self.state.vy = rospy.get_param('/initstate_vy')
+        self.state.ax = rospy.get_param('/initstate_ax')
+        self.state.ay = rospy.get_param('/initstate_ay')
+        self.state.stop = rospy.get_param('/initstate_stop')
             
             
     def loadPathGlobalFromFile(self):
-        filename = '/home/larsvens/ros/saasqp_ws/src/perception/data/pathglobal.npy'
-        pathglobal_npy = np.load(filename)
+        pathglobal_filepath = rospy.get_param('/pathglobal_filepath')
+        pathglobal_npy = np.load(pathglobal_filepath)
         self.pathglobal = pathglobal_npy.item()
 
     def updateLocalPath(self): # todo make sure s is continous when running several laps
