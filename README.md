@@ -18,6 +18,8 @@ follow the instructions to deploy rti-sqp code to [...]tamp_ws/src/planning/
 compile by running `catkin_make` from root of this repo
 
 
+clone carkin simple into src https://github.com/catkin/catkin_simple.git
+
 
 ### Run instructions
 cd to root of the repo

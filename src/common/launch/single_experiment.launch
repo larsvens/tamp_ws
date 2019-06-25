@@ -12,5 +12,5 @@
      <include file="$(find common)/launch/base.launch" />
 
      <!-- planner node -->
-     <node pkg="planning" type="saasqp_node" name="saasqp"> </node>
+     <node pkg="planning" type="motionplanner_node" name="saasqp"> </node>
 </launch>

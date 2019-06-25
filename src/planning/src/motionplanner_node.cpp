@@ -8,10 +8,10 @@
 #include <common/interp.h>
 #include <sstream>
 
-// saasqp
+
 #include "planning/rtisqp_wrapper.h"
 
-class SAASQP
+class SAARTI
 {
 public:
     void tmp_trajhat_callback(const common::Trajectory::ConstPtr& msg){
@@ -31,7 +31,7 @@ public:
     }
 
     // constructor
-    SAASQP(ros::NodeHandle nh){
+    SAARTI(ros::NodeHandle nh){
         nh_ = nh;
         dt = 0.1;
         ros::Rate loop_rate(1/dt);
@@ -39,10 +39,10 @@ public:
         // pubs & subs
         trajhat_pub_ = nh.advertise<common::Trajectory>("trajhat",1);
         trajstar_pub_ = nh.advertise<common::Trajectory>("trajstar",1);
-        pathlocal_sub_ = nh.subscribe("pathlocal", 1, &SAASQP::pathlocal_callback,this);
-        obstacles_sub_ = nh.subscribe("obstacles", 1, &SAASQP::obstacles_callback,this);
-        tmp_trajhat_sub_  = nh.subscribe("tmp_trajhat", 1, &SAASQP::tmp_trajhat_callback,this);
-        state_sub_ = nh.subscribe("state", 1,  &SAASQP::state_callback,this);
+        pathlocal_sub_ = nh.subscribe("pathlocal", 1, &SAARTI::pathlocal_callback,this);
+        obstacles_sub_ = nh.subscribe("obstacles", 1, &SAARTI::obstacles_callback,this);
+        tmp_trajhat_sub_  = nh.subscribe("tmp_trajhat", 1, &SAARTI::tmp_trajhat_callback,this);
+        state_sub_ = nh.subscribe("state", 1,  &SAARTI::state_callback,this);
 
         // init wrapper for rtisqp solver
         rtisqp_wrapper_ = RtisqpWrapper();
@@ -207,8 +207,8 @@ private:
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "saasqp");
+    ros::init(argc, argv, "motionplanner");
     ros::NodeHandle nh;
-    SAASQP saasqp(nh);
+    SAARTI saarti(nh);
     return 0;
 }

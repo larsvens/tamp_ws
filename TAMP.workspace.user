@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 4.7.84, 2019-06-25T13:52:17. -->
+<!-- Written by QtCreator 4.7.84, 2019-06-25T16:16:38. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -105,18 +105,18 @@
     <value type="int" key="ProjectExplorer.BuildConfiguration.BuildStepListCount">2</value>
     <value type="bool" key="ProjectExplorer.BuildConfiguration.ClearSystemEnvironment">false</value>
     <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges">
-     <value type="QString">CMAKE_PREFIX_PATH=/home/larsvens/ros/saarti_ws/devel:/opt/ros/kinetic/local:/opt/ros/kinetic</value>
-     <value type="QString">LD_LIBRARY_PATH=/home/larsvens/ros/saarti_ws/devel/lib:/opt/ros/kinetic/local/lib:/opt/ros/kinetic/lib:/opt/ros/kinetic/lib/x86_64-linux-gnu</value>
+     <value type="QString">CMAKE_PREFIX_PATH=/home/larsvens/ros/tamp_ws/devel:/opt/ros/kinetic/local:/opt/ros/kinetic</value>
+     <value type="QString">LD_LIBRARY_PATH=/home/larsvens/ros/tamp_ws/devel/lib:/opt/ros/kinetic/local/lib:/opt/ros/kinetic/lib:/opt/ros/kinetic/lib/x86_64-linux-gnu</value>
      <value type="QString">PATH=/opt/ros/kinetic/local/bin:/opt/ros/kinetic/bin:/home/larsvens/bin:/home/larsvens/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin</value>
-     <value type="QString">PKG_CONFIG_PATH=/home/larsvens/ros/saarti_ws/devel/lib/pkgconfig:/opt/ros/kinetic/local/lib/pkgconfig:/opt/ros/kinetic/lib/pkgconfig:/opt/ros/kinetic/lib/x86_64-linux-gnu/pkgconfig</value>
-     <value type="QString">PWD=/home/larsvens/ros/saarti_ws</value>
-     <value type="QString">PYTHONPATH=/home/larsvens/ros/saarti_ws/devel/lib/python2.7/dist-packages:/opt/ros/kinetic/local/lib/python2.7/dist-packages:/opt/ros/kinetic/lib/python2.7/dist-packages</value>
+     <value type="QString">PKG_CONFIG_PATH=/home/larsvens/ros/tamp_ws/devel/lib/pkgconfig:/opt/ros/kinetic/local/lib/pkgconfig:/opt/ros/kinetic/lib/pkgconfig:/opt/ros/kinetic/lib/x86_64-linux-gnu/pkgconfig</value>
+     <value type="QString">PWD=/home/larsvens/ros/tamp_ws</value>
+     <value type="QString">PYTHONPATH=/home/larsvens/ros/tamp_ws/devel/lib/python2.7/dist-packages:/opt/ros/kinetic/local/lib/python2.7/dist-packages:/opt/ros/kinetic/lib/python2.7/dist-packages</value>
      <value type="QString">QTDIR</value>
-     <value type="QString">ROSLISP_PACKAGE_DIRECTORIES=/home/larsvens/ros/saarti_ws/devel/share/common-lisp</value>
+     <value type="QString">ROSLISP_PACKAGE_DIRECTORIES=/home/larsvens/ros/tamp_ws/devel/share/common-lisp</value>
      <value type="QString">ROS_DISTRO=kinetic</value>
      <value type="QString">ROS_ETC_DIR=/opt/ros/kinetic/etc/ros</value>
      <value type="QString">ROS_MASTER_URI=http://localhost:11311</value>
-     <value type="QString">ROS_PACKAGE_PATH=/home/larsvens/ros/saarti_ws/src:/opt/ros/kinetic/local/share:/opt/ros/kinetic/share</value>
+     <value type="QString">ROS_PACKAGE_PATH=/home/larsvens/ros/tamp_ws/src:/opt/ros/kinetic/local/share:/opt/ros/kinetic/share</value>
      <value type="QString">ROS_ROOT=/opt/ros/kinetic/share/ros</value>
      <value type="QString">ROS_VERSION=1</value>
      <value type="QString">SHLVL=2</value>

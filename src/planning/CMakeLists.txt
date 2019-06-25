@@ -61,9 +61,9 @@ cs_install()
 cs_export()
 
 # add executable for node
-cs_add_executable(saasqp_node
-    src/saasqp_node.cpp)
-target_link_libraries(saasqp_node
+cs_add_executable(motionplanner_node
+    src/motionplanner_node.cpp)
+target_link_libraries(motionplanner_node
     rtisqp_wrapper
     rtisqp_solver)
 
