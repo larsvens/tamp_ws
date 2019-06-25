@@ -1,5 +1,5 @@
 ## TAMP: Workspace for developing traction adaptive motion planning using sampling augmented adaptive RTI
-![](sw_arch.png)
+![](misc/sw_arch.png)
 
 ### Setup instructions  
 
