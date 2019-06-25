@@ -9,7 +9,7 @@ def trajhat_publisher():
     rate = rospy.Rate(10) # 10hz
 
     # load .mat file
-    filename = '/home/larsvens/ros/saasqp_ws/src/common/data/trajhat_example.mat'
+    filename = '/home/larsvens/ros/saarti_ws/src/common/data/trajhat_example.mat'
     mat = sio.loadmat(filename,struct_as_record=False, squeeze_me=True)
     
     while not rospy.is_shutdown():

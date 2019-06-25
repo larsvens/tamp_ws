@@ -9,7 +9,7 @@
 #include <sstream>
 
 // saasqp
-#include "saasqp/rtisqp_wrapper.h"
+#include "planning/rtisqp_wrapper.h"
 
 class SAASQP
 {

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>saasqp</name>
+  <name>planning</name>
   <version>0.0.0</version>
-  <description>The saasqp package</description>
+  <description>ros package for motion planning stuff</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->

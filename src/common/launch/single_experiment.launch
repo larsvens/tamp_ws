@@ -1,4 +1,4 @@
-<!-- Runs single experiment for a specified time -->
+<!-- Runs single experiment. Experiment configuration in: single_experiment_config.yaml-->
 
 <launch>
      <!-- params -->
@@ -12,5 +12,5 @@
      <include file="$(find common)/launch/base.launch" />
 
      <!-- planner node -->
-     <node pkg="saasqp" type="saasqp_node" name="saasqp"> </node>
+     <node pkg="planning" type="saasqp_node" name="saasqp"> </node>
 </launch>
