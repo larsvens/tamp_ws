@@ -1,5 +1,5 @@
 ## TAMP: Workspace for developing traction adaptive motion planning using sampling augmented adaptive RTI
-![](sw_arch.png)
+![](misc/sw_arch.png)
 
 ### Setup instructions  
 
@@ -15,10 +15,9 @@ checkout stable branch `git checkout --track origin/stable`
 
 follow the instructions to deploy rti-sqp code to [...]tamp_ws/src/planning/
 
+clone catkin simple into src https://github.com/catkin/catkin_simple.git
+
 compile by running `catkin_make` from root of this repo
-
-
-clone carkin simple into src https://github.com/catkin/catkin_simple.git
 
 
 ### Run instructions
