@@ -7,8 +7,10 @@
 # QT project files
 TAMP.workspace*
 
-# default ros gitignore
+# python
+*.pyc 
 
+# default ros gitignore
 devel/
 logs/
 build/

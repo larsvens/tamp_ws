@@ -4,9 +4,9 @@
 Description: This node
     - Publishes simulation time
     - Subscribes to all topics
-    - Performs live visualization
+    - Performs live visualization todo replacew rviz
     - Logs all data 
-    - Sends shutdown signal? 
+    - all other nodes shut down when this shuts down
 '''
 
 import time
@@ -23,6 +23,9 @@ from common.msg import State
 from common.msg import StaticVehicleParams
 from common.msg import DynamicVehicleParams
 
+# custom modules
+from coordinate_transforms import ptsFrenetToCartesian
+
 # adjust for high dpi screen
 plt.rcParams['figure.dpi'] = 200 # default 100
 plt.rcParams['figure.figsize'] = 15, 5
@@ -32,13 +35,7 @@ def getCirclePts(x,y,r,n):
     t_vertices = np.arange(-np.pi, np.pi, (2*np.pi)/n)
     xpts = r*np.cos(t_vertices) + x;
     ypts = r*np.sin(t_vertices) + y;
-    return xpts, ypts
-
-def ptsFrenetToCartesian(Xc,Yc,psic,d): # todo import from somewhere else
-    # inputs and outputs are np arrays
-    X = Xc - d*np.sin(psic);
-    Y = Yc + d*np.cos(psic);
-    return X,Y  
+    return xpts, ypts 
 
 class ExperimentManager:
     # constructor
