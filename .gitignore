@@ -2,7 +2,7 @@
 catkin_simple/
 
 # ignore generated code
-saasqp/rtisqp_export/
+src/planning/rtisqp_export/
 
 # default ros gitignore
 
