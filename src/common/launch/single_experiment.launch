@@ -11,6 +11,7 @@
      <!-- vehicle, localization, object detect -->
      <include file="$(find common)/launch/base.launch" />
 
-     <!-- planner node -->
+     <!-- planner node
      <node pkg="planning" type="motionplanner_node" name="saasqp"> </node>
+     -->
 </launch>

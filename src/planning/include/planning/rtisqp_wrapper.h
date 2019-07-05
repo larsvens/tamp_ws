@@ -52,6 +52,7 @@ public:
     bool setInitialGuess(common::Trajectory);
     bool setInitialState(common::State);
     bool setReference(common::Trajectory, int ctrlmode);
+    bool setInputConstraints(double mu, double Fzf);
     bool setStateConstraints(common::Trajectory &traj, common::Obstacles obs, std::vector<float> lld, std::vector<float> rld);
     bool shiftStateAndControls();
     bool shiftTrajectoryFwdSimple(common::Trajectory &traj);

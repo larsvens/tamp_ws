@@ -124,6 +124,30 @@ bool RtisqpWrapper::setReference(common::Trajectory traj, int ctrlmode){
     return true;
 }
 
+bool RtisqpWrapper::setInputConstraints(double mu, double Fzf){
+    uint N_ineq = 8; // nr of inequalities, todo read from file!
+    uint N_ubA = sizeof(acadoVariables.ubAValues) / sizeof(*acadoVariables.ubAValues);
+    uint N_per_k = N_ubA/N;
+    std::cout << "size of acadoVariables.ubAValues: " << N_ubA << std::endl;
+    for (uint k = 0; k < N ; ++k){
+        for (uint j = 0; j < N_ineq; j++){ // edit the N_ineq first values of N_per_k
+            uint idx = k*N_per_k + j;
+            //std::cout <<"at idx: " << idx << ", ubAval = " << acadoVariables.ubAValues[idx] << std::endl;
+            acadoVariables.ubAValues[idx] = mu; // tmp just to test effect (affine input const after state const?)
+        }
+    }
+}
+
+
+//for (uint k = 0; k < N + 1; ++k){
+//    Xstarx(0,k) = acadoVariables.x[k * NX + 0]; // s
+//    Xstarx(1,k) = acadoVariables.x[k * NX + 1];
+//    Xstarx(2,k) = acadoVariables.x[k * NX + 2];
+//    Xstarx(3,k) = acadoVariables.x[k * NX + 3];
+//    Xstarx(4,k) = acadoVariables.x[k * NX + 4];
+//    Xstarx(5,k) = acadoVariables.x[k * NX + 5];
+//}
+
 bool RtisqpWrapper::setStateConstraints(common::Trajectory &traj,
                                         common::Obstacles obs,
                                         std::vector<float> lld,

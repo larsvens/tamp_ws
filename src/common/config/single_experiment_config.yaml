@@ -1,8 +1,8 @@
 # Experiment configuration
 t_final:             10.0
-do_liveplot:         false
+do_liveplot:         true
 save_logfile:        true
-log_filepath:        /home/larsvens/ros/tamp_ws/src/common/data/log_latest.npy
+log_filepath:        /home/larsvens/ros/tamp_ws/src/common/logs/log_latest.npy
 pathglobal_filepath: /home/larsvens/ros/tamp_ws/src/perception/data/pathglobal.npy
 
 # initial state

@@ -71,7 +71,7 @@ public:
             ros::Time t_start = ros::Time::now();
 
             // update adaptive constraints
-            // todo
+            rtisqp_wrapper_.setInputConstraints(1.0,1000);
 
 
 
