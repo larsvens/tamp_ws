@@ -14,15 +14,15 @@ class LocAndStateEst:
     def __init__(self):
         # init node subs pubs
         rospy.init_node('loc_est', anonymous=True)
-        self.sp = StaticVehicleParams()
-        self.staticparamsub = rospy.Subscriber("static_vehicle_params", StaticVehicleParams, self.staticparams_callback)
         self.pathlocalpub = rospy.Publisher('pathlocal', PathLocal, queue_size=10)
         self.dynamic_param_pub = rospy.Publisher('dynamic_vehicle_params', DynamicVehicleParams, queue_size=10)
         self.state_sub = rospy.Subscriber("state", State, self.state_callback)
         self.dt = 0.1
         self.rate = rospy.Rate(1/self.dt) # 10hz
 
- 
+        # set static vehicle params
+        self.setStaticParams()
+
         # init local vars
         self.loadPathGlobalFromFile()
         self.pathlocal = PathLocal()
@@ -101,10 +101,20 @@ class LocAndStateEst:
         self.pathlocal.dlb =            np.interp(s,self.pathglobal['s'],self.pathglobal['dlb'])
         
 
-    #callbacks
-    def staticparams_callback(self, msg):
-        #print("in static params callback")
-        self.sp = msg
+    def setStaticParams(self):
+        self.sp = StaticVehicleParams()
+        self.sp.g = rospy.get_param('/g')
+        self.sp.l = rospy.get_param('/l')
+        self.sp.w = rospy.get_param('/w')
+        self.sp.m = rospy.get_param('/m')
+        self.sp.Iz = rospy.get_param('/Iz')
+        self.sp.lf = rospy.get_param('/lf')
+        self.sp.lr = rospy.get_param('/lr')
+        self.sp.Cf = rospy.get_param('/Cf')
+        self.sp.Cr = rospy.get_param('/Cr')
+        self.sp.Da = rospy.get_param('/Da')
+        self.sp.deltamin = rospy.get_param('/deltamin')
+        self.sp.deltamax = rospy.get_param('/deltamax')
         
     def state_callback(self, msg):
         #print("in static params callback")

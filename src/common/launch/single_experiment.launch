@@ -4,6 +4,7 @@
      <!-- params -->
      <param name="use_sim_time" value="true" />
      <rosparam command="load" file="$(find common)/config/single_experiment_config.yaml" />
+     <rosparam command="load" file="$(find vehicle_models)/config/static_params_vehicle1.yaml" />
 
      <!-- experiment manager -->
      <node pkg="common" type="experiment_manager.py" name="experiment_manager" output="screen" required="true"> </node>

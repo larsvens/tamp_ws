@@ -12,9 +12,6 @@ class VehicleModel:
     def __init__(self):
         # init node subs pubs
         rospy.init_node('vehiclemodel', anonymous=True)
-        
-        self.staticparamsub = rospy.Subscriber("static_vehicle_params", StaticVehicleParams, self.staticparams_callback)
-        #self.ctrlsub = rospy.Subscriber("ctrl_cmd", CtrlCmd, self.ctrl_cmd_callback)
         self.trajstarsub = rospy.Subscriber("trajstar", Trajectory, self.trajstar_callback)
         self.dynamicparamsub = rospy.Subscriber("dynamic_vehicle_params", DynamicVehicleParams, self.dynamicparams_callback)
         self.pathlocalsub = rospy.Subscriber("pathlocal", PathLocal, self.pathlocal_callback)
@@ -23,11 +20,14 @@ class VehicleModel:
         self.rate = rospy.Rate(1.0/self.dt) 
         #self.rate = rospy.Rate(2)
         
-        # init state
+        # set static params
+        self.setStaticParams()
+        
+        # set init state
         self.setInitState()
 
         #self.ctrl_cmd = CtrlCmd()
-        self.sp = StaticVehicleParams()
+        
         self.dp = DynamicVehicleParams()
         self.pathlocal = PathLocal()
         self.trajstar = Trajectory()
@@ -55,8 +55,22 @@ class VehicleModel:
             
             # end of main loop
             self.rate.sleep()
-    
-
+  
+    def setStaticParams(self):
+        self.sp = StaticVehicleParams()
+        self.sp.g = rospy.get_param('/g')
+        self.sp.l = rospy.get_param('/l')
+        self.sp.w = rospy.get_param('/w')
+        self.sp.m = rospy.get_param('/m')
+        self.sp.Iz = rospy.get_param('/Iz')
+        self.sp.lf = rospy.get_param('/lf')
+        self.sp.lr = rospy.get_param('/lr')
+        self.sp.Cf = rospy.get_param('/Cf')
+        self.sp.Cr = rospy.get_param('/Cr')
+        self.sp.Da = rospy.get_param('/Da')
+        self.sp.deltamin = rospy.get_param('/deltamin')
+        self.sp.deltamax = rospy.get_param('/deltamax')
+        
     def setInitState(self):
         self.state = State()
         self.state.X = rospy.get_param('/initstate_X')
@@ -74,9 +88,6 @@ class VehicleModel:
 
     def propagateVehicle(self):
         if (self.state.vx > 0.1):
-            # tmp controls
-            #Fyf = 1000
-            #Fx = -500
             
             Fyf = self.trajstar.Fyf[0]
             Fx  = self.trajstar.Fx[0]
@@ -119,19 +130,9 @@ class VehicleModel:
             self.state.psi = self.state.deltapsi + psi_c;
     
     
-    
-    # subscriber callbacks
-#    def ctrl_cmd_callback(self, msg):
-#        print("in ctrl cmd callback")
-#        self.ctrl_cmd = msg
-
     def trajstar_callback(self, msg):
         #print("in static params callback")
         self.trajstar = msg
-
-    def staticparams_callback(self, msg):
-        #print("in static params callback")
-        self.sp = msg
         
     def dynamicparams_callback(self, msg):
         #print("in static params callback")

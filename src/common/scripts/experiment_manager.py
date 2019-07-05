@@ -60,11 +60,13 @@ class ExperimentManager:
         self.trajhatsub = rospy.Subscriber("trajhat", Trajectory, self.trajhat_callback)
         self.trajstarsub = rospy.Subscriber("trajstar", Trajectory, self.trajstar_callback)
         self.statesub = rospy.Subscriber("state", State, self.state_callback)
-        self.staticparamsub = rospy.Subscriber("static_vehicle_params", StaticVehicleParams, self.staticparams_callback)
         self.dynamicparamsub = rospy.Subscriber("dynamic_vehicle_params", DynamicVehicleParams, self.dynamicparams_callback)
         
         # load global path
         self.loadPathGlobalFromFile()
+        
+        # set static vehicle params
+        self.setStaticParams()
         
         # init internal variables
         self.counter = 0 # use this to reduce plot update rate
@@ -73,7 +75,6 @@ class ExperimentManager:
         self.trajhat = Trajectory()
         self.trajstar = Trajectory()
         self.state = State()
-        self.sp = StaticVehicleParams()
         self.dp = DynamicVehicleParams()
         
         # init lists for logging
@@ -278,6 +279,21 @@ class ExperimentManager:
         #if(self.dt < elapsed):
         #    print("WARNING: plot time is larger than dt")    
 
+    def setStaticParams(self):
+        self.sp = StaticVehicleParams()
+        self.sp.g = rospy.get_param('/g')
+        self.sp.l = rospy.get_param('/l')
+        self.sp.w = rospy.get_param('/w')
+        self.sp.m = rospy.get_param('/m')
+        self.sp.Iz = rospy.get_param('/Iz')
+        self.sp.lf = rospy.get_param('/lf')
+        self.sp.lr = rospy.get_param('/lr')
+        self.sp.Cf = rospy.get_param('/Cf')
+        self.sp.Cr = rospy.get_param('/Cr')
+        self.sp.Da = rospy.get_param('/Da')
+        self.sp.deltamin = rospy.get_param('/deltamin')
+        self.sp.deltamax = rospy.get_param('/deltamax')
+
     def loadPathGlobalFromFile(self):
         pathglobal_filepath = rospy.get_param('/pathglobal_filepath')
         pathglobal_npy = np.load(pathglobal_filepath)
@@ -303,15 +319,10 @@ class ExperimentManager:
         #print("in state callback")
         self.state = msg
         
-    def staticparams_callback(self, msg):
-        #print("in static params callback")
-        self.sp = msg
-        
     def dynamicparams_callback(self, msg):
         #print("in static params callback")
         self.dp = msg
     
-
 
     
 if __name__ == '__main__':

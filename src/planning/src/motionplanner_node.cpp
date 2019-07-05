@@ -74,13 +74,10 @@ public:
             rtisqp_wrapper_.setInputConstraints(1.0,1000);
 
 
-
             // selection step (tmp: always picks trajstar_last)
             common::Trajectory trajhat = trajstar_last; // create new every iteration to make sure it has all attributes
             //trajhat.s = trajstar_last.s;
             //trajhat.d = trajstar_last.d;
-
-
 
             // update current state
             ROS_INFO_STREAM("setting state..");

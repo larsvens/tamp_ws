@@ -1,8 +1,11 @@
 # ignore external packages
-catkin_simple/
+**/catkin_simple/
 
 # ignore generated code
-src/planning/rtisqp_export/
+**/rtisqp_export/
+
+# QT project files
+TAMP.workspace*
 
 # default ros gitignore
 

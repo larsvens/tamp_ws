@@ -1,0 +1,15 @@
+# Static parameters for numerical experiments with vehicle 1
+
+g:         9.8200
+
+l:         4
+w:         1.8400
+m:         1500
+Iz:        2250
+lf:        1.0400
+lr:        1.4200
+Cf:        160000
+Cr:        180000
+Da:        0.3600
+deltamin:  -0.3491
+deltamax:  0.3491
