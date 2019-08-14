@@ -5,9 +5,13 @@
 import numpy as np
 import rospy
 from common.msg import State
+from common.msg import VehicleOut
 from common.msg import PathLocal
 from common.msg import DynamicVehicleParams
 from common.msg import StaticVehicleParams
+
+#from modules import ptsCartesianToFrenet
+from coordinate_transforms import ptsCartesianToFrenet
 
 class LocAndStateEst:
     # constructor
@@ -16,7 +20,9 @@ class LocAndStateEst:
         rospy.init_node('loc_est', anonymous=True)
         self.pathlocalpub = rospy.Publisher('pathlocal', PathLocal, queue_size=10)
         self.dynamic_param_pub = rospy.Publisher('dynamic_vehicle_params', DynamicVehicleParams, queue_size=10)
-        self.state_sub = rospy.Subscriber("state", State, self.state_callback)
+        self.statepub = rospy.Publisher('state', State, queue_size=10)
+        self.vehicle_out_sub = rospy.Subscriber("vehicle_out", VehicleOut, self.vehicle_out_callback)
+
         self.dt = 0.1
         self.rate = rospy.Rate(1/self.dt) # 10hz
 
@@ -26,15 +32,10 @@ class LocAndStateEst:
         # init local vars
         self.loadPathGlobalFromFile()
         self.pathlocal = PathLocal()
+        self.state = State()
+        self.vehicle_out = VehicleOut()
         
-        # init state
-        self.setInitState()
-        
-        # init dynamic params
-        while(self.sp.m <= 0):
-            print("waiting for static params")
-            self.rate.sleep()
-            
+        # init dynamic params    
         self.dynamic_params = DynamicVehicleParams()
         self.dynamic_params.mu_alg = 0.7
         self.dynamic_params.mu_real = 0.7
@@ -44,10 +45,18 @@ class LocAndStateEst:
         self.dynamic_params.theta = 0.0
         self.dynamic_params.phi = 0.0
         
+        # wait for messages before entering main loop
+        while(not self.vehicle_out.X):
+            print("waiting for vehicle_out")
+            self.rate.sleep()
+
         # Main loop
         while not rospy.is_shutdown():
 
-            # update dynamic vehicle params
+            # compute vehicle state from vehicle_out info
+            self.updateState()
+
+            # update dynamic params
             self.dynamic_params.header.stamp = rospy.Time.now()
             self.dynamic_param_pub.publish(self.dynamic_params)
             
@@ -59,29 +68,37 @@ class LocAndStateEst:
             self.rate.sleep()          
 
 
-    def setInitState(self): # tmp
-        self.state = State()
-        self.state.X = rospy.get_param('/initstate_X')
-        self.state.Y = rospy.get_param('/initstate_Y')
-        self.state.psi = rospy.get_param('/initstate_psi')
-        self.state.s = rospy.get_param('/initstate_s')
-        self.state.d = rospy.get_param('/initstate_d')
-        self.state.deltapsi = rospy.get_param('/initstate_deltapsi')
-        self.state.psidot = rospy.get_param('/initstate_psidot')
-        self.state.vx = rospy.get_param('/initstate_vx')
-        self.state.vy = rospy.get_param('/initstate_vy')
-        self.state.ax = rospy.get_param('/initstate_ax')
-        self.state.ay = rospy.get_param('/initstate_ay')
-        self.state.stop = rospy.get_param('/initstate_stop')
-            
-            
+    def updateState(self):
+        self.state.X = self.vehicle_out.X
+        self.state.Y = self.vehicle_out.Y
+        self.state.psi = self.vehicle_out.psi
+        self.state.psidot = self.vehicle_out.psidot
+        self.state.vx = self.vehicle_out.vx
+        self.state.vy = self.vehicle_out.vy
+
+        # get s, d and deltapsi
+        self.state.s,self.state.d = ptsCartesianToFrenet(self.state.X, \
+                                                         self.state.Y, \
+                                                         self.pathlocal.X, \
+                                                         self.pathlocal.Y, \
+                                                         self.pathlocal.psi_c, \
+                                                         self.pathlocal.s)
+
+        psi_c = np.interp(s,self.pathlocal.s,self.pathlocal.psi_c)
+        self.state.deltapsi = self.state.psi - psi_c
+        self.state.ax = vehicle_out.ax
+        self.state.ay = vehicle_out.ay
+
+
+
     def loadPathGlobalFromFile(self):
         pathglobal_filepath = rospy.get_param('/pathglobal_filepath')
-        pathglobal_npy = np.load(pathglobal_filepath)
+        pathglobal_npy = np.load(pathglobal_filepath,allow_pickle=True)
         self.pathglobal = pathglobal_npy.item()
 
-    def updateLocalPath(self): # todo make sure s is continous when running several laps
-        #print("updating local path")
+
+    def updateLocalPath(self):
+        # todo make sure s is continous when running several laps
         
         # define length of local path and params for interp
         smin = self.state.s - 1
@@ -116,9 +133,9 @@ class LocAndStateEst:
         self.sp.deltamin = rospy.get_param('/deltamin')
         self.sp.deltamax = rospy.get_param('/deltamax')
         
-    def state_callback(self, msg):
+    def vehicle_out_callback(self, msg):
         #print("in static params callback")
-        self.state = msg
+        self.vehicle_out = msg
 
 if __name__ == '__main__':
     lse = LocAndStateEst()

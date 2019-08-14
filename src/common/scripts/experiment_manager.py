@@ -293,7 +293,7 @@ class ExperimentManager:
 
     def loadPathGlobalFromFile(self):
         pathglobal_filepath = rospy.get_param('/pathglobal_filepath')
-        pathglobal_npy = np.load(pathglobal_filepath)
+        pathglobal_npy = np.load(pathglobal_filepath,allow_pickle=True)
         self.pathglobal = pathglobal_npy.item()
             
     def pathlocal_callback(self, msg):
