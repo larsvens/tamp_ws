@@ -23,6 +23,7 @@ def ptsCartesianToFrenet(X,Y,Xpath,Ypath,psipath,spath):
     
         # find closest pt on centerline
         mindist = 1000000
+        idx = 0
         for i in range(Npath):
             dist = np.sqrt((X-Xpath[i])**2 + (Y-Ypath[i])**2 )
             if (dist<mindist):

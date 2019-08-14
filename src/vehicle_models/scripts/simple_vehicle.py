@@ -31,11 +31,11 @@ class VehicleModel:
         self.dp = DynamicVehicleParams()
         self.vehicle_in = VehicleIn()
         
-        # wait for messages before entering main loop
-        while(not self.vehicle_in.Fyf):
-            print("waiting for control input")
-            #self.statepub.publish(self.state)
-            self.rate.sleep()
+        # wait for messages before entering main loop # tmp commented out!!
+        #while(not self.vehicle_in.Fyf):
+        #    print("waiting for control input")
+        #    #self.statepub.publish(self.state)
+        #    self.rate.sleep()
             
         # main loop
         while not rospy.is_shutdown():

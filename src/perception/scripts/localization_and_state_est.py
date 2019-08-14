@@ -10,7 +10,6 @@ from common.msg import PathLocal
 from common.msg import DynamicVehicleParams
 from common.msg import StaticVehicleParams
 
-#from modules import ptsCartesianToFrenet
 from coordinate_transforms import ptsCartesianToFrenet
 
 class LocAndStateEst:
@@ -53,9 +52,6 @@ class LocAndStateEst:
         # Main loop
         while not rospy.is_shutdown():
 
-            # compute vehicle state from vehicle_out info
-            self.updateState()
-
             # update dynamic params
             self.dynamic_params.header.stamp = rospy.Time.now()
             self.dynamic_param_pub.publish(self.dynamic_params)
@@ -64,6 +60,11 @@ class LocAndStateEst:
             self.updateLocalPath()
             self.pathlocal.header.stamp = rospy.Time.now()
             self.pathlocalpub.publish(self.pathlocal)
+
+            # compute vehicle state from vehicle_out info
+            self.updateState()
+            self.statepub.publish(self.state)
+
 
             self.rate.sleep()          
 
@@ -77,17 +78,18 @@ class LocAndStateEst:
         self.state.vy = self.vehicle_out.vy
 
         # get s, d and deltapsi
-        self.state.s,self.state.d = ptsCartesianToFrenet(self.state.X, \
-                                                         self.state.Y, \
-                                                         self.pathlocal.X, \
-                                                         self.pathlocal.Y, \
-                                                         self.pathlocal.psi_c, \
-                                                         self.pathlocal.s)
-
+        s,d = ptsCartesianToFrenet(np.array(self.state.X), \
+                                   np.array(self.state.Y), \
+                                   np.array(self.pathlocal.X), \
+                                   np.array(self.pathlocal.Y), \
+                                   np.array(self.pathlocal.psi_c), \
+                                   np.array(self.pathlocal.s))
+        self.state.s = s[0]
+        self.state.d = d[0]
         psi_c = np.interp(s,self.pathlocal.s,self.pathlocal.psi_c)
         self.state.deltapsi = self.state.psi - psi_c
-        self.state.ax = vehicle_out.ax
-        self.state.ay = vehicle_out.ay
+        self.state.ax = self.vehicle_out.ax
+        self.state.ay = self.vehicle_out.ay
 
 
 
