@@ -18,7 +18,7 @@ plt.rcParams['figure.dpi'] = 200 # default 100
 plt.rcParams['figure.figsize'] = 10, 10
 
 # load file
-log_filepath = '/home/larsvens/ros/saasqp_ws/src/common/data/log_latest.npy'
+log_filepath = '/home/larsvens/ros/tamp_ws/src/common/logs/log_latest.npy'
 log = np.load(log_filepath).item()
 
 # unpack

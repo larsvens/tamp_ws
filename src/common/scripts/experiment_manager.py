@@ -179,29 +179,46 @@ class ExperimentManager:
         N = len(self.trajstar.s)
         
         # plot lane lines
-        nplot = int(1.0*len(self.pathlocal.s))                   
-        llX, llY = ptsFrenetToCartesian(np.array(self.pathlocal.X[0:nplot]), \
-                                        np.array(self.pathlocal.Y[0:nplot]), \
-                                        np.array(self.pathlocal.psi_c[0:nplot]), \
-                                        np.array(self.pathlocal.dub[0:nplot]) )
+        nplot = int(1.0*len(self.pathlocal.s))      
         
-        rlX, rlY = ptsFrenetToCartesian(np.array(self.pathlocal.X[0:nplot]), \
-                                        np.array(self.pathlocal.Y[0:nplot]), \
-                                        np.array(self.pathlocal.psi_c[0:nplot]), \
-                                        np.array(self.pathlocal.dlb[0:nplot]) )         
+        Xc = np.array(self.pathlocal.X[0:nplot])
+        Yc = np.array(self.pathlocal.Y[0:nplot])
+        dllub = np.array(self.pathlocal.dub[0:nplot])
+        drlub = np.array(self.pathlocal.dlb[0:nplot])
+        psic = np.array(self.pathlocal.psi_c[0:nplot])
+        llX = Xc - dllub*np.sin(psic);
+        llY = Yc + dllub*np.cos(psic);
+        rlX = Xc - drlub*np.sin(psic);
+        rlY = Yc + drlub*np.cos(psic);
+        
+
+        
+        
+        
+        
         self.a0.plot(llX,llY,'k') 
         self.a0.plot(rlX,rlY,'k') 
         
         # plot obstacles
         Nobs = len(self.obstacles.s)
         for i in range(Nobs):
-            spt = self.obstacles.s[i]
-            dpt = self.obstacles.d[i]
+            
             # transform to cartesian
-            Xcpt = np.interp(spt,self.pathlocal.s,self.pathlocal.X)
-            Ycpt = np.interp(spt,self.pathlocal.s,self.pathlocal.Y)
-            psicpt = np.interp(spt,self.pathlocal.s,self.pathlocal.psi_c)                 
-            Xobs,Yobs = ptsFrenetToCartesian(Xcpt,Ycpt,psicpt,dpt)
+            #spt = self.obstacles.s[i]
+            #dpt = self.obstacles.d[i]
+            
+            Xobs,Yobs = ptsFrenetToCartesian(self.obstacles.s[i], \
+                                             self.obstacles.d[i], \
+                                             self.pathlocal.X, \
+                                             self.pathlocal.Y, \
+                                             self.pathlocal.psi_c, \
+                                             self.pathlocal.s)
+            
+            #Xcpt = np.interp(spt,self.pathlocal.s,self.pathlocal.X)
+            #Ycpt = np.interp(spt,self.pathlocal.s,self.pathlocal.Y)
+            #psicpt = np.interp(spt,self.pathlocal.s,self.pathlocal.psi_c)                 
+            #Xobs,Yobs = ptsFrenetToCartesian(Xcpt,Ycpt,psicpt,dpt)
+            
             # define obstacle circle
             Robs = self.obstacles.R[i]
             Rmgnobs = self.obstacles.Rmgn[i]
@@ -224,10 +241,21 @@ class ExperimentManager:
             spts = np.concatenate(args)
             args = (np.linspace(dub,dlb,n_intp), np.linspace(dlb,dlb,n_intp), np.linspace(dlb,dub,n_intp), np.linspace(dub,dub,n_intp))
             dpts = np.concatenate(args)
-            Xcpts = np.interp(spts,self.pathlocal.s,self.pathlocal.X)
-            Ycpts = np.interp(spts,self.pathlocal.s,self.pathlocal.Y)
-            psicpts = np.interp(spts,self.pathlocal.s,self.pathlocal.psi_c)               
-            Xpts, Ypts = ptsFrenetToCartesian(Xcpts, Ycpts, psicpts,dpts)
+            
+            Xpts,Ypts = ptsFrenetToCartesian(spts, \
+                                             dpts, \
+                                             self.pathlocal.X, \
+                                             self.pathlocal.Y, \
+                                             self.pathlocal.psi_c, \
+                                             self.pathlocal.s)
+            
+            
+            
+            
+            #Xcpts = np.interp(spts,self.pathlocal.s,self.pathlocal.X)
+            #Ycpts = np.interp(spts,self.pathlocal.s,self.pathlocal.Y)
+            #psicpts = np.interp(spts,self.pathlocal.s,self.pathlocal.psi_c)               
+            #Xpts, Ypts = ptsFrenetToCartesian(Xcpts, Ycpts, psicpts,dpts)
             self.a0.plot(Xpts,Ypts,'m')
             
         # plot trajstar
