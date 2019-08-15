@@ -4,7 +4,6 @@
 # propagate vehicle model 
 # runs at 100Hz
 
-
 import numpy as np
 import rospy
 from common.msg import VehicleIn
@@ -34,8 +33,8 @@ class VehicleModel:
         # main loop
         while not rospy.is_shutdown():
             
-            if(self.vehicle_in.Fyf):
-                self.propagateVehicle()
+            #if(self.vehicle_in.Fyf):
+            self.propagateVehicle()
                    
             self.vehicle_out = VehicleOut()
             self.vehicle_out.X = self.X
@@ -85,28 +84,47 @@ class VehicleModel:
             print "Fyf = ", Fyf, " Fx = ", Fx, "vx = ", self.vx
             
             scalefactor = 100
-            dt = self.dt/scalefactor
-             
+            dt = self.dt/float(scalefactor)
+
+            X0 = self.X
+            Y0 = self.Y
+            psi0 = self.psi
+            psidot0 = self.psidot
+            vx0 = self.vx
+            vy0 = self.vy            
+            
             for i in range(scalefactor):
                 
-                X = self.X
-                Y = self.Y
-                psi = self.psi
-                psidot = self.psidot
-                vx = self.vx
-                vy = self.vy
-    
-                alpha_r = (self.sp.lr*psidot-vy)/vx;
+                alpha_r = (self.sp.lr*psidot0-vy0)/vx0;
                 Fyr = 2*alpha_r*self.sp.Cr;
 
-                self.X = X + dt*(vx*np.cos(psi) + vy*np.sin(psi));
-                self.Y = Y + dt*(vx*np.sin(psi) - vy*np.cos(psi));
-                self.psi = psi + dt*psidot
-                self.psidot = psidot + dt*(1/self.sp.Iz)*(self.sp.lf*Fyf - self.sp.lr*Fyr)
-                self.vx = vx + dt*(1/self.sp.m)*(Fx - self.sp.m*self.sp.g*np.sin(self.dp.theta));
-                self.vy = vy + dt*((1/self.sp.m)*(Fyf + Fyr + self.sp.m*self.sp.g*np.sin(self.dp.phi))-vx*psidot);
-                self.ax = (self.vx - vx)/self.dt
-                self.ay = (self.vy - vy)/self.dt
+                X1      = X0 + dt*(vx0*np.cos(psi0) + vy0*np.sin(psi0));
+                Y1      = Y0 + dt*(vx0*np.sin(psi0) - vy0*np.cos(psi0));
+                psi1    = psi0 + dt*psidot0
+                psidot1 = psidot0 + dt*(1.0/self.sp.Iz)*(self.sp.lf*Fyf - self.sp.lr*Fyr)
+                vx1     = vx0 + dt*(1.0/self.sp.m)*(Fx - self.sp.m*self.sp.g*np.sin(self.dp.theta));
+                vy1     = vy0 + dt*((1.0/self.sp.m)*(Fyf + Fyr + self.sp.m*self.sp.g*np.sin(self.dp.phi))-vx0*psidot0);
+
+                #print "vx1-vx0 = ", vx1-vx0
+                #print " vx0 = ", vx0, " dt = ", dt, " m = ", self.sp.m, " Fx = ", Fx ," g = ", self.sp.g, " phi = ", self.dp.phi, " psidot0 = ", psidot0
+
+                
+                X0 = X1
+                Y0 = Y1
+                psi0 = psi1
+                psidot0 = psidot1
+                vx0 = vx1
+                vy0 = vy1 
+      
+            self.ax = (self.vx - vx1)/self.dt
+            self.ay = (self.vy - vy1)/self.dt
+            
+            self.X = X1
+            self.Y = Y1
+            self.psi = psi1
+            self.psidot = psidot1
+            self.vx = vx1
+            self.vy = vy1
     
     
     def vehicle_in_callback(self, msg):

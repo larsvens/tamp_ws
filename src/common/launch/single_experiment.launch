@@ -15,10 +15,8 @@
      <node pkg="perception" type="object_detection.py" name="object_detection"> </node>
      <node pkg="vehicle_models" type="simple_vehicle.py" name="simple_vehicle"> </node>
 
-     <!--
-     <include file="$(find common)/launch/base.launch" />
-     -->
-     <!-- planner node
+     <!-- planner and control interface node -->
      <node pkg="planning" type="motionplanner_node" name="saasqp"> </node>
-     -->
+     <node pkg="planning" type="ctrl_interface.py" name="ctrl_interface"> </node>
+
 </launch>

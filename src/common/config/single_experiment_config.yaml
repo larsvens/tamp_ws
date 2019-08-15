@@ -1,6 +1,6 @@
 # Experiment configuration
-t_final:             10.0
-do_liveplot:         true
+t_final:             60.0
+do_liveplot:         false
 save_logfile:        true
 log_filepath:        /home/larsvens/ros/tamp_ws/src/common/logs/log_latest.npy
 pathglobal_filepath: /home/larsvens/ros/tamp_ws/src/perception/data/pathglobal.npy
@@ -13,11 +13,11 @@ initstate_psi:       0.0920
 initstate_s:         515.2127
 initstate_d:         -0.9293
 initstate_deltapsi:  0.0163
-initstate_psidot:    0.1656
-initstate_vx:        14.5600
-initstate_vy:        0.2352
-initstate_ax:        -1.6650
-initstate_ay:        2.4374
+initstate_psidot:    0.0
+initstate_vx:        10.0
+initstate_vy:        0.0
+initstate_ax:        0.0
+initstate_ay:        0.0
 initstate_stop:      false
 
 #initstate_X:         0.0
