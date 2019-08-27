@@ -1,5 +1,5 @@
 # Experiment configuration
-t_final:             60.0
+t_final:             30.0
 do_liveplot:         false
 save_logfile:        true
 log_filepath:        /home/larsvens/ros/tamp_ws/src/common/logs/log_latest.npy

@@ -136,7 +136,6 @@ class LocAndStateEst:
         self.sp.deltamax = rospy.get_param('/deltamax')
         
     def vehicle_out_callback(self, msg):
-        #print("in static params callback")
         self.vehicle_out = msg
 
 if __name__ == '__main__':

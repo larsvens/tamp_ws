@@ -13,7 +13,8 @@
      <node pkg="common" type="dummy_trajhat_publisher.py" name="dummy_trajhat_publisher"> </node>
      <node pkg="perception" type="localization_and_state_est.py" name="localization_and_state_est" output="screen"> </node>
      <node pkg="perception" type="object_detection.py" name="object_detection"> </node>
-     <node pkg="vehicle_models" type="simple_vehicle.py" name="simple_vehicle"> </node>
+     <node pkg="vehicle_models" type="dynamic_bicycle_linear_tire.py" name="dynamic_bicycle_linear_tire"> </node>
+     <!-- <node pkg="vehicle_models" type="simple_vehicle.py" name="simple_vehicle"> </node> -->
 
      <!-- planner and control interface node -->
      <node pkg="planning" type="motionplanner_node" name="saasqp"> </node>
