@@ -17,7 +17,7 @@
      <!-- <node pkg="vehicle_models" type="simple_vehicle.py" name="simple_vehicle"> </node> -->
 
      <!-- planner and control interface node -->
-     <node pkg="planning" type="motionplanner_node" name="saasqp"> </node>
+     <!-- <node pkg="planning" type="motionplanner_node" name="saasqp"> </node> -->
      <node pkg="planning" type="ctrl_interface.py" name="ctrl_interface"> </node>
 
 </launch>

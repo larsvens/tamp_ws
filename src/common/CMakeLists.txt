@@ -51,6 +51,7 @@ catkin_python_setup()
  add_message_files(
    FILES
    Trajectory.msg
+   TrajectorySet.msg
    State.msg
    VehicleIn.msg
    VehicleOut.msg

@@ -61,12 +61,14 @@ bool RtisqpWrapper::setInitialGuess(common::Trajectory traj){
         acadoVariables.x[k * NX + 4] = double(traj.vx.at(k)); // vx
         acadoVariables.x[k * NX + 5] = double(traj.vy.at(k)); // vy
         acadoVariables.x[k * NX + 6] = 0.0;                   // dummy
+        //std::cout << "debug, k = " << k << std::endl;
     }
 
     // set kappac
     for (uint k = 0; k < N + 1; ++k)
     {
         acadoVariables.od[k * NOD + 0] = double(traj.kappac.at(k));
+        //std::cout << "debug kappa, k = " << k << std::endl;
     }
 
     return true;
@@ -295,5 +297,11 @@ Eigen::MatrixXd RtisqpWrapper::getControlTrajectory(){
         Xstaru(1,k) = acadoVariables.u[k * NU + 1];
     }
     return Xstaru;
+}
+
+bool computeTrajset(std::vector<trajstruct> &trajset, int Ntrajs){
+    // TODO!
+
+    return true;
 }
 

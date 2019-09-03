@@ -45,6 +45,7 @@ cs_add_library(rtisqp_solver
     rtisqp_export/acado_auxiliary_functions.c)
 
 target_include_directories(rtisqp_solver PUBLIC
+    include
     rtisqp_export/
     rtisqp_export/qpoases
     rtisqp_export/qpoases/INCLUDE

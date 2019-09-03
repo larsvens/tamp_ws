@@ -26,6 +26,9 @@ using namespace std;
 #include "common/Obstacles.h"
 #include "common/PathLocal.h"
 
+// util
+#include "planning_util.h"
+
 // define variables
 #define NX         ACADO_NX	/* number of differential states */
 #define NXA        ACADO_NXA	/* number of alg. states */
@@ -60,5 +63,6 @@ public:
     int  doFeedbackStep();
     Eigen::MatrixXd getStateTrajectory();
     Eigen::MatrixXd getControlTrajectory();
+    bool computeTrajset(std::vector<trajstruct> &trajset, int Ntrajs);
 };
 

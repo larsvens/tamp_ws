@@ -7,9 +7,9 @@
 #include <common/State.h>
 #include <common/interp.h>
 #include <sstream>
-
-
 #include "planning/rtisqp_wrapper.h"
+
+
 
 class SAARTI
 {
@@ -30,6 +30,80 @@ public:
         obstacles_ = *msg;
     }
 
+    // todo move to wrapper
+    std::vector<trajstruct> get_trajset(int Ntrajs){
+        std::vector<trajstruct> trajset;
+        for (int i=0;i<Ntrajs;i++) {
+
+            // todo get from list
+            float Fyf = 3000.0;
+            float Fx = 5000.0;
+
+            // input initial state and control on integrator format
+            real_t acadoWSstate[85];
+            // state
+            acadoWSstate[0] = double(state_.s);
+            acadoWSstate[1] = double(state_.d);
+            acadoWSstate[2] = double(state_.deltapsi);
+            acadoWSstate[3] = double(state_.psidot);
+            acadoWSstate[4] = double(state_.vx);
+            acadoWSstate[5] = double(state_.vy);
+            acadoWSstate[6] = 0.0; // dummy state
+            // ctrl
+            acadoWSstate[77] = double(Fyf);
+            acadoWSstate[78] = double(Fx);
+            acadoWSstate[79] = 0.0; // slack var
+            // onlinedata
+            std::vector<float> s_vec = {state_.s};
+            std::vector<float> kappac_vec = cpp_utils::interp(s_vec,pathlocal_.s,pathlocal_.kappa_c,false);
+            acadoWSstate[80] = double(kappac_vec.at(0));
+            acadoWSstate[81] = 0.0; // slb
+            acadoWSstate[82] = 0.0; // sub
+            acadoWSstate[83] = 0.0; // dlb
+            acadoWSstate[84] = 0.0; // dub
+
+
+            // integrate fwd
+            trajstruct traj;
+            traj.s.push_back(state_.s);
+
+            traj.d.push_back(state_.d);
+            traj.deltapsi.push_back(state_.deltapsi);
+            traj.psidot.push_back(state_.psidot);
+            traj.vx.push_back(state_.vx);
+            traj.vy.push_back(state_.vy);
+            traj.Fyf.push_back(Fyf);
+            traj.Fx.push_back(Fx);
+
+            traj.kappa.push_back(kappac_vec.at(0));
+
+            for (size_t j=1;j<N+1;j++) {
+                acado_integrate(acadoWSstate,1); // reset or not reset?
+                // extract variables
+                traj.s.push_back(float(acadoWSstate[0]));
+                traj.d.push_back(float(acadoWSstate[1]));
+                traj.deltapsi.push_back(float(acadoWSstate[2]));
+                traj.psidot.push_back(float(acadoWSstate[3]));
+                traj.vx.push_back(float(acadoWSstate[4]));
+                traj.vy.push_back(float(acadoWSstate[5]));
+                if(j<N){ // N+1 states and N ctrls
+                    traj.Fyf.push_back(float(acadoWSstate[77]));
+                    traj.Fx.push_back(float(acadoWSstate[78]));
+                }
+
+
+                // get kappa at new s
+                std::vector<float> s_vec = {traj.s.at(j)};
+                std::vector<float> kappac_vec = cpp_utils::interp(s_vec,pathlocal_.s,pathlocal_.kappa_c,false);
+                acadoWSstate[80] = double(kappac_vec.at(0));
+                traj.kappa.push_back(kappac_vec.at(0));
+            }
+
+            trajset.push_back(traj);
+        }
+        return trajset;
+    }
+
     // constructor
     SAARTI(ros::NodeHandle nh){
         nh_ = nh;
@@ -39,6 +113,7 @@ public:
         // pubs & subs
         trajhat_pub_ = nh.advertise<common::Trajectory>("trajhat",1);
         trajstar_pub_ = nh.advertise<common::Trajectory>("trajstar",1);
+        //trajset_pub_ = nh.advertise<common::TrajectorySet>("trajset",1);
         pathlocal_sub_ = nh.subscribe("pathlocal", 1, &SAARTI::pathlocal_callback,this);
         obstacles_sub_ = nh.subscribe("obstacles", 1, &SAARTI::obstacles_callback,this);
         tmp_trajhat_sub_  = nh.subscribe("tmp_trajhat", 1, &SAARTI::tmp_trajhat_callback,this);
@@ -54,14 +129,14 @@ public:
         rtisqp_wrapper_.setWeights(Wx,Wu,Wslack);
 
         // wait until tmp_trajhat, state and path_local is received
-        while((tmp_trajhat_.s.size() == 0) || !(state_.s > 0) || pathlocal_.s.size() == 0 ){
-            ROS_INFO_STREAM("waiting for state and tmp_trajhat");
+        while( !(state_.s > 0) || pathlocal_.s.size() == 0 ){
+            ROS_INFO_STREAM("waiting for state and path local");
             ros::spinOnce();
             loop_rate.sleep();
         }
 
-        // initialize trajhat last (tmp: remove after sampling in place)
-        common::Trajectory trajstar_last = tmp_trajhat_;
+        // initialize trajhat last
+        common::Trajectory trajstar_last; // = tmp_trajhat_;
 
         // main loop
         while (ros::ok())
@@ -74,10 +149,37 @@ public:
             rtisqp_wrapper_.setInputConstraints(1.0,1000);
 
 
-            // selection step (tmp: always picks trajstar_last)
-            common::Trajectory trajhat = trajstar_last; // create new every iteration to make sure it has all attributes
-            //trajhat.s = trajstar_last.s;
-            //trajhat.d = trajstar_last.d;
+            // selection step todo add trajstar last in comparison
+            ROS_INFO_STREAM("generating trajectory set");
+            trajset_ = get_trajset(5);
+
+            // todo publish rviz markers (line strip)
+
+            trajstruct tmptraj = trajset_.at(0);
+            // cost eval and select
+
+
+
+            // tmp: always picks trajstar_last
+            //common::Trajectory trajhat = trajstar_last; // create new every iteration to make sure it has all attributes
+
+
+
+            // tmp: always picks sampled traj
+            common::Trajectory trajhat;
+            trajhat.s = tmptraj.s;
+            trajhat.d = tmptraj.d;
+            trajhat.deltapsi = tmptraj.deltapsi;
+            trajhat.psidot = tmptraj.psidot;
+            trajhat.vx = tmptraj.vx;
+            trajhat.vy = tmptraj.vy;
+            trajhat.Fyf = tmptraj.Fyf;
+            std::cout << "trajhat.Fyf.size() = " << trajhat.Fyf.size() << std::endl;
+            trajhat.Fx = tmptraj.Fx;
+            std::cout << "trajhat.Fx.size() = " << trajhat.Fx.size() << std::endl;
+            trajhat.kappac = tmptraj.kappa;
+
+
 
             // update current state
             ROS_INFO_STREAM("setting state..");
@@ -200,6 +302,9 @@ private:
     common::Trajectory tmp_trajhat_;
     common::State state_;
     RtisqpWrapper rtisqp_wrapper_;
+
+    std::vector<trajstruct> trajset_;
+
 };
 
 int main(int argc, char **argv)

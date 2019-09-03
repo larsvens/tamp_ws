@@ -286,10 +286,14 @@ class ExperimentManager:
         self.a1.plot(Fxfpts,Fyfpts,'k')
         
         # plot trajhat forces
-        self.a1.plot(self.trajhat.Fxf, self.trajstar.Fyf, 'xr')
+        #print len(self.trajhat.Fxf)
+        #print len(self.trajhat.Fyf)
+        #self.a1.plot(self.trajhat.Fxf, self.trajhat.Fyf, 'xr')
+        
 
         # plot trajstar forces
         self.a1.plot(self.trajstar.Fxf, self.trajstar.Fyf, 'xb')
+        
 
         self.a1.set_xlabel('Fxf')
         self.a1.set_ylabel('Fyf')
