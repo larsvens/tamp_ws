@@ -50,7 +50,7 @@ bool RtisqpWrapper::setWeights(std::vector<double> Wx, std::vector<double> Wu, d
     return true;
 }
 
-bool RtisqpWrapper::setInitialGuess(common::Trajectory traj){
+bool RtisqpWrapper::setInitialGuess(planning_util::trajstruct traj){
     // set state trajectory guess
     for (uint k = 0; k < N + 1; ++k)
     {
@@ -61,20 +61,18 @@ bool RtisqpWrapper::setInitialGuess(common::Trajectory traj){
         acadoVariables.x[k * NX + 4] = double(traj.vx.at(k)); // vx
         acadoVariables.x[k * NX + 5] = double(traj.vy.at(k)); // vy
         acadoVariables.x[k * NX + 6] = 0.0;                   // dummy
-        //std::cout << "debug, k = " << k << std::endl;
     }
 
     // set kappac
     for (uint k = 0; k < N + 1; ++k)
     {
         acadoVariables.od[k * NOD + 0] = double(traj.kappac.at(k));
-        //std::cout << "debug kappa, k = " << k << std::endl;
     }
 
     return true;
 }
 
-bool RtisqpWrapper::setReference(common::Trajectory traj, int ctrlmode){
+bool RtisqpWrapper::setReference(planning_util::trajstruct traj, int ctrlmode){
     std::vector<float> sref;
     std::vector<float> vxref;
     switch (ctrlmode) {
@@ -138,6 +136,7 @@ bool RtisqpWrapper::setInputConstraints(double mu, double Fzf){
             acadoVariables.ubAValues[idx] = mu; // tmp just to test effect (affine input const after state const?)
         }
     }
+    return true;
 }
 
 
@@ -150,15 +149,12 @@ bool RtisqpWrapper::setInputConstraints(double mu, double Fzf){
 //    Xstarx(5,k) = acadoVariables.x[k * NX + 5];
 //}
 
-bool RtisqpWrapper::setStateConstraints(common::Trajectory &traj,
-                                        common::Obstacles obs,
-                                        std::vector<float> lld,
-                                        std::vector<float> rld){
+planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util::trajstruct &traj,
+                                                                  common::Obstacles obs,
+                                                                  std::vector<float> lld,
+                                                                  std::vector<float> rld){
 
-    std::vector <float> slb_vec;
-    std::vector <float> sub_vec;
-    std::vector <float> dlb_vec;
-    std::vector <float> dub_vec;
+    planning_util::posconstrstruct posconstr;
 
     for (uint k = 0; k < N + 1; ++k)
     {
@@ -202,16 +198,10 @@ bool RtisqpWrapper::setStateConstraints(common::Trajectory &traj,
             }
         }
 
-        // add lb and ub to traj struct for visualization
-        slb_vec.push_back(slb);
-        sub_vec.push_back(sub);
-        dlb_vec.push_back(dlb);
-        dub_vec.push_back(dub);
-
-        traj.slb = slb_vec;
-        traj.sub = sub_vec;
-        traj.dlb = dlb_vec;
-        traj.dub = dub_vec;
+        posconstr.slb.push_back(slb);
+        posconstr.sub.push_back(sub);
+        posconstr.dlb.push_back(dlb);
+        posconstr.dub.push_back(dub);
 
         // set acadovariable
         acadoVariables.od[k * NOD + 1] = double(slb);
@@ -219,7 +209,7 @@ bool RtisqpWrapper::setStateConstraints(common::Trajectory &traj,
         acadoVariables.od[k * NOD + 3] = double(dlb);
         acadoVariables.od[k * NOD + 4] = double(dub);
     }
-    return true;
+    return posconstr;
 }
 
 bool RtisqpWrapper::setInitialState(common::State state){
@@ -259,6 +249,7 @@ bool RtisqpWrapper::shiftTrajectoryFwdSimple(common::Trajectory &traj){
         //traj.Fyr.at(k) = traj.Fyr.at(k+1);
         traj.Fx.at(k) = traj.Fx.at(k+1);
     }
+    return true;
 }
 
 bool RtisqpWrapper::doPreparationStep(){
@@ -299,8 +290,101 @@ Eigen::MatrixXd RtisqpWrapper::getControlTrajectory(){
     return Xstaru;
 }
 
-bool computeTrajset(std::vector<trajstruct> &trajset, int Ntrajs){
-    // TODO!
+bool RtisqpWrapper::computeTrajset(std::vector<planning_util::trajstruct> &trajset, planning_util::statestruct &state, common::PathLocal &pathlocal, uint Ntrajs){
+    // todo input Fh_MAX
+    // tmp
+    float Fyfmax = 3000;
+    float Fxmax = 3000;
+
+    // mode 0 input sampling
+    std::vector<float> Fyf_vec;
+    std::vector<float> Fx_vec;
+    float angle = -float(M_PI);
+    float step = 2*float(M_PI)/Ntrajs;
+    for (uint i=0;i<Ntrajs;i++) {
+        Fyf_vec.push_back(Fyfmax*sin(angle));
+        Fx_vec.push_back(Fxmax*cos(angle));
+
+        std::cout << "angle = " << angle << std::endl;
+        std::cout << "Fyf = " << Fyfmax*sin(angle) << std::endl;
+        std::cout << "Fx = " << Fxmax*cos(angle) << std::endl;
+
+        angle += step;
+
+    }
+
+
+
+    for (uint i=0;i<Ntrajs;i++) {
+
+        float Fyf = Fyf_vec.at(i);
+        float Fx = Fx_vec.at(i);
+
+        //float Fyf = 0;
+        //float Fx = 3000;
+
+        // input initial state and control on integrator format
+        real_t acadoWSstate[85];
+        // state
+        acadoWSstate[0] = double(state.s);
+        acadoWSstate[1] = double(state.d);
+        acadoWSstate[2] = double(state.deltapsi);
+        acadoWSstate[3] = double(state.psidot);
+        acadoWSstate[4] = double(state.vx);
+        acadoWSstate[5] = double(state.vy);
+        acadoWSstate[6] = 0.0; // dummy state
+        // ctrl
+        acadoWSstate[77] = double(Fyf);
+        acadoWSstate[78] = double(Fx);
+        acadoWSstate[79] = 0.0; // slack var
+        // onlinedata
+        std::vector<float> s_vec = {state.s};
+        std::vector<float> kappac_vec = cpp_utils::interp(s_vec,pathlocal.s,pathlocal.kappa_c,false);
+        acadoWSstate[80] = double(kappac_vec.at(0));
+        acadoWSstate[81] = 0.0; // slb
+        acadoWSstate[82] = 0.0; // sub
+        acadoWSstate[83] = 0.0; // dlb
+        acadoWSstate[84] = 0.0; // dub
+
+
+        // integrate fwd
+        planning_util::trajstruct traj;
+        traj.s.push_back(state.s);
+
+        traj.d.push_back(state.d);
+        traj.deltapsi.push_back(state.deltapsi);
+        traj.psidot.push_back(state.psidot);
+        traj.vx.push_back(state.vx);
+        traj.vy.push_back(state.vy);
+        traj.Fyf.push_back(Fyf);
+        traj.Fx.push_back(Fx);
+
+        traj.kappac.push_back(kappac_vec.at(0));
+
+        for (size_t j=1;j<N+1;j++) {
+            acado_integrate(acadoWSstate,1); // reset or not reset?
+            // extract variables
+            traj.s.push_back(float(acadoWSstate[0]));
+            traj.d.push_back(float(acadoWSstate[1]));
+            traj.deltapsi.push_back(float(acadoWSstate[2]));
+            traj.psidot.push_back(float(acadoWSstate[3]));
+            traj.vx.push_back(float(acadoWSstate[4]));
+            traj.vy.push_back(float(acadoWSstate[5]));
+            if(j<N){ // N+1 states and N ctrls
+                traj.Fyf.push_back(float(acadoWSstate[77]));
+                traj.Fx.push_back(float(acadoWSstate[78]));
+            }
+
+
+            // get kappa at new s
+            std::vector<float> s_vec = {traj.s.at(j)};
+            std::vector<float> kappac_vec = cpp_utils::interp(s_vec,pathlocal.s,pathlocal.kappa_c,false);
+            acadoWSstate[80] = double(kappac_vec.at(0));
+            traj.kappac.push_back(kappac_vec.at(0));
+        }
+
+        trajset.push_back(traj);
+    }
 
     return true;
 }

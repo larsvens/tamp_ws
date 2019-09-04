@@ -22,12 +22,13 @@ using namespace std;
 // ros (todo replace with internals structs)
 #include "common/Trajectory.h"
 #include "common/State.h"
-#include "common/cpp_utils.h"
 #include "common/Obstacles.h"
 #include "common/PathLocal.h"
 
 // util
 #include "planning_util.h"
+#include <common/interp.h>
+#include "common/cpp_utils.h"
 
 // define variables
 #define NX         ACADO_NX	/* number of differential states */
@@ -52,17 +53,17 @@ public:
 
     // functions
     bool setWeights(std::vector<double>, std::vector<double>, double);
-    bool setInitialGuess(common::Trajectory);
+    bool setInitialGuess(planning_util::trajstruct);
     bool setInitialState(common::State);
-    bool setReference(common::Trajectory, int ctrlmode);
+    bool setReference(planning_util::trajstruct, int ctrlmode);
     bool setInputConstraints(double mu, double Fzf);
-    bool setStateConstraints(common::Trajectory &traj, common::Obstacles obs, std::vector<float> lld, std::vector<float> rld);
+    planning_util::posconstrstruct setStateConstraints(planning_util::trajstruct &traj, common::Obstacles obs, std::vector<float> lld, std::vector<float> rld);
     bool shiftStateAndControls();
     bool shiftTrajectoryFwdSimple(common::Trajectory &traj);
     bool doPreparationStep();
     int  doFeedbackStep();
     Eigen::MatrixXd getStateTrajectory();
     Eigen::MatrixXd getControlTrajectory();
-    bool computeTrajset(std::vector<trajstruct> &trajset, int Ntrajs);
+    bool computeTrajset(std::vector<planning_util::trajstruct> &trajset, planning_util::statestruct &state, common::PathLocal &pathlocal, uint Ntrajs);
 };
 
