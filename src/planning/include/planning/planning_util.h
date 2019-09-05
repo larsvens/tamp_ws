@@ -2,7 +2,7 @@
 
 namespace planning_util {
 
-// internal trajectory representation
+// trajectory representation
 struct trajstruct{
     // state
     std::vector<float> s;
@@ -16,12 +16,18 @@ struct trajstruct{
     std::vector<float> Fx;
     // od
     std::vector<float> kappac;
-    bool colliding;
+    // cartesian pose
+    std::vector<float> X;
+    std::vector<float> Y;
+    std::vector<float> psi;
+    // eval
     float cost;
+    bool colliding;
+    bool exitroad;
 };
 
 
-// internal state representation
+// state representation
 struct statestruct{
     // state
     float s;
@@ -32,6 +38,30 @@ struct statestruct{
     float vy;
 };
 
+// pathlocal representation
+struct pathstruct{
+    std::vector<float> X;
+    std::vector<float> Y;
+    std::vector<float> s;
+    std::vector<float> psi_c;
+    std::vector<float> kappa_c;
+    std::vector<float> theta_c;
+    std::vector<float> phi_c;
+    std::vector<float> dub;
+    std::vector<float> dlb;
+};
+
+// obstacle representation
+struct obstastruct{
+    // state
+    std::vector<float> s;
+    std::vector<float> d;
+    std::vector<float> R;
+    std::vector<float> Rmgn;
+    std::vector<float> X;
+    std::vector<float> Y;
+};
+
 // position constraint container
 struct posconstrstruct{
     std::vector<float> slb;
@@ -39,5 +69,13 @@ struct posconstrstruct{
     std::vector<float> dlb;
     std::vector<float> dub;
 };
+
+// reference container
+struct refstruct{
+    std::vector<float> sref;
+    std::vector<float> vxref;
+};
+
+
 
 }; // END NAMESPACE

@@ -55,7 +55,7 @@ public:
     bool setWeights(std::vector<double>, std::vector<double>, double);
     bool setInitialGuess(planning_util::trajstruct);
     bool setInitialState(common::State);
-    bool setReference(planning_util::trajstruct, int ctrlmode);
+    bool setOptReference(planning_util::trajstruct, planning_util::refstruct refs);
     bool setInputConstraints(double mu, double Fzf);
     planning_util::posconstrstruct setStateConstraints(planning_util::trajstruct &traj, common::Obstacles obs, std::vector<float> lld, std::vector<float> rld);
     bool shiftStateAndControls();

@@ -72,32 +72,9 @@ bool RtisqpWrapper::setInitialGuess(planning_util::trajstruct traj){
     return true;
 }
 
-bool RtisqpWrapper::setReference(planning_util::trajstruct traj, int ctrlmode){
-    std::vector<float> sref;
-    std::vector<float> vxref;
-    switch (ctrlmode) {
-    case 0: // tracking
-        //std::cout << "case 0, ctrlmode = " << ctrlmode << std::endl;
-        sref = traj.s;
-        vxref = traj.vx;
-        break;
-    case 1: // minimize s
-        //std::cout << "case 1, ctrlmode = " << ctrlmode << std::endl;
-
-        //minimize s
-        //sref.assign(N+1, traj.s.at(0));
-        //vxref = traj.vx;
-
-        // minimize vx
-        sref = traj.s;
-        vxref.assign(N+1,0.0);
-        break;
-    case 2: // maximize s
-        //std::cout << "case 2, ctrlmode = " << ctrlmode << std::endl;
-        sref.assign(N+1, traj.s.at(0) + 300);
-        vxref = traj.vx;
-        break;
-    }
+bool RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_util::refstruct refs){
+    std::vector<float> sref = refs.sref;
+    std::vector<float> vxref = refs.vxref;
 
     // set ref for intermediate states
     for (uint k = 0; k < N; ++k)
@@ -121,6 +98,7 @@ bool RtisqpWrapper::setReference(planning_util::trajstruct traj, int ctrlmode){
     acadoVariables.yN[ 4 ] = double(traj.vx.at(N));        // vx
     acadoVariables.yN[ 5 ] = double(traj.vy.at(N));        // vy
     acadoVariables.yN[ 6 ] = 0;                            // dummy
+
     return true;
 }
 
@@ -291,6 +269,8 @@ Eigen::MatrixXd RtisqpWrapper::getControlTrajectory(){
 }
 
 bool RtisqpWrapper::computeTrajset(std::vector<planning_util::trajstruct> &trajset, planning_util::statestruct &state, common::PathLocal &pathlocal, uint Ntrajs){
+
+    trajset.clear();
     // todo input Fh_MAX
     // tmp
     float Fyfmax = 3000;
