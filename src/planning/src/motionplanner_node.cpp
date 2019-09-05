@@ -7,6 +7,8 @@
 #include <sstream>
 #include "planning/rtisqp_wrapper.h"
 
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant" // supress warning at ros prints
+
 class SAARTI
 {
 public:
@@ -31,14 +33,14 @@ public:
         rtisqp_wrapper_.setWeights(Wx,Wu,Wslack);
 
         // wait until tmp_trajhat, state and path_local is received
-        while( !(state_msg_.s > 0) || pathlocal_msg.s.size() == 0 ){
+        while( (state_.s <= 0) || pathlocal_.s.size() == 0 ){
             ROS_INFO_STREAM("waiting for state and path local");
             ros::spinOnce();
             loop_rate.sleep();
         }
 
         // initialize trajhat last
-        common::Trajectory trajstar_last_msg;
+        planning_util::trajstruct trajstar_last;
 
         // main loop
         while (ros::ok())
@@ -55,7 +57,10 @@ public:
 
             // rollout
             ROS_INFO_STREAM("generating trajectory set");
-            rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_msg,4);
+            rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,16);
+            if(trajstar_last.s.size()>0){ // append trajstar last
+                trajset_.push_back(trajstar_last);
+            }
             trajset2cart(); // only for visualization, comment out to save time
 
             // cost eval and select
@@ -66,11 +71,13 @@ public:
             } else {
                 ROS_ERROR("no traj selected");
             }
+            ROS_INFO_STREAM("trajhat_idx = " << trajhat_idx);
+            ROS_INFO_STREAM("trajhat.cost = " << trajhat.cost);
             // todo publish rviz markers (line strip)
 
             // update current state
             ROS_INFO_STREAM("setting state..");
-            rtisqp_wrapper_.setInitialState(state_msg_);
+            rtisqp_wrapper_.setInitialState(state_);
 
             // set initial guess and shift fwd
             ROS_INFO_STREAM("setting trajstar as initial guess..");
@@ -83,9 +90,9 @@ public:
 
             // set state constraint
             ROS_INFO_STREAM("setting state constraints..");
-            std::vector<float> lld = cpp_utils::interp(trajhat.s,pathlocal_msg.s,pathlocal_msg.dub,false);
-            std::vector<float> rld = cpp_utils::interp(trajhat.s,pathlocal_msg.s,pathlocal_msg.dlb,false);
-            planning_util::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obstacles_msg,lld,rld);
+            std::vector<float> lld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dub,false);
+            std::vector<float> rld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dlb,false);
+            planning_util::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obst_,lld,rld);
 
             // do preparation step // todo: put timer
             ROS_INFO_STREAM("calling acado prep step..");
@@ -102,45 +109,43 @@ public:
             // extract state and control trajs from acado
             Eigen::MatrixXd Xstarx = rtisqp_wrapper_.getStateTrajectory();
             Eigen::MatrixXd Xstaru = rtisqp_wrapper_.getControlTrajectory();
-            //std::cout << "Xstarx is of size " << Xstarx.rows() << "x" << Xstarx.cols() << std::endl;
-            //std::cout << "Xstaru is of size " << Xstaru.rows() << "x" << Xstaru.cols() << std::endl;
 
             // set trajstar
-            common::Trajectory trajstar_msg;
+            planning_util::trajstruct trajstar;
             std::vector<float> Xstar_s;
             for (uint k = 0; k < N+1; ++k){
                 Xstar_s.push_back(float(Xstarx(0,k)));
             }
-            std::vector<float> Xc = cpp_utils::interp(Xstar_s,pathlocal_msg.s,pathlocal_msg.X,false);
-            std::vector<float> Yc = cpp_utils::interp(Xstar_s,pathlocal_msg.s,pathlocal_msg.Y,false);
-            std::vector<float> psic = cpp_utils::interp(Xstar_s,pathlocal_msg.s,pathlocal_msg.psi_c,false);
-            trajstar_msg.kappac = cpp_utils::interp(Xstar_s,pathlocal_msg.s,pathlocal_msg.kappa_c,false);
+            std::vector<float> Xc = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.X,false);
+            std::vector<float> Yc = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.Y,false);
+            std::vector<float> psic = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.psi_c,false);
+            trajstar.kappac = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.kappa_c,false);
 
             for (uint k = 0; k < N+1; ++k){
                 // states
-                trajstar_msg.s.push_back(float(Xstarx(0,k)));
-                trajstar_msg.d.push_back(float(Xstarx(1,k)));
-                trajstar_msg.deltapsi.push_back(float(Xstarx(2,k)));
-                trajstar_msg.psidot.push_back(float(Xstarx(3,k)));
-                trajstar_msg.vx.push_back(float(Xstarx(4,k)));
-                trajstar_msg.vy.push_back(float(Xstarx(5,k)));
+                trajstar.s.push_back(float(Xstarx(0,k)));
+                trajstar.d.push_back(float(Xstarx(1,k)));
+                trajstar.deltapsi.push_back(float(Xstarx(2,k)));
+                trajstar.psidot.push_back(float(Xstarx(3,k)));
+                trajstar.vx.push_back(float(Xstarx(4,k)));
+                trajstar.vy.push_back(float(Xstarx(5,k)));
 
                 // cartesian pose
-                trajstar_msg.X.push_back(Xc.at(k) - trajstar_msg.d.at(k)*std::sin(psic.at(k)));
-                trajstar_msg.Y.push_back(Yc.at(k) + trajstar_msg.d.at(k)*std::cos(psic.at(k)));
-                trajstar_msg.psi.push_back(psic.at(k) + trajstar_msg.deltapsi.at(k));
+                trajstar.X.push_back(Xc.at(k) - trajstar.d.at(k)*std::sin(psic.at(k)));
+                trajstar.Y.push_back(Yc.at(k) + trajstar.d.at(k)*std::cos(psic.at(k)));
+                trajstar.psi.push_back(psic.at(k) + trajstar.deltapsi.at(k));
 
                 // forces (we have N+1 states but only N controls)
                 if(k < N){
-                    trajstar_msg.Fyf.push_back(float(Xstaru(0,k)));
-                    trajstar_msg.Fx.push_back(float(Xstaru(1,k)));
-                    trajstar_msg.Fxf.push_back(0.5f*trajstar_msg.Fx.at(k));
-                    trajstar_msg.Fxr.push_back(0.5f*trajstar_msg.Fx.at(k));
+                    trajstar.Fyf.push_back(float(Xstaru(0,k)));
+                    trajstar.Fx.push_back(float(Xstaru(1,k)));
+                    //trajstar_msg.Fxf.push_back(0.5f*trajstar_msg.Fx.at(k));
+                    //trajstar_msg.Fxr.push_back(0.5f*trajstar_msg.Fx.at(k));
                 }
             }
 
-            // publish trajhat message
-            common::Trajectory trajhat_msg;
+            // publish trajhat
+            common::Trajectory trajhat_msg = traj2msg(trajhat);
             trajhat_msg.slb = posconstr.slb;
             trajhat_msg.sub = posconstr.sub;
             trajhat_msg.dlb = posconstr.dlb;
@@ -149,12 +154,13 @@ public:
             trajhat_pub_.publish(trajhat_msg);
 
             // publish trajstar
+            common::Trajectory trajstar_msg = traj2msg(trajstar);
             trajstar_msg.header.stamp = ros::Time::now();
             trajstar_pub_.publish(trajstar_msg);
 
             // store fwd shifted trajstar for next iteration
-            trajstar_last_msg = trajstar_msg;
-            rtisqp_wrapper_.shiftTrajectoryFwdSimple(trajstar_last_msg);
+            trajstar_last = trajstar;
+            rtisqp_wrapper_.shiftTrajectoryFwdSimple(trajstar_last);
 
             // print loop time
             ros::Duration planningtime = ros::Time::now() - t_start;
@@ -165,6 +171,7 @@ public:
         }
     }
 
+    // sets refs to be used in rollout and optimization
     planning_util::refstruct setRefs(int ctrlmode){
         planning_util::refstruct refs;
         switch (ctrlmode) {
@@ -189,19 +196,21 @@ public:
             std::vector<float> psic = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.psi_c,false);
 
             for (uint j=0; j<traj.s.size();j++) {
-                //X = Xc - d*sin(psic);
-                //Y = Yc + d*cos(psic);
+                // X = Xc - d*sin(psic);
+                // Y = Yc + d*cos(psic);
+                // psi = deltapsi + psic;
                 float X = Xc.at(j) - traj.d.at(j)*sin(psic.at(j));
                 float Y = Yc.at(j) + traj.d.at(j)*cos(psic.at(j));
+                float psi = traj.deltapsi.at(j) + psic.at(j);
                 traj.X.push_back(X);
                 traj.Y.push_back(Y);
+                traj.psi.push_back(psi);
             }
         }
     }
 
     // cost evaluation and collision checking of trajset
     int trajset_eval_cost(){
-        std::cout << "debug1" << std::endl;
         float mincost = float(Wslack)*10;
         int trajhat_idx = -1;
         for (uint i=0;i<trajset_.size();i++) {
@@ -211,7 +220,6 @@ public:
             float cost = 0;
             std::vector<float> dub = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.dub,false);
             std::vector<float> dlb = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.dlb,false);
-            std::cout << "debug2" << std::endl;
             for (uint j=0; j<traj.s.size();j++){
                 float s = traj.s.at(j);
                 float d = traj.d.at(j);
@@ -224,19 +232,14 @@ public:
                         colliding = true;
                     }
                 }
-                std::cout << "debug3" << std::endl;
                 // check outside road (in frenet)
                 if((d > dub.at(j)) || d < dlb.at(j) ){
                     exitroad = true;
                 }
-                std::cout << "debug4" << std::endl;
                 // running cost
-                std::cout << "refs_.sref.size()" << refs_.sref.size() << std::endl;
-                std::cout << "traj.s.size()" << traj.s.size() << std::endl;
                 float sref = float(refs_.sref.at(j));
                 float vxref = float(refs_.vxref.at(j));
                 cost += (sref-s)*float(Wx.at(0))*(sref-s) + (vxref-vx)*float(Wx.at(4))*(vxref-vx);
-                std::cout << "debug5" << std::endl;
             }
             if(colliding){
                 cost += float(Wslack);
@@ -257,8 +260,27 @@ public:
         return trajhat_idx;
     }
 
+    common::Trajectory traj2msg(planning_util::trajstruct traj){
+        common::Trajectory trajmsg;
+        // state
+        trajmsg.s = traj.s;
+        trajmsg.d = traj.d;
+        trajmsg.deltapsi = traj.deltapsi;
+        trajmsg.psidot = traj.psidot;
+        trajmsg.vx = traj.vx;
+        trajmsg.vy = traj.vy;
+        // ctrl
+        trajmsg.Fyf = traj.Fyf;
+        trajmsg.Fx = traj.Fx;
+        // cart pose
+        trajmsg.X = traj.X;
+        trajmsg.Y = traj.Y;
+        trajmsg.psi = traj.psi;
+
+        return trajmsg;
+    }
+
     void state_callback(const common::State::ConstPtr& msg){
-        state_msg_ = *msg;
         state_.s = msg->s;
         state_.d = msg->d;
         state_.deltapsi = msg->deltapsi;
@@ -268,7 +290,6 @@ public:
     }
 
     void pathlocal_callback(const common::PathLocal::ConstPtr& msg){
-        pathlocal_msg = *msg;
         pathlocal_.X = msg->X;
         pathlocal_.Y = msg->Y;
         pathlocal_.s = msg->s;
@@ -281,7 +302,6 @@ public:
     }
 
     void obstacles_callback(const common::Obstacles::ConstPtr& msg){
-        obstacles_msg = *msg;
         obst_.s = msg->s;
         obst_.d = msg->d;
         obst_.R = msg->R;
@@ -296,9 +316,6 @@ private:
     ros::Subscriber state_sub_;
     ros::Publisher trajstar_pub_;
     ros::Publisher trajhat_pub_;
-    common::PathLocal pathlocal_msg; // todo remove
-    common::Obstacles obstacles_msg; // todo remove
-    common::State state_msg_; // todo remove
     planning_util::statestruct state_;
     planning_util::pathstruct pathlocal_;
     std::vector<planning_util::trajstruct> trajset_;

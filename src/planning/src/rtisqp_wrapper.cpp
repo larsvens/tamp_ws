@@ -106,7 +106,7 @@ bool RtisqpWrapper::setInputConstraints(double mu, double Fzf){
     uint N_ineq = 8; // nr of inequalities, todo read from file!
     uint N_ubA = sizeof(acadoVariables.ubAValues) / sizeof(*acadoVariables.ubAValues);
     uint N_per_k = N_ubA/N;
-    std::cout << "size of acadoVariables.ubAValues: " << N_ubA << std::endl;
+    //std::cout << "size of acadoVariables.ubAValues: " << N_ubA << std::endl;
     for (uint k = 0; k < N ; ++k){
         for (uint j = 0; j < N_ineq; j++){ // edit the N_ineq first values of N_per_k
             uint idx = k*N_per_k + j;
@@ -128,7 +128,7 @@ bool RtisqpWrapper::setInputConstraints(double mu, double Fzf){
 //}
 
 planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util::trajstruct &traj,
-                                                                  common::Obstacles obs,
+                                                                  planning_util::obstastruct obs,
                                                                   std::vector<float> lld,
                                                                   std::vector<float> rld){
 
@@ -190,7 +190,7 @@ planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util:
     return posconstr;
 }
 
-bool RtisqpWrapper::setInitialState(common::State state){
+bool RtisqpWrapper::setInitialState(planning_util::statestruct state){
     acadoVariables.x0[0] = double(state.s);
     acadoVariables.x0[1] = double(state.d);
     acadoVariables.x0[2] = double(state.deltapsi);
@@ -207,25 +207,23 @@ bool RtisqpWrapper::shiftStateAndControls(){
     return true;
 }
 
-bool RtisqpWrapper::shiftTrajectoryFwdSimple(common::Trajectory &traj){
+bool RtisqpWrapper::shiftTrajectoryFwdSimple(planning_util::trajstruct &traj){
     // will shift all states fwd except the final one that is duplicated
     for (uint k = 0; k < N-1; ++k){
-        traj.X.at(k) = traj.X.at(k+1);
-        traj.Y.at(k) = traj.Y.at(k+1);
-        traj.psi.at(k) = traj.psi.at(k+1);
+        // state
         traj.s.at(k) = traj.s.at(k+1);
         traj.d.at(k) = traj.d.at(k+1);
         traj.deltapsi.at(k) = traj.deltapsi.at(k+1);
         traj.psidot.at(k) = traj.psidot.at(k+1);
         traj.vx.at(k) = traj.vx.at(k+1);
         traj.vy.at(k) = traj.vy.at(k+1);
-        //traj.ax.at(k) = traj.ax.at(k+1);
-        //traj.ay.at(k) = traj.ay.at(k+1);
-        //traj.Fxf.at(k) = traj.Fxf.at(k+1);
+        // ctrl
         traj.Fyf.at(k) = traj.Fyf.at(k+1);
-        //traj.Fxr.at(k) = traj.Fxr.at(k+1);
-        //traj.Fyr.at(k) = traj.Fyr.at(k+1);
         traj.Fx.at(k) = traj.Fx.at(k+1);
+        // cartesian pose
+        traj.X.at(k) = traj.X.at(k+1);
+        traj.Y.at(k) = traj.Y.at(k+1);
+        traj.psi.at(k) = traj.psi.at(k+1);
     }
     return true;
 }
@@ -268,7 +266,10 @@ Eigen::MatrixXd RtisqpWrapper::getControlTrajectory(){
     return Xstaru;
 }
 
-bool RtisqpWrapper::computeTrajset(std::vector<planning_util::trajstruct> &trajset, planning_util::statestruct &state, common::PathLocal &pathlocal, uint Ntrajs){
+bool RtisqpWrapper::computeTrajset(std::vector<planning_util::trajstruct> &trajset,
+                                   planning_util::statestruct &state,
+                                   planning_util::pathstruct &pathlocal,
+                                   uint Ntrajs){
 
     trajset.clear();
     // todo input Fh_MAX
@@ -285,9 +286,9 @@ bool RtisqpWrapper::computeTrajset(std::vector<planning_util::trajstruct> &trajs
         Fyf_vec.push_back(Fyfmax*sin(angle));
         Fx_vec.push_back(Fxmax*cos(angle));
 
-        std::cout << "angle = " << angle << std::endl;
-        std::cout << "Fyf = " << Fyfmax*sin(angle) << std::endl;
-        std::cout << "Fx = " << Fxmax*cos(angle) << std::endl;
+        //std::cout << "angle = " << angle << std::endl;
+        //std::cout << "Fyf = " << Fyfmax*sin(angle) << std::endl;
+        //std::cout << "Fx = " << Fxmax*cos(angle) << std::endl;
 
         angle += step;
 
@@ -354,7 +355,6 @@ bool RtisqpWrapper::computeTrajset(std::vector<planning_util::trajstruct> &trajs
                 traj.Fyf.push_back(float(acadoWSstate[77]));
                 traj.Fx.push_back(float(acadoWSstate[78]));
             }
-
 
             // get kappa at new s
             std::vector<float> s_vec = {traj.s.at(j)};

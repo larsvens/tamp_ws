@@ -291,8 +291,8 @@ class ExperimentManager:
         #self.a1.plot(self.trajhat.Fxf, self.trajhat.Fyf, 'xr')
         
 
-        # plot trajstar forces
-        self.a1.plot(self.trajstar.Fxf, self.trajstar.Fyf, 'xb')
+        # plot trajstar forces [x / myInt for x in myList]
+        self.a1.plot([x/2.0 for x in self.trajstar.Fx], self.trajstar.Fyf, 'xb')
         
 
         self.a1.set_xlabel('Fxf')
