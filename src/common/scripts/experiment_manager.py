@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 import rospy
 from rosgraph_msgs.msg import Clock
-from common.msg import PathLocal
+from common.msg import Path
 from common.msg import Obstacles
 from common.msg import Trajectory
 from common.msg import State
@@ -52,7 +52,7 @@ class ExperimentManager:
         #rospy.init_node('experiment_manager', anonymous=True, disable_signals=True)
         self.clockpub = rospy.Publisher('/clock', Clock, queue_size=10)
         
-        self.pathlocalsub = rospy.Subscriber("pathlocal", PathLocal, self.pathlocal_callback)
+        self.pathlocalsub = rospy.Subscriber("pathlocal", Path, self.pathlocal_callback)
         self.obstaclesub = rospy.Subscriber("obstacles", Obstacles, self.obstacles_callback)
         self.trajhatsub = rospy.Subscriber("trajhat", Trajectory, self.trajhat_callback)
         self.trajstarsub = rospy.Subscriber("trajstar", Trajectory, self.trajstar_callback)
@@ -67,7 +67,7 @@ class ExperimentManager:
         
         # init internal variables
         self.counter = 0 # use this to reduce plot update rate
-        self.pathlocal = PathLocal()
+        self.pathlocal = Path()
         self.obstacles = Obstacles()
         self.trajhat = Trajectory()
         self.trajstar = Trajectory()

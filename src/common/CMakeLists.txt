@@ -55,7 +55,7 @@ catkin_python_setup()
    State.msg
    VehicleIn.msg
    VehicleOut.msg
-   PathLocal.msg
+   Path.msg
    StaticVehicleParams.msg
    DynamicVehicleParams.msg
    Obstacles.msg

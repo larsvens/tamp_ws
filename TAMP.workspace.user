@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 4.9.2, 2019-09-04T12:44:33. -->
+<!-- Written by QtCreator 4.9.2, 2019-09-06T11:21:37. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -72,7 +72,7 @@
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory"></value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
-      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">false</value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">CatkinMake Step</value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ROSProjectManager.ROSCatkinMakeStep</value>
@@ -88,7 +88,7 @@
     </valuemap>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.1">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
-      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">false</value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">CatkinMake Step</value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ROSProjectManager.ROSCatkinMakeStep</value>
@@ -105,28 +105,28 @@
     <value type="int" key="ProjectExplorer.BuildConfiguration.BuildStepListCount">2</value>
     <value type="bool" key="ProjectExplorer.BuildConfiguration.ClearSystemEnvironment">false</value>
     <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges">
-     <value type="QString">CMAKE_PREFIX_PATH=/home/larsvens/ros/tamp_ws/devel:/opt/ros/kinetic</value>
-     <value type="QString">LD_LIBRARY_PATH=/home/larsvens/ros/tamp_ws/devel/lib:/opt/ros/kinetic/lib:/opt/ros/kinetic/lib/x86_64-linux-gnu</value>
+     <value type="QString">CMAKE_PREFIX_PATH=/opt/ros/kinetic</value>
+     <value type="QString">LD_LIBRARY_PATH=/opt/ros/kinetic/lib:/opt/ros/kinetic/lib/x86_64-linux-gnu</value>
      <value type="QString">PATH=/opt/ros/kinetic/bin:/home/larsvens/bin:/home/larsvens/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin</value>
-     <value type="QString">PKG_CONFIG_PATH=/home/larsvens/ros/tamp_ws/devel/lib/pkgconfig:/opt/ros/kinetic/lib/pkgconfig:/opt/ros/kinetic/lib/x86_64-linux-gnu/pkgconfig</value>
+     <value type="QString">PKG_CONFIG_PATH=/opt/ros/kinetic/lib/pkgconfig:/opt/ros/kinetic/lib/x86_64-linux-gnu/pkgconfig</value>
      <value type="QString">PWD=/home/larsvens/ros/tamp_ws</value>
-     <value type="QString">PYTHONPATH=/home/larsvens/ros/tamp_ws/devel/lib/python2.7/dist-packages:/opt/ros/kinetic/lib/python2.7/dist-packages</value>
+     <value type="QString">PYTHONPATH=/opt/ros/kinetic/lib/python2.7/dist-packages</value>
      <value type="QString">QTDIR</value>
-     <value type="QString">ROSLISP_PACKAGE_DIRECTORIES=/home/larsvens/ros/tamp_ws/devel/share/common-lisp</value>
+     <value type="QString">ROSLISP_PACKAGE_DIRECTORIES=</value>
      <value type="QString">ROS_DISTRO=kinetic</value>
      <value type="QString">ROS_ETC_DIR=/opt/ros/kinetic/etc/ros</value>
      <value type="QString">ROS_MASTER_URI=http://localhost:11311</value>
-     <value type="QString">ROS_PACKAGE_PATH=/home/larsvens/ros/tamp_ws/src:/opt/ros/kinetic/share</value>
+     <value type="QString">ROS_PACKAGE_PATH=/opt/ros/kinetic/share</value>
      <value type="QString">ROS_ROOT=/opt/ros/kinetic/share/ros</value>
      <value type="QString">ROS_VERSION=1</value>
-     <value type="QString">SHLVL=278</value>
+     <value type="QString">SHLVL=442</value>
      <value type="QString">TERM=xterm</value>
      <value type="QString">_=/usr/bin/env</value>
     </valuelist>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Debug</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Debug</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ROSProjectManager.ROSBuildConfiguration</value>
-    <value type="int" key="ROSProjectManager.ROSBuildConfiguration.BuildSystem">0</value>
+    <value type="int" key="ROSProjectManager.ROSBuildConfiguration.BuildSystem">1</value>
     <value type="int" key="ROSProjectManager.ROSBuildConfiguration.CMakeBuildType">0</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.1">

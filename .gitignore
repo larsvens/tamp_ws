@@ -1,8 +1,11 @@
 # ignore external packages
 **/catkin_simple/
+**/fssim/
 
 # ignore generated code
 **/rtisqp_export/
+**/.catkin_tools/
+
 
 # QT project files
 TAMP.workspace*

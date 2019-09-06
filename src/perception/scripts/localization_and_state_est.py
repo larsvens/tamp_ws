@@ -6,7 +6,7 @@ import numpy as np
 import rospy
 from common.msg import State
 from common.msg import VehicleOut
-from common.msg import PathLocal
+from common.msg import Path
 from common.msg import DynamicVehicleParams
 from common.msg import StaticVehicleParams
 
@@ -17,7 +17,7 @@ class LocAndStateEst:
     def __init__(self):
         # init node subs pubs
         rospy.init_node('loc_est', anonymous=True)
-        self.pathlocalpub = rospy.Publisher('pathlocal', PathLocal, queue_size=10)
+        self.pathlocalpub = rospy.Publisher('pathlocal', Path, queue_size=10)
         self.dynamic_param_pub = rospy.Publisher('dynamic_vehicle_params', DynamicVehicleParams, queue_size=10)
         self.statepub = rospy.Publisher('state', State, queue_size=10)
         self.vehicle_out_sub = rospy.Subscriber("vehicle_out", VehicleOut, self.vehicle_out_callback)
@@ -30,7 +30,7 @@ class LocAndStateEst:
 
         # init local vars
         self.loadPathGlobalFromFile()
-        self.pathlocal = PathLocal()
+        self.pathlocal = Path()
         self.state = State()
         self.vehicle_out = VehicleOut()
         

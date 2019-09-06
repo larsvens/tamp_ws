@@ -1,6 +1,7 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
-#include <common/PathLocal.h>
+#include "visualization_msgs/MarkerArray.h"
+#include <common/Path.h>
 #include <common/Obstacles.h>
 #include <common/Trajectory.h>
 #include <common/State.h>
@@ -21,7 +22,7 @@ public:
         // pubs & subs
         trajhat_pub_ = nh.advertise<common::Trajectory>("trajhat",1);
         trajstar_pub_ = nh.advertise<common::Trajectory>("trajstar",1);
-        //trajset_pub_ = nh.advertise<common::TrajectorySet>("trajset",1);
+        trajset_ma_pub_ = nh.advertise<visualization_msgs::MarkerArray>("trajset_ma",1);
         pathlocal_sub_ = nh.subscribe("pathlocal", 1, &SAARTI::pathlocal_callback,this);
         obstacles_sub_ = nh.subscribe("obstacles", 1, &SAARTI::obstacles_callback,this);
         state_sub_ = nh.subscribe("state", 1,  &SAARTI::state_callback,this);
@@ -80,7 +81,7 @@ public:
             rtisqp_wrapper_.setInitialState(state_);
 
             // set initial guess and shift fwd
-            ROS_INFO_STREAM("setting trajstar as initial guess..");
+            ROS_INFO_STREAM("setting initial guess..");
             rtisqp_wrapper_.setInitialGuess(trajhat);
             //rtisqp_wrapper_.shiftStateAndControls();
 
@@ -157,6 +158,9 @@ public:
             common::Trajectory trajstar_msg = traj2msg(trajstar);
             trajstar_msg.header.stamp = ros::Time::now();
             trajstar_pub_.publish(trajstar_msg);
+
+            // publish trajset visualization
+            trajset_ma_pub_.publish(trajset_ma);
 
             // store fwd shifted trajstar for next iteration
             trajstar_last = trajstar;
@@ -280,6 +284,22 @@ public:
         return trajmsg;
     }
 
+    // computes marker array representing the trajset
+    void trajset2ma(){
+        trajset_ma.markers.clear();
+        for(uint i=0; i<trajset_.size();i++){
+            planning_util::trajstruct traj = trajset_.at(i);
+            for (uint j=0; j<traj.X.size();i++){ // todo don't use all pts but make sure to use first and last
+                visualization_msgs::Marker m;
+                m.header.frame_id = "map";
+                m.type = m.CUBE;
+                m.pose.position.x = double(traj.X.at(j));
+                m.pose.position.y = double(traj.Y.at(j));
+                trajset_ma.markers.push_back(m);
+            }
+        }
+    }
+
     void state_callback(const common::State::ConstPtr& msg){
         state_.s = msg->s;
         state_.d = msg->d;
@@ -289,7 +309,7 @@ public:
         state_.vy = msg->vy;
     }
 
-    void pathlocal_callback(const common::PathLocal::ConstPtr& msg){
+    void pathlocal_callback(const common::Path::ConstPtr& msg){
         pathlocal_.X = msg->X;
         pathlocal_.Y = msg->Y;
         pathlocal_.s = msg->s;
@@ -316,12 +336,14 @@ private:
     ros::Subscriber state_sub_;
     ros::Publisher trajstar_pub_;
     ros::Publisher trajhat_pub_;
+    ros::Publisher trajset_ma_pub_;
     planning_util::statestruct state_;
     planning_util::pathstruct pathlocal_;
     std::vector<planning_util::trajstruct> trajset_;
     planning_util::obstastruct obst_;
     planning_util::refstruct refs_;
     RtisqpWrapper rtisqp_wrapper_;
+    visualization_msgs::MarkerArray trajset_ma;
 
     // weights
     std::vector<double> Wx{10.0, 1.0, 1.0, 0.01, 0.01, 0.01};
