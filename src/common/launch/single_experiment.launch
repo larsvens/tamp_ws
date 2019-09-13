@@ -17,6 +17,6 @@
 
      <!-- planner and control interface node -->
      <!-- <node pkg="planning" type="motionplanner_node" name="saasqp"> </node> -->
-     <node pkg="planning" type="ctrl_interface.py" name="ctrl_interface"> </node>
+     <node pkg="common" type="ctrl_interface.py" name="ctrl_interface"> </node>
 
 </launch>

@@ -1,7 +1,7 @@
 // Keep this general. Clean out ros stuff and problem specific things
 
 
-#include "planning/rtisqp_wrapper.h"
+#include "saarti/rtisqp_wrapper.h"
 
 
 
@@ -264,6 +264,26 @@ Eigen::MatrixXd RtisqpWrapper::getControlTrajectory(){
         Xstaru(1,k) = acadoVariables.u[k * NU + 1];
     }
     return Xstaru;
+}
+
+planning_util::trajstruct RtisqpWrapper::getTrajectory(){
+    planning_util::trajstruct traj_out;
+    // state
+    for (uint k = 0; k < N + 1; ++k){
+        traj_out.s.at(k) = float(acadoVariables.x[k * NX + 0]); // s
+        traj_out.d.at(k) = float(acadoVariables.x[k * NX + 1]);
+        traj_out.deltapsi.at(k) = float(acadoVariables.x[k * NX + 2]);
+        traj_out.psidot.at(k) = float(acadoVariables.x[k * NX + 3]);
+        traj_out.vx.at(k) = float(acadoVariables.x[k * NX + 4]);
+        traj_out.vy.at(k) = float(acadoVariables.x[k * NX + 5]);
+    }
+    // ctrl
+    for (uint k = 0; k < N; ++k){
+        traj_out.Fyf.at(k) = float(acadoVariables.u[k * NU + 0]);
+        traj_out.Fx.at(k) = float(acadoVariables.u[k * NU + 1]);
+    }
+
+    return traj_out;
 }
 
 bool RtisqpWrapper::computeTrajset(std::vector<planning_util::trajstruct> &trajset,

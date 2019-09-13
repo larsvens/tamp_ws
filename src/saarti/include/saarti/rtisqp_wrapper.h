@@ -60,6 +60,7 @@ public:
     int  doFeedbackStep();
     Eigen::MatrixXd getStateTrajectory();
     Eigen::MatrixXd getControlTrajectory();
+    planning_util::trajstruct getTrajectory();
     bool computeTrajset(std::vector<planning_util::trajstruct> &trajset,
                         planning_util::statestruct &state,
                         planning_util::pathstruct &pathlocal,

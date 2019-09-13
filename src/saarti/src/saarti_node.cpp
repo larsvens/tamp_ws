@@ -6,7 +6,7 @@
 #include <common/Trajectory.h>
 #include <common/State.h>
 #include <sstream>
-#include "planning/rtisqp_wrapper.h"
+#include "saarti/rtisqp_wrapper.h"
 
 #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant" // supress warning at ros prints
 
@@ -112,38 +112,42 @@ public:
             Eigen::MatrixXd Xstaru = rtisqp_wrapper_.getControlTrajectory();
 
             // set trajstar
-            planning_util::trajstruct trajstar;
-            std::vector<float> Xstar_s;
-            for (uint k = 0; k < N+1; ++k){
-                Xstar_s.push_back(float(Xstarx(0,k)));
-            }
-            std::vector<float> Xc = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.X,false);
-            std::vector<float> Yc = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.Y,false);
-            std::vector<float> psic = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.psi_c,false);
-            trajstar.kappac = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.kappa_c,false);
 
-            for (uint k = 0; k < N+1; ++k){
-                // states
-                trajstar.s.push_back(float(Xstarx(0,k)));
-                trajstar.d.push_back(float(Xstarx(1,k)));
-                trajstar.deltapsi.push_back(float(Xstarx(2,k)));
-                trajstar.psidot.push_back(float(Xstarx(3,k)));
-                trajstar.vx.push_back(float(Xstarx(4,k)));
-                trajstar.vy.push_back(float(Xstarx(5,k)));
+            planning_util::trajstruct trajstar = rtisqp_wrapper_.getTrajectory();
 
-                // cartesian pose
-                trajstar.X.push_back(Xc.at(k) - trajstar.d.at(k)*std::sin(psic.at(k)));
-                trajstar.Y.push_back(Yc.at(k) + trajstar.d.at(k)*std::cos(psic.at(k)));
-                trajstar.psi.push_back(psic.at(k) + trajstar.deltapsi.at(k));
+//            planning_util::trajstruct trajstar;
 
-                // forces (we have N+1 states but only N controls)
-                if(k < N){
-                    trajstar.Fyf.push_back(float(Xstaru(0,k)));
-                    trajstar.Fx.push_back(float(Xstaru(1,k)));
-                    //trajstar_msg.Fxf.push_back(0.5f*trajstar_msg.Fx.at(k));
-                    //trajstar_msg.Fxr.push_back(0.5f*trajstar_msg.Fx.at(k));
-                }
-            }
+//            std::vector<float> Xstar_s;
+//            for (uint k = 0; k < N+1; ++k){
+//                Xstar_s.push_back(float(Xstarx(0,k)));
+//            }
+//            std::vector<float> Xc = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.X,false);
+//            std::vector<float> Yc = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.Y,false);
+//            std::vector<float> psic = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.psi_c,false);
+//            trajstar.kappac = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.kappa_c,false);
+
+//            for (uint k = 0; k < N+1; ++k){
+//                // states
+//                trajstar.s.push_back(float(Xstarx(0,k)));
+//                trajstar.d.push_back(float(Xstarx(1,k)));
+//                trajstar.deltapsi.push_back(float(Xstarx(2,k)));
+//                trajstar.psidot.push_back(float(Xstarx(3,k)));
+//                trajstar.vx.push_back(float(Xstarx(4,k)));
+//                trajstar.vy.push_back(float(Xstarx(5,k)));
+
+//                // cartesian pose
+//                trajstar.X.push_back(Xc.at(k) - trajstar.d.at(k)*std::sin(psic.at(k)));
+//                trajstar.Y.push_back(Yc.at(k) + trajstar.d.at(k)*std::cos(psic.at(k)));
+//                trajstar.psi.push_back(psic.at(k) + trajstar.deltapsi.at(k));
+
+//                // forces (we have N+1 states but only N controls)
+//                if(k < N){
+//                    trajstar.Fyf.push_back(float(Xstaru(0,k)));
+//                    trajstar.Fx.push_back(float(Xstaru(1,k)));
+//                    //trajstar_msg.Fxf.push_back(0.5f*trajstar_msg.Fx.at(k));
+//                    //trajstar_msg.Fxr.push_back(0.5f*trajstar_msg.Fx.at(k));
+//                }
+//            }
 
             // publish trajhat
             common::Trajectory trajhat_msg = traj2msg(trajhat);
@@ -192,9 +196,11 @@ public:
     }
 
     // computes cartesian coordinates of a trajectory
-    void trajset2cart(){
-        for (uint i=0;i<trajset_.size();i++) {
-            planning_util::trajstruct traj = trajset_.at(i);
+    void traj2cart(planning_util::trajstruct &traj){
+        if(!traj.s.size()){
+            ROS_ERROR("traj2cart on traj of 0 length");
+        }
+        else {
             std::vector<float> Xc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.X,false);
             std::vector<float> Yc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.Y,false);
             std::vector<float> psic = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.psi_c,false);
@@ -210,6 +216,13 @@ public:
                 traj.Y.push_back(Y);
                 traj.psi.push_back(psi);
             }
+        }
+    }
+
+    // computes cartesian coordinates of a trajectory set
+    void trajset2cart(){
+        for (uint i=0;i<trajset_.size();i++) {
+            traj2cart(trajset_.at(i));
         }
     }
 
