@@ -52,6 +52,9 @@ bool RtisqpWrapper::setWeights(std::vector<double> Wx, std::vector<double> Wu, d
 
 bool RtisqpWrapper::setInitialGuess(planning_util::trajstruct traj){
     // set state trajectory guess
+    if(traj.s.size() != N+1){
+        throw std::invalid_argument("faulty state trajectory in setInitialGuess");
+    }
     for (uint k = 0; k < N + 1; ++k)
     {
         acadoVariables.x[k * NX + 0] = double(traj.s.at(k)); // s
@@ -64,6 +67,9 @@ bool RtisqpWrapper::setInitialGuess(planning_util::trajstruct traj){
     }
 
     // set kappac
+    if(traj.kappac.size() != N+1){
+        throw std::invalid_argument("faulty kappa_c in setInitialGuess");
+    }
     for (uint k = 0; k < N + 1; ++k)
     {
         acadoVariables.od[k * NOD + 0] = double(traj.kappac.at(k));
@@ -210,6 +216,9 @@ bool RtisqpWrapper::shiftStateAndControls(){
 bool RtisqpWrapper::shiftTrajectoryFwdSimple(planning_util::trajstruct &traj){
     // will shift all states fwd except the final one that is duplicated
     for (uint k = 0; k < N-1; ++k){
+        if(!traj.s.size()){
+            throw std::invalid_argument("trying to shift empty trajectory");
+        }
         // state
         traj.s.at(k) = traj.s.at(k+1);
         traj.d.at(k) = traj.d.at(k+1);
@@ -221,6 +230,9 @@ bool RtisqpWrapper::shiftTrajectoryFwdSimple(planning_util::trajstruct &traj){
         traj.Fyf.at(k) = traj.Fyf.at(k+1);
         traj.Fx.at(k) = traj.Fx.at(k+1);
         // cartesian pose
+        if(!traj.X.size()){
+            throw std::invalid_argument("no cartesian poses to shift");
+        }
         traj.X.at(k) = traj.X.at(k+1);
         traj.Y.at(k) = traj.Y.at(k+1);
         traj.psi.at(k) = traj.psi.at(k+1);
@@ -270,19 +282,18 @@ planning_util::trajstruct RtisqpWrapper::getTrajectory(){
     planning_util::trajstruct traj_out;
     // state
     for (uint k = 0; k < N + 1; ++k){
-        traj_out.s.at(k) = float(acadoVariables.x[k * NX + 0]); // s
-        traj_out.d.at(k) = float(acadoVariables.x[k * NX + 1]);
-        traj_out.deltapsi.at(k) = float(acadoVariables.x[k * NX + 2]);
-        traj_out.psidot.at(k) = float(acadoVariables.x[k * NX + 3]);
-        traj_out.vx.at(k) = float(acadoVariables.x[k * NX + 4]);
-        traj_out.vy.at(k) = float(acadoVariables.x[k * NX + 5]);
+        traj_out.s.push_back(float(acadoVariables.x[k * NX + 0])); // s
+        traj_out.d.push_back(float(acadoVariables.x[k * NX + 1]));
+        traj_out.deltapsi.push_back(float(acadoVariables.x[k * NX + 2]));
+        traj_out.psidot.push_back(float(acadoVariables.x[k * NX + 3]));
+        traj_out.vx.push_back(float(acadoVariables.x[k * NX + 4]));
+        traj_out.vy.push_back(float(acadoVariables.x[k * NX + 5]));
     }
     // ctrl
     for (uint k = 0; k < N; ++k){
-        traj_out.Fyf.at(k) = float(acadoVariables.u[k * NU + 0]);
-        traj_out.Fx.at(k) = float(acadoVariables.u[k * NU + 1]);
+        traj_out.Fyf.push_back(float(acadoVariables.u[k * NU + 0]));
+        traj_out.Fx.push_back(float(acadoVariables.u[k * NU + 1]));
     }
-
     return traj_out;
 }
 

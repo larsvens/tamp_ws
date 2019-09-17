@@ -83,6 +83,7 @@ public:
             // set initial guess and shift fwd
             ROS_INFO_STREAM("setting initial guess..");
             rtisqp_wrapper_.setInitialGuess(trajhat);
+            //print_obj(trajhat);
             //rtisqp_wrapper_.shiftStateAndControls();
 
             // set refs in solver
@@ -107,47 +108,9 @@ public:
                 break;
             }
 
-            // extract state and control trajs from acado
-            Eigen::MatrixXd Xstarx = rtisqp_wrapper_.getStateTrajectory();
-            Eigen::MatrixXd Xstaru = rtisqp_wrapper_.getControlTrajectory();
-
-            // set trajstar
-
+            // extract trajstar from acado
             planning_util::trajstruct trajstar = rtisqp_wrapper_.getTrajectory();
-
-//            planning_util::trajstruct trajstar;
-
-//            std::vector<float> Xstar_s;
-//            for (uint k = 0; k < N+1; ++k){
-//                Xstar_s.push_back(float(Xstarx(0,k)));
-//            }
-//            std::vector<float> Xc = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.X,false);
-//            std::vector<float> Yc = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.Y,false);
-//            std::vector<float> psic = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.psi_c,false);
-//            trajstar.kappac = cpp_utils::interp(Xstar_s,pathlocal_.s,pathlocal_.kappa_c,false);
-
-//            for (uint k = 0; k < N+1; ++k){
-//                // states
-//                trajstar.s.push_back(float(Xstarx(0,k)));
-//                trajstar.d.push_back(float(Xstarx(1,k)));
-//                trajstar.deltapsi.push_back(float(Xstarx(2,k)));
-//                trajstar.psidot.push_back(float(Xstarx(3,k)));
-//                trajstar.vx.push_back(float(Xstarx(4,k)));
-//                trajstar.vy.push_back(float(Xstarx(5,k)));
-
-//                // cartesian pose
-//                trajstar.X.push_back(Xc.at(k) - trajstar.d.at(k)*std::sin(psic.at(k)));
-//                trajstar.Y.push_back(Yc.at(k) + trajstar.d.at(k)*std::cos(psic.at(k)));
-//                trajstar.psi.push_back(psic.at(k) + trajstar.deltapsi.at(k));
-
-//                // forces (we have N+1 states but only N controls)
-//                if(k < N){
-//                    trajstar.Fyf.push_back(float(Xstaru(0,k)));
-//                    trajstar.Fx.push_back(float(Xstaru(1,k)));
-//                    //trajstar_msg.Fxf.push_back(0.5f*trajstar_msg.Fx.at(k));
-//                    //trajstar_msg.Fxr.push_back(0.5f*trajstar_msg.Fx.at(k));
-//                }
-//            }
+            traj2cart(trajstar);
 
             // publish trajhat
             common::Trajectory trajhat_msg = traj2msg(trajhat);
@@ -162,12 +125,12 @@ public:
             common::Trajectory trajstar_msg = traj2msg(trajstar);
             trajstar_msg.header.stamp = ros::Time::now();
             trajstar_pub_.publish(trajstar_msg);
-
             // publish trajset visualization
             trajset_ma_pub_.publish(trajset_ma);
 
             // store fwd shifted trajstar for next iteration
             trajstar_last = trajstar;
+
             rtisqp_wrapper_.shiftTrajectoryFwdSimple(trajstar_last);
 
             // print loop time
@@ -177,6 +140,24 @@ public:
             ros::spinOnce();
             loop_rate.sleep();
         }
+    }
+
+    // print size of object for debugging
+    void print_obj(planning_util::trajstruct traj){
+        // state
+        std::cout << "length of s: " << traj.s.size() << std::endl;
+        std::cout << "length of d: " << traj.d.size() << std::endl;
+        std::cout << "length of deltapsi: " << traj.deltapsi.size() << std::endl;
+        std::cout << "length of psidot: " << traj.psidot.size() << std::endl;
+        std::cout << "length of vx: " << traj.vx.size() << std::endl;
+        std::cout << "length of vy: " << traj.vy.size() << std::endl;
+        // control
+        std::cout << "length of Fyf: " << traj.Fyf.size() << std::endl;
+        std::cout << "length of Fx: " << traj.Fx.size() << std::endl;
+        // cartesian pose
+        std::cout << "length of X: " << traj.X.size() << std::endl;
+        std::cout << "length of Y: " << traj.Y.size() << std::endl;
+        std::cout << "length of psi: " << traj.psi.size() << std::endl;
     }
 
     // sets refs to be used in rollout and optimization
@@ -204,7 +185,6 @@ public:
             std::vector<float> Xc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.X,false);
             std::vector<float> Yc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.Y,false);
             std::vector<float> psic = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.psi_c,false);
-
             for (uint j=0; j<traj.s.size();j++) {
                 // X = Xc - d*sin(psic);
                 // Y = Yc + d*cos(psic);
@@ -216,6 +196,7 @@ public:
                 traj.Y.push_back(Y);
                 traj.psi.push_back(psi);
             }
+            traj.kappac = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.kappa_c,false);
         }
     }
 
