@@ -2,8 +2,8 @@
 t_final:             30.0
 do_liveplot:         true
 save_logfile:        true
-log_filepath:        /home/larsvens/ros/tamp__ws/src/common/logs/log_latest.npy
-pathglobal_filepath: /home/larsvens/ros/tamp__ws/src/perception/data/pathglobal.npy
+log_filepath:        /home/larsvens/ros/tamp__ws/src/saarti/common/logs/log_latest.npy
+pathglobal_filepath: /home/larsvens/ros/tamp__ws/src/saarti/perception/data/pathglobal.npy
 
 # initial state
 

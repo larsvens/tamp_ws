@@ -47,7 +47,7 @@ public:
         while (ros::ok())
         {
             std::cout << std::endl;
-            ROS_INFO_STREAM("main loop");
+            ROS_INFO_STREAM("main_ loop_");
             ros::Time t_start = ros::Time::now();
 
             // update adaptive constraints
