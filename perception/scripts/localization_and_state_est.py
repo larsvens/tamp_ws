@@ -1,16 +1,25 @@
 #!/usr/bin/env python
 
 # Descrition: Publishes state, local path and dynamic params
+# inputs:
+# state from fssim (topic /fssim/base_pose_ground_truth)
+# global path from track interface (topic pathglobal)
+# outputs: 
+# /state (cartesian + frenet)
+# /pathlocal
+# + rviz visualizations
 
 import numpy as np
 import rospy
 from common.msg import State
-from common.msg import VehicleOut
+#from common.msg import VehicleOut
 from common.msg import Path
 from common.msg import DynamicVehicleParams
 from common.msg import StaticVehicleParams
-
 from coordinate_transforms import ptsCartesianToFrenet
+from fssim_common.msg import State as fssimState
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Path as navPath
 
 class LocAndStateEst:
     # constructor
@@ -18,13 +27,19 @@ class LocAndStateEst:
         # init node subs pubs
         rospy.init_node('loc_est', anonymous=True)
         self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
-        self.vehicle_out_sub = rospy.Subscriber("vehicle_out", VehicleOut, self.vehicle_out_callback)
-        self.pathlocalpub = rospy.Publisher('pathlocal', Path, queue_size=10)
+        self.vehicle_out_sub = rospy.Subscriber("/fssim/base_pose_ground_truth", fssimState, self.vehicle_out_callback)
         self.dynamic_param_pub = rospy.Publisher('dynamic_vehicle_params', DynamicVehicleParams, queue_size=10)
         self.statepub = rospy.Publisher('state', State, queue_size=10)
+        self.pathlocalpub = rospy.Publisher('pathlocal', Path, queue_size=10)
+        self.pathlocalvispub = rospy.Publisher('pathlocal_vis', navPath, queue_size=10)
 
+        # node params
         self.dt = 0.1
         self.rate = rospy.Rate(1/self.dt) # 10hz
+        
+        # params of local path
+        self.N = 200
+        self.ds = 0.5
 
         # set static vehicle params
         self.setStaticParams()
@@ -33,7 +48,7 @@ class LocAndStateEst:
         self.pathglobal = Path()
         self.pathlocal = Path()
         self.state = State()
-        self.vehicle_out = VehicleOut()
+        self.vehicle_out = fssimState()
         
         # init dynamic params    
         self.dynamic_params = DynamicVehicleParams()
@@ -45,15 +60,20 @@ class LocAndStateEst:
         self.dynamic_params.theta = 0.0
         self.dynamic_params.phi = 0.0
         
+        # msg receive checks
+        self.received_pathglobal = False
+        self.received_vehicle_out = False
+        
         # wait for messages before entering main loop
-        while(not self.pathglobal.s):
-            print("waiting for pathglobal")
+        while(not self.received_pathglobal):
+            print "locandstateest: waiting for pathglobal"
             self.rate.sleep()
         
-        while(not self.vehicle_out.X):
-            print("waiting for vehicle_out")
+        while(not self.received_vehicle_out):
+            print "locandstateest: waiting for vehicle_out"
             self.rate.sleep()
 
+        print "locandstateest: running main"
         # Main loop
         while not rospy.is_shutdown():
 
@@ -65,20 +85,32 @@ class LocAndStateEst:
             self.updateLocalPath()
             self.pathlocal.header.stamp = rospy.Time.now()
             self.pathlocalpub.publish(self.pathlocal)
+            
+            # visualize local path in rviz
+            pathlocal_vis = navPath()
+            pathlocal_vis.header.stamp = rospy.Time.now()
+            pathlocal_vis.header.frame_id = "map"
+            for i in range(self.N):
+                pose = PoseStamped()
+                pose.header.stamp = rospy.Time.now()
+                pose.header.frame_id = "map"
+                pose.pose.position.x = self.pathlocal.X[i]
+                pose.pose.position.y = self.pathlocal.Y[i]       
+                pathlocal_vis.poses.append(pose)
+            self.pathlocalvispub.publish(pathlocal_vis)
 
             # compute vehicle state from vehicle_out info
             self.updateState()
             self.statepub.publish(self.state)
 
-
             self.rate.sleep()          
 
 
     def updateState(self):
-        self.state.X = self.vehicle_out.X
-        self.state.Y = self.vehicle_out.Y
-        self.state.psi = self.vehicle_out.psi
-        self.state.psidot = self.vehicle_out.psidot
+        self.state.X = self.vehicle_out.x
+        self.state.Y = self.vehicle_out.y
+        self.state.psi = self.vehicle_out.yaw
+        self.state.psidot = self.vehicle_out.r
         self.state.vx = self.vehicle_out.vx
         self.state.vy = self.vehicle_out.vy
 
@@ -93,28 +125,19 @@ class LocAndStateEst:
         self.state.d = d[0]
         psi_c = np.interp(s,self.pathlocal.s,self.pathlocal.psi_c)
         self.state.deltapsi = self.state.psi - psi_c
-        self.state.ax = self.vehicle_out.ax
-        self.state.ay = self.vehicle_out.ay
-
-
-
-#    def loadPathGlobalFromFile(self):
-#        pathglobal_filepath = rospy.get_param('/pathglobal_filepath')
-#        pathglobal_npy = np.load(pathglobal_filepath,allow_pickle=True)
-#        self.pathglobal = pathglobal_npy.item()
 
 
     def updateLocalPath(self):
         # todo make sure s is continous when running several laps
         
         # define length of local path and params for interp
-        N = 200
-        ds = 0.5
-        stot = N*ds
+        #N = 200
+        #ds = 0.5
+        stot = self.N*self.ds
         smin = self.state.s - 1
         smax = smin+stot
         
-        s = np.linspace(smin,smax,N)
+        s = np.linspace(smin,smax,self.N)
         
         # interpolate on global path
         self.pathlocal.X =              np.interp(s,self.pathglobal.s,self.pathglobal.X)
@@ -145,9 +168,11 @@ class LocAndStateEst:
         
     def pathglobal_callback(self, msg):
         self.pathglobal = msg
+        self.received_pathglobal = True
     
     def vehicle_out_callback(self, msg):
         self.vehicle_out = msg
+        self.received_vehicle_out = True
 
 if __name__ == '__main__':
     lse = LocAndStateEst()
