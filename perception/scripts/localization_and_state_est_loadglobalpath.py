@@ -17,11 +17,10 @@ class LocAndStateEst:
     def __init__(self):
         # init node subs pubs
         rospy.init_node('loc_est', anonymous=True)
-        self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
-        self.vehicle_out_sub = rospy.Subscriber("vehicle_out", VehicleOut, self.vehicle_out_callback)
         self.pathlocalpub = rospy.Publisher('pathlocal', Path, queue_size=10)
         self.dynamic_param_pub = rospy.Publisher('dynamic_vehicle_params', DynamicVehicleParams, queue_size=10)
         self.statepub = rospy.Publisher('state', State, queue_size=10)
+        self.vehicle_out_sub = rospy.Subscriber("vehicle_out", VehicleOut, self.vehicle_out_callback)
 
         self.dt = 0.1
         self.rate = rospy.Rate(1/self.dt) # 10hz
@@ -30,7 +29,7 @@ class LocAndStateEst:
         self.setStaticParams()
 
         # init local vars
-        self.pathglobal = Path()
+        self.loadPathGlobalFromFile()
         self.pathlocal = Path()
         self.state = State()
         self.vehicle_out = VehicleOut()
@@ -46,10 +45,6 @@ class LocAndStateEst:
         self.dynamic_params.phi = 0.0
         
         # wait for messages before entering main loop
-        while(not self.pathglobal.s):
-            print("waiting for pathglobal")
-            self.rate.sleep()
-        
         while(not self.vehicle_out.X):
             print("waiting for vehicle_out")
             self.rate.sleep()
@@ -98,34 +93,31 @@ class LocAndStateEst:
 
 
 
-#    def loadPathGlobalFromFile(self):
-#        pathglobal_filepath = rospy.get_param('/pathglobal_filepath')
-#        pathglobal_npy = np.load(pathglobal_filepath,allow_pickle=True)
-#        self.pathglobal = pathglobal_npy.item()
+    def loadPathGlobalFromFile(self):
+        pathglobal_filepath = rospy.get_param('/pathglobal_filepath')
+        pathglobal_npy = np.load(pathglobal_filepath,allow_pickle=True)
+        self.pathglobal = pathglobal_npy.item()
 
 
     def updateLocalPath(self):
         # todo make sure s is continous when running several laps
         
         # define length of local path and params for interp
-        N = 200
-        ds = 0.5
-        stot = N*ds
         smin = self.state.s - 1
-        smax = smin+stot
-        
+        smax = smin+300
+        N = 200
         s = np.linspace(smin,smax,N)
         
         # interpolate on global path
-        self.pathlocal.X =              np.interp(s,self.pathglobal.s,self.pathglobal.X)
-        self.pathlocal.Y =              np.interp(s,self.pathglobal.s,self.pathglobal.Y)
+        self.pathlocal.X =              np.interp(s,self.pathglobal['s'],self.pathglobal['X'])
+        self.pathlocal.Y =              np.interp(s,self.pathglobal['s'],self.pathglobal['Y'])
         self.pathlocal.s =              s
-        self.pathlocal.psi_c =          np.interp(s,self.pathglobal.s,self.pathglobal.psi_c)
-        self.pathlocal.theta_c =        np.interp(s,self.pathglobal.s,self.pathglobal.theta_c)
-        self.pathlocal.kappa_c =        np.interp(s,self.pathglobal.s,self.pathglobal.kappa_c)
-        self.pathlocal.kappaprime_c =   np.interp(s,self.pathglobal.s,self.pathglobal.kappaprime_c)
-        self.pathlocal.dub =            np.interp(s,self.pathglobal.s,self.pathglobal.dub)
-        self.pathlocal.dlb =            np.interp(s,self.pathglobal.s,self.pathglobal.dlb)
+        self.pathlocal.psi_c =          np.interp(s,self.pathglobal['s'],self.pathglobal['psi_c'])
+        self.pathlocal.theta_c =        np.interp(s,self.pathglobal['s'],self.pathglobal['theta_c'])
+        self.pathlocal.kappa_c =        np.interp(s,self.pathglobal['s'],self.pathglobal['kappa_c'])
+        self.pathlocal.kappaprime_c =   np.interp(s,self.pathglobal['s'],self.pathglobal['kappaprime_c'])
+        self.pathlocal.dub =            np.interp(s,self.pathglobal['s'],self.pathglobal['dub'])
+        self.pathlocal.dlb =            np.interp(s,self.pathglobal['s'],self.pathglobal['dlb'])
         
 
     def setStaticParams(self):
@@ -143,9 +135,6 @@ class LocAndStateEst:
         self.sp.deltamin = rospy.get_param('/deltamin')
         self.sp.deltamax = rospy.get_param('/deltamax')
         
-    def pathglobal_callback(self, msg):
-        self.pathglobal = msg
-    
     def vehicle_out_callback(self, msg):
         self.vehicle_out = msg
 
