@@ -300,16 +300,8 @@ planning_util::trajstruct RtisqpWrapper::getTrajectory(){
 bool RtisqpWrapper::computeTrajset(std::vector<planning_util::trajstruct> &trajset,
                                    planning_util::statestruct &state,
                                    planning_util::pathstruct &pathlocal,
-                                   uint Ntrajs){
-
-
-    // try making state constant
-//    state.s =        1.51716;
-//    state.d =        0.294299;
-//    state.deltapsi = -0.0782042;
-//    state.psidot =   0.00001;
-//    state.vx =       0.00001;
-//    state.vy =       0.00001;
+                                   uint Ntrajs,
+                                   uint ctrl_mode){
 
     // debug input state
     std::cout << "debug comptrajeset: state: " << std::endl;
@@ -320,39 +312,41 @@ bool RtisqpWrapper::computeTrajset(std::vector<planning_util::trajstruct> &trajs
     std::cout << "state.vx =       " << state.vx << std::endl;
     std::cout << "state.vy =       " << state.vy << std::endl;
 
-    // TODO FIX INSTABILITY IN INTEGRATOR
-
     // todo input Fh_MAX
     float Fyfmax = 1000;
-    float Fxmax = 1000;
+    float Fxmax = 2000;
 
     // mode 0 input sampling
     std::vector<float> Fyf_vec;
     std::vector<float> Fx_vec;
-    float angle = -float(M_PI);
-    float step = 2*float(M_PI)/Ntrajs;
+    float angle = 0;
+    if(ctrl_mode==2){
+        angle = -float(M_PI/2.0);
+    } else {
+        angle = float(M_PI/2.0);
+    }
+
+
+    float step = float(M_PI)/Ntrajs;
     for (uint i=0;i<Ntrajs;i++) {
         Fyf_vec.push_back(Fyfmax*sin(angle));
         Fx_vec.push_back(Fxmax*cos(angle));
-
-        //std::cout << "angle = " << angle << std::endl;
-        //std::cout << "Fyf = " << Fyfmax*sin(angle) << std::endl;
-        //std::cout << "Fx = " << Fxmax*cos(angle) << std::endl;
-
+        std::cout << "angle = " << angle << std::endl;
+        std::cout << "Fyf = " << Fyfmax*sin(angle) << std::endl;
+        std::cout << "Fx = " << Fxmax*cos(angle) << std::endl;
         angle += step;
-
     }
 
 
 
     for (uint i=0;i<Ntrajs;i++) {
 
-        //float Fyf = Fyf_vec.at(i);
-        //float Fx = Fx_vec.at(i);
+        float Fyf = Fyf_vec.at(i);
+        float Fx = Fx_vec.at(i);
 
         // TMP for finalizing fssim integration
-        float Fyf = 0;
-        float Fx = 1000;
+        //float Fyf = 0;
+        //float Fx = 1000;
 
         // input initial state and control on integrator format
         real_t acadoWSstate[85];

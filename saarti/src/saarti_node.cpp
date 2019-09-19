@@ -61,12 +61,13 @@ public:
             rtisqp_wrapper_.setInputConstraints(1.0,1000);
 
             // set refs
-            refs_ = setRefs(2); // 0: tracking(unused todo remove), 1: min s, 2: max s,
+            refs_ = setRefs(ctrl_mode_); // 0: tracking(unused todo remove), 1: min s, 2: max s,
 
             // rollout
             ROS_INFO_STREAM("generating trajectory set");
             trajset_.clear();
-            rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,1);
+            int Nsamples = 16;
+            rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,uint(Nsamples),ctrl_mode_);
             if(trajstar_last.s.size()>0){ // append trajstar last
                 trajset_.push_back(trajstar_last);
             }
@@ -77,14 +78,15 @@ public:
             int trajhat_idx = trajset_eval_cost(); // error if negative
             std::cout << "TMP! forcing trajhat idx for now" << std::endl;
 
-            // TMP UNTIL FINISHED FSSIM INTEGRATION
-            std::cout << " trajset_.size(): " << trajset_.size() << std::endl;
-            //trajhat_idx = 0;
-            if(trajstar_last.s.size()>0){
-                trajhat_idx = 1; // select trajstarlast
-            } else {
-                trajhat_idx = 0; // select the single sampled traj
-            }
+//            // TMP UNTIL FINISHED FSSIM INTEGRATION
+//            std::cout << " trajset_.size(): " << trajset_.size() << std::endl;
+//            //trajhat_idx = 0;
+//            if(trajstar_last.s.size()>0){
+//                trajhat_idx = Nsamples + 1; // select trajstarlast
+//            }
+//            else {
+//                trajhat_idx = 8; // select the single sampled traj
+//            }
 
             planning_util::trajstruct trajhat;
             if(trajhat_idx >= 0){
@@ -188,7 +190,7 @@ public:
     }
 
     // sets refs to be used in rollout and optimization
-    planning_util::refstruct setRefs(int ctrlmode){
+    planning_util::refstruct setRefs(uint ctrlmode){
         planning_util::refstruct refs;
         switch (ctrlmode) {
         case 1:  // minimize vx (emg brake)
@@ -364,9 +366,9 @@ public:
                 m.pose.position.y = double(traj.Y.at(j));
                 // style
                 m.type = m.CUBE;
-                m.scale.x = 1;
-                m.scale.y = 1;
-                m.scale.z = 1;
+                m.scale.x = 0.1;
+                m.scale.y = 0.1;
+                m.scale.z = 0.01;
                 m.color.a = 1.0;
                 m.color.r = 0.0;
                 m.color.g = 1.0;
@@ -455,6 +457,8 @@ private:
     RtisqpWrapper rtisqp_wrapper_;
     visualization_msgs::MarkerArray trajset_ma_;
 
+    // modes
+    uint ctrl_mode_ = 2; // 0: tracking(unused todo remove), 1: min s, 2: max s,
 
     // weights
     std::vector<double> Wx{10.0, 1.0, 1.0, 0.01, 0.01, 0.01};

@@ -64,6 +64,7 @@ public:
     bool computeTrajset(std::vector<planning_util::trajstruct> &trajset,
                         planning_util::statestruct &state,
                         planning_util::pathstruct &pathlocal,
-                        uint Ntrajs);
+                        uint Ntrajs,
+                        uint ctrl_mode);
 };
 
