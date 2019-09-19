@@ -7,9 +7,8 @@
 import numpy as np
 import rospy
 from common.msg import Trajectory
-#from common.msg import VehicleIn
-from fssim_common.msg import Cmd
-from fssim_common.msg import State as fssimState
+from common.msg import VehicleIn
+from common.msg import VehicleOut
 from common.msg import StaticVehicleParams
 
 class CtrlInterface:
@@ -17,16 +16,16 @@ class CtrlInterface:
         # init node subs pubs
         rospy.init_node('ctrl_interface', anonymous=True)
         self.trajstarsub = rospy.Subscriber("trajstar", Trajectory, self.trajstar_callback)
-        self.vehicle_out_sub = rospy.Subscriber("/fssim/base_pose_ground_truth", fssimState, self.vehicle_out_callback)
-        self.vehicleinpub = rospy.Publisher('/fssim/cmd', Cmd, queue_size=10)
+        self.vehicle_out_sub = rospy.Subscriber("vehicle_out", VehicleOut, self.vehicle_out_callback)
+        self.vehicleinpub = rospy.Publisher('vehicle_in', VehicleIn, queue_size=10)
         self.rate = rospy.Rate(100)
 
         # set static vehicle params
         self.setStaticParams()
 
         # init msgs
-        self.vehicle_in = Cmd()
-        self.vehicle_out = fssimState()
+        self.vehicle_in = VehicleIn()
+        self.vehicle_out = VehicleOut()
         self.trajstar = Trajectory()
 
         # wait for messages before entering main loop # tmp commented out!!
@@ -40,7 +39,7 @@ class CtrlInterface:
             # compute delta corresponding to Fyf request (linear tire, Rajamani) 
             Fyf_request = self.trajstar.Fyf[0]
             alpha_f = Fyf_request/(2*self.sp.Cr)
-            psidot = self.vehicle_out.r
+            psidot = self.vehicle_out.psidot
             vx = self.vehicle_out.vx
             vy = self.vehicle_out.vy
 
@@ -49,10 +48,10 @@ class CtrlInterface:
             else:
                 delta = 0
             
-            self.vehicle_in.delta = 0.85*delta
+            self.vehicle_in.delta = delta
             #self.vehicle_in.Fyf = self.trajstar.Fyf[0]
-            self.vehicle_in.dc = 0.00006*self.trajstar.Fx[0]
-            #self.vehicle_in.header.stamp = rospy.Time.now()
+            self.vehicle_in.Fx = self.trajstar.Fx[0]
+            self.vehicle_in.header.stamp = rospy.Time.now()
             self.vehicleinpub.publish(self.vehicle_in)
 
     def trajstar_callback(self, msg):
