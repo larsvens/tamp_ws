@@ -30,6 +30,7 @@ public:
         state_sub_ = nh.subscribe("state", 1,  &SAARTI::state_callback,this);
         // visualization
         trajhat_vis_pub_ = nh.advertise<nav_msgs::Path>("trajhat_vis",1);
+        trajstar_vis_pub_ = nh.advertise<nav_msgs::Path>("trajstar_vis",1);
         trajset_vis_pub_ = nh.advertise<visualization_msgs::MarkerArray>("trajset_vis",1);
         posconstr_vis_pub_ = nh.advertise<jsk_recognition_msgs::PolygonArray>("posconstr_vis",1);
 
@@ -69,8 +70,8 @@ public:
             if(trajstar_last.s.size()>0){ // append trajstar last
                 trajset_.push_back(trajstar_last);
             }
-            //trajset2cart(); // only for visualization, comment out to save time
-            //trajset2ma();
+            trajset2cart(); // only for visualization, comment out to save time
+            trajset2ma();
 
             // cost eval and select
             int trajhat_idx = trajset_eval_cost(); // error if negative
@@ -93,8 +94,7 @@ public:
             }
             ROS_INFO_STREAM("trajhat_idx = " << trajhat_idx);
             ROS_INFO_STREAM("trajhat.cost = " << trajhat.cost);
-            traj2cart(trajhat); // make sure nod done twice
-            nav_msgs::Path p = traj2navpath(trajhat);
+            nav_msgs::Path p_trajhat = traj2navpath(trajhat);
 
             // update current state
             ROS_INFO_STREAM("setting state..");
@@ -133,6 +133,7 @@ public:
             // extract trajstar from acado
             planning_util::trajstruct trajstar = rtisqp_wrapper_.getTrajectory();
             traj2cart(trajstar);
+            nav_msgs::Path p_trajstar = traj2navpath(trajstar);
 
             // publish trajhat
             common::Trajectory trajhat_msg = traj2msg(trajhat);
@@ -149,7 +150,8 @@ public:
             trajstar_pub_.publish(trajstar_msg);
 
             // publish visualization msgs
-            trajhat_vis_pub_.publish(p);
+            trajhat_vis_pub_.publish(p_trajhat);
+            trajstar_vis_pub_.publish(p_trajstar);
             trajset_vis_pub_.publish(trajset_ma_);
             posconstr_vis_pub_.publish(polarr);
 
@@ -443,6 +445,7 @@ private:
     ros::Publisher trajhat_pub_;
     ros::Publisher trajset_vis_pub_;
     ros::Publisher trajhat_vis_pub_;
+    ros::Publisher trajstar_vis_pub_;
     ros::Publisher posconstr_vis_pub_;
     planning_util::statestruct state_;
     planning_util::pathstruct pathlocal_;
