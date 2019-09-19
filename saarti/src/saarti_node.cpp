@@ -1,12 +1,15 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include "visualization_msgs/MarkerArray.h"
+#include "nav_msgs/Path.h"
 #include <common/Path.h>
 #include <common/Obstacles.h>
 #include <common/Trajectory.h>
 #include <common/State.h>
 #include <sstream>
 #include "saarti/rtisqp_wrapper.h"
+#include "jsk_recognition_msgs/PolygonArray.h"
+#include "geometry_msgs/PolygonStamped.h"
 
 #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant" // supress warning at ros prints
 
@@ -22,10 +25,13 @@ public:
         // pubs & subs
         trajhat_pub_ = nh.advertise<common::Trajectory>("trajhat",1);
         trajstar_pub_ = nh.advertise<common::Trajectory>("trajstar",1);
-        trajset_ma_pub_ = nh.advertise<visualization_msgs::MarkerArray>("trajset_ma",1);
         pathlocal_sub_ = nh.subscribe("pathlocal", 1, &SAARTI::pathlocal_callback,this);
         obstacles_sub_ = nh.subscribe("obstacles", 1, &SAARTI::obstacles_callback,this);
         state_sub_ = nh.subscribe("state", 1,  &SAARTI::state_callback,this);
+        // visualization
+        trajhat_vis_pub_ = nh.advertise<nav_msgs::Path>("trajhat_vis",1);
+        trajset_vis_pub_ = nh.advertise<visualization_msgs::MarkerArray>("trajset_vis",1);
+        posconstr_vis_pub_ = nh.advertise<jsk_recognition_msgs::PolygonArray>("posconstr_vis",1);
 
         // init wrapper for rtisqp solver
         rtisqp_wrapper_ = RtisqpWrapper();
@@ -58,14 +64,27 @@ public:
 
             // rollout
             ROS_INFO_STREAM("generating trajectory set");
-            rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,16);
+            trajset_.clear();
+            rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,1);
             if(trajstar_last.s.size()>0){ // append trajstar last
                 trajset_.push_back(trajstar_last);
             }
-            trajset2cart(); // only for visualization, comment out to save time
+            //trajset2cart(); // only for visualization, comment out to save time
+            //trajset2ma();
 
             // cost eval and select
             int trajhat_idx = trajset_eval_cost(); // error if negative
+            std::cout << "TMP! forcing trajhat idx for now" << std::endl;
+
+            // TMP UNTIL FINISHED FSSIM INTEGRATION
+            std::cout << " trajset_.size(): " << trajset_.size() << std::endl;
+            //trajhat_idx = 0;
+            if(trajstar_last.s.size()>0){
+                trajhat_idx = 1; // select trajstarlast
+            } else {
+                trajhat_idx = 0; // select the single sampled traj
+            }
+
             planning_util::trajstruct trajhat;
             if(trajhat_idx >= 0){
                 trajhat = trajset_.at(uint(trajhat_idx));
@@ -74,7 +93,8 @@ public:
             }
             ROS_INFO_STREAM("trajhat_idx = " << trajhat_idx);
             ROS_INFO_STREAM("trajhat.cost = " << trajhat.cost);
-            // todo publish rviz markers (line strip)
+            traj2cart(trajhat); // make sure nod done twice
+            nav_msgs::Path p = traj2navpath(trajhat);
 
             // update current state
             ROS_INFO_STREAM("setting state..");
@@ -95,6 +115,8 @@ public:
             std::vector<float> lld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dub,false);
             std::vector<float> rld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dlb,false);
             planning_util::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obst_,lld,rld);
+            // visualize state constraint
+            jsk_recognition_msgs::PolygonArray polarr = stateconstr2polarr(posconstr);
 
             // do preparation step // todo: put timer
             ROS_INFO_STREAM("calling acado prep step..");
@@ -125,8 +147,11 @@ public:
             common::Trajectory trajstar_msg = traj2msg(trajstar);
             trajstar_msg.header.stamp = ros::Time::now();
             trajstar_pub_.publish(trajstar_msg);
-            // publish trajset visualization
-            trajset_ma_pub_.publish(trajset_ma);
+
+            // publish visualization msgs
+            trajhat_vis_pub_.publish(p);
+            trajset_vis_pub_.publish(trajset_ma_);
+            posconstr_vis_pub_.publish(polarr);
 
             // store fwd shifted trajstar for next iteration
             trajstar_last = trajstar;
@@ -186,6 +211,9 @@ public:
             std::vector<float> Yc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.Y,false);
             std::vector<float> psic = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.psi_c,false);
             for (uint j=0; j<traj.s.size();j++) {
+                if(isnan(traj.s.at(j))){
+                    ROS_ERROR("trajectory has nans");
+                }
                 // X = Xc - d*sin(psic);
                 // Y = Yc + d*cos(psic);
                 // psi = deltapsi + psic;
@@ -204,6 +232,22 @@ public:
     void trajset2cart(){
         for (uint i=0;i<trajset_.size();i++) {
             traj2cart(trajset_.at(i));
+        }
+    }
+
+    // computes cartesian coordinates of a set of s,d pts
+    void sd_pts2cart(std::vector<float> &s, std::vector<float> &d, std::vector<float> &Xout, std::vector<float> &Yout){
+        std::vector<float> Xc = cpp_utils::interp(s,pathlocal_.s,pathlocal_.X,false);
+        std::vector<float> Yc = cpp_utils::interp(s,pathlocal_.s,pathlocal_.Y,false);
+        std::vector<float> psic = cpp_utils::interp(s,pathlocal_.s,pathlocal_.psi_c,false);
+        for (uint j=0; j<s.size();j++) {
+            // X = Xc - d*sin(psic);
+            // Y = Yc + d*cos(psic);
+            // psi = deltapsi + psic;
+            float X = Xc.at(j) - d.at(j)*sin(psic.at(j));
+            float Y = Yc.at(j) + d.at(j)*cos(psic.at(j));
+            Xout.push_back(X);
+            Yout.push_back(Y);
         }
     }
 
@@ -237,13 +281,21 @@ public:
                 // running cost
                 float sref = float(refs_.sref.at(j));
                 float vxref = float(refs_.vxref.at(j));
+                //std::cout << "sref before rc add = " << sref << std::endl;
+                //std::cout << "vxref before rc add = " << vxref << std::endl;
+                //std::cout << "s before rc add = " << s << std::endl;
+                //std::cout << "vx before rc add = " << vx << std::endl;
+                //std::cout << "cost before rc add = " << cost << std::endl;
                 cost += (sref-s)*float(Wx.at(0))*(sref-s) + (vxref-vx)*float(Wx.at(4))*(vxref-vx);
+                //std::cout << "cost after rc add = " << cost << std::endl;
             }
             if(colliding){
                 cost += float(Wslack);
+                //cost = float(Wslack);
             }
             if(exitroad){
                 cost += float(Wslack);
+                //cost = float(Wslack);
             }
             traj.cost = cost;
             traj.colliding = colliding;
@@ -278,20 +330,74 @@ public:
         return trajmsg;
     }
 
-    // computes marker array representing the trajset
+    // represent traj as navmsgs path for visualization
+    nav_msgs::Path traj2navpath(planning_util::trajstruct traj){
+        nav_msgs::Path p;
+        p.header.stamp = ros::Time::now();
+        p.header.frame_id = "map";
+        for (uint i=0;i<traj.s.size();i++){
+            geometry_msgs::PoseStamped pose;
+            pose.header.stamp = ros::Time::now();
+            pose.header.frame_id = "map";
+            pose.pose.position.x = double(traj.X.at(i));
+            pose.pose.position.y = double(traj.Y.at(i));
+            // todo heading
+            p.poses.push_back(pose);
+        }
+        return p;
+    }
+
+    // fill trajset marker array for visualization
     void trajset2ma(){
-        trajset_ma.markers.clear();
-        for(uint i=0; i<trajset_.size();i++){
+        trajset_ma_.markers.clear();
+        int count = 0;
+        for (uint i=0; i<trajset_.size(); i++) {
             planning_util::trajstruct traj = trajset_.at(i);
-            for (uint j=0; j<traj.X.size();i++){ // todo don't use all pts but make sure to use first and last
+            for (uint j=0; j<traj.s.size();j++) {
                 visualization_msgs::Marker m;
+                m.header.stamp = ros::Time::now();
                 m.header.frame_id = "map";
-                m.type = m.CUBE;
+                m.id = count;
                 m.pose.position.x = double(traj.X.at(j));
                 m.pose.position.y = double(traj.Y.at(j));
-                trajset_ma.markers.push_back(m);
+                // style
+                m.type = m.CUBE;
+                m.scale.x = 1;
+                m.scale.y = 1;
+                m.scale.z = 1;
+                m.color.a = 1.0;
+                m.color.r = 0.0;
+                m.color.g = 1.0;
+                m.color.b = 0.0;
+                trajset_ma_.markers.push_back(m);
+                count++;
             }
         }
+    }
+
+    // create visualization obj for state constraints
+    jsk_recognition_msgs::PolygonArray stateconstr2polarr(planning_util::posconstrstruct pc){
+        jsk_recognition_msgs::PolygonArray polarr;
+        polarr.header.stamp = ros::Time::now();
+        polarr.header.frame_id = "map";
+        for (uint i=0;i<pc.dlb.size();i++){
+            geometry_msgs::PolygonStamped poly;
+            poly.header.stamp = ros::Time::now();
+            poly.header.frame_id = "map";
+            std::vector<float> s{pc.slb.at(i),pc.sub.at(i),pc.sub.at(i),pc.slb.at(i)};
+            std::vector<float> d{pc.dub.at(i),pc.dub.at(i),pc.dlb.at(i),pc.dlb.at(i)};
+            std::vector<float> X;
+            std::vector<float> Y;
+            sd_pts2cart(s, d, X, Y);
+            for (uint j=0;j<4;j++){
+                geometry_msgs::Point32 pt;
+                pt.x = X.at(j);
+                pt.y = Y.at(j);
+                poly.polygon.points.push_back(pt);
+            }
+            polarr.polygons.push_back(poly);
+        }
+        return polarr;
     }
 
     void state_callback(const common::State::ConstPtr& msg){
@@ -301,6 +407,11 @@ public:
         state_.psidot = msg->psidot;
         state_.vx = msg->vx;
         state_.vy = msg->vy;
+
+        // curvilinear dynamics breaks when vx == 0
+        if (state_.vx <= 0.1f){
+            state_.vx = 0.1f;
+        }
     }
 
     void pathlocal_callback(const common::Path::ConstPtr& msg){
@@ -330,14 +441,17 @@ private:
     ros::Subscriber state_sub_;
     ros::Publisher trajstar_pub_;
     ros::Publisher trajhat_pub_;
-    ros::Publisher trajset_ma_pub_;
+    ros::Publisher trajset_vis_pub_;
+    ros::Publisher trajhat_vis_pub_;
+    ros::Publisher posconstr_vis_pub_;
     planning_util::statestruct state_;
     planning_util::pathstruct pathlocal_;
     std::vector<planning_util::trajstruct> trajset_;
     planning_util::obstastruct obst_;
     planning_util::refstruct refs_;
     RtisqpWrapper rtisqp_wrapper_;
-    visualization_msgs::MarkerArray trajset_ma;
+    visualization_msgs::MarkerArray trajset_ma_;
+
 
     // weights
     std::vector<double> Wx{10.0, 1.0, 1.0, 0.01, 0.01, 0.01};

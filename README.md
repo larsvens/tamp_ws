@@ -7,6 +7,9 @@ System configuration: ubuntu 16.04 LTS & ROS Kinetic
 https://www.ubuntu.com/download/alternative-downloads   
 http://wiki.ros.org/kinetic/Installation   
 
+install dependencies:
+apt-get install ros-kinetic-jsk-rviz-plugins
+
 clone the repo
 
 clone https://github.com/larsvens/acado_fork

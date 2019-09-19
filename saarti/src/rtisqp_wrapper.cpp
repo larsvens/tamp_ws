@@ -302,11 +302,29 @@ bool RtisqpWrapper::computeTrajset(std::vector<planning_util::trajstruct> &trajs
                                    planning_util::pathstruct &pathlocal,
                                    uint Ntrajs){
 
-    trajset.clear();
+
+    // try making state constant
+//    state.s =        1.51716;
+//    state.d =        0.294299;
+//    state.deltapsi = -0.0782042;
+//    state.psidot =   0.00001;
+//    state.vx =       0.00001;
+//    state.vy =       0.00001;
+
+    // debug input state
+    std::cout << "debug comptrajeset: state: " << std::endl;
+    std::cout << "state.s =        " << state.s << std::endl;
+    std::cout << "state.d =        " << state.d << std::endl;
+    std::cout << "state.deltapsi = " << state.deltapsi << std::endl;
+    std::cout << "state.psidot =   " << state.psidot << std::endl;
+    std::cout << "state.vx =       " << state.vx << std::endl;
+    std::cout << "state.vy =       " << state.vy << std::endl;
+
+    // TODO FIX INSTABILITY IN INTEGRATOR
+
     // todo input Fh_MAX
-    // tmp
-    float Fyfmax = 3000;
-    float Fxmax = 3000;
+    float Fyfmax = 1000;
+    float Fxmax = 1000;
 
     // mode 0 input sampling
     std::vector<float> Fyf_vec;
@@ -329,11 +347,12 @@ bool RtisqpWrapper::computeTrajset(std::vector<planning_util::trajstruct> &trajs
 
     for (uint i=0;i<Ntrajs;i++) {
 
-        float Fyf = Fyf_vec.at(i);
-        float Fx = Fx_vec.at(i);
+        //float Fyf = Fyf_vec.at(i);
+        //float Fx = Fx_vec.at(i);
 
-        //float Fyf = 0;
-        //float Fx = 3000;
+        // TMP for finalizing fssim integration
+        float Fyf = 0;
+        float Fx = 1000;
 
         // input initial state and control on integrator format
         real_t acadoWSstate[85];
