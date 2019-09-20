@@ -12,7 +12,7 @@
 #include <cstdlib>
 #include <cmath>
 
-using namespace std;
+//using namespace std;
 
 // acado codegen
 #include "acado_common.h"
@@ -65,6 +65,7 @@ public:
                         planning_util::statestruct &state,
                         planning_util::pathstruct &pathlocal,
                         uint Ntrajs,
-                        uint ctrl_mode);
+                        uint ctrl_mode,
+                        uint sampling_mode);
 };
 

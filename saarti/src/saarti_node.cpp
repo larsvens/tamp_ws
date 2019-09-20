@@ -67,7 +67,10 @@ public:
             ROS_INFO_STREAM("generating trajectory set");
             trajset_.clear();
             int Nsamples = 16;
-            rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,uint(Nsamples),ctrl_mode_);
+            rtisqp_wrapper_.computeTrajset(trajset_,state_,
+                                           pathlocal_,uint(Nsamples),
+                                           ctrl_mode_,
+                                           sampling_mode_);
             if(trajstar_last.s.size()>0){ // append trajstar last
                 trajset_.push_back(trajstar_last);
             }
@@ -215,14 +218,14 @@ public:
             std::vector<float> Yc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.Y,false);
             std::vector<float> psic = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.psi_c,false);
             for (uint j=0; j<traj.s.size();j++) {
-                if(isnan(traj.s.at(j))){
+                if(std::isnan(traj.s.at(j))){
                     ROS_ERROR("trajectory has nans");
                 }
                 // X = Xc - d*sin(psic);
                 // Y = Yc + d*cos(psic);
                 // psi = deltapsi + psic;
-                float X = Xc.at(j) - traj.d.at(j)*sin(psic.at(j));
-                float Y = Yc.at(j) + traj.d.at(j)*cos(psic.at(j));
+                float X = Xc.at(j) - traj.d.at(j)*std::sin(psic.at(j));
+                float Y = Yc.at(j) + traj.d.at(j)*std::cos(psic.at(j));
                 float psi = traj.deltapsi.at(j) + psic.at(j);
                 traj.X.push_back(X);
                 traj.Y.push_back(Y);
@@ -248,8 +251,8 @@ public:
             // X = Xc - d*sin(psic);
             // Y = Yc + d*cos(psic);
             // psi = deltapsi + psic;
-            float X = Xc.at(j) - d.at(j)*sin(psic.at(j));
-            float Y = Yc.at(j) + d.at(j)*cos(psic.at(j));
+            float X = Xc.at(j) - d.at(j)*std::sin(psic.at(j));
+            float Y = Yc.at(j) + d.at(j)*std::cos(psic.at(j));
             Xout.push_back(X);
             Yout.push_back(Y);
         }
@@ -273,7 +276,7 @@ public:
                 // check obstacle (in frenet)
                 float dist;
                 for (uint k=0; k<obst_.s.size();k++){
-                    dist = sqrt( (s-obst_.s.at(k))*(s-obst_.s.at(k)) + (d-obst_.d.at(k))*(d-obst_.d.at(k)) );
+                    dist = std::sqrt( (s-obst_.s.at(k))*(s-obst_.s.at(k)) + (d-obst_.d.at(k))*(d-obst_.d.at(k)) );
                     if(dist < obst_.Rmgn.at(k)){
                         colliding = true;
                     }
@@ -458,7 +461,8 @@ private:
     visualization_msgs::MarkerArray trajset_ma_;
 
     // modes
-    uint ctrl_mode_ = 2; // 0: tracking(unused todo remove), 1: min s, 2: max s,
+    uint ctrl_mode_ = 1;    // 0: tracking(unused todo remove), 1: min s, 2: max s,
+    uint sampling_mode_ = 1; // 0: input sampling, 1: state space sampling
 
     // weights
     std::vector<double> Wx{10.0, 1.0, 1.0, 0.01, 0.01, 0.01};

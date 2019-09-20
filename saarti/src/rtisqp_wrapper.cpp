@@ -1,4 +1,4 @@
-// Keep this general. Clean out ros stuff and problem specific things
+// Rename acado wrapper (both opt and rollout by integration)
 
 
 #include "saarti/rtisqp_wrapper.h"
@@ -301,52 +301,87 @@ bool RtisqpWrapper::computeTrajset(std::vector<planning_util::trajstruct> &trajs
                                    planning_util::statestruct &state,
                                    planning_util::pathstruct &pathlocal,
                                    uint Ntrajs,
-                                   uint ctrl_mode){
+                                   uint ctrl_mode,
+                                   uint sampling_mode){
 
     // debug input state
-    std::cout << "debug comptrajeset: state: " << std::endl;
-    std::cout << "state.s =        " << state.s << std::endl;
-    std::cout << "state.d =        " << state.d << std::endl;
-    std::cout << "state.deltapsi = " << state.deltapsi << std::endl;
-    std::cout << "state.psidot =   " << state.psidot << std::endl;
-    std::cout << "state.vx =       " << state.vx << std::endl;
-    std::cout << "state.vy =       " << state.vy << std::endl;
+    //    std::cout << "debug comptrajeset: state: " << std::endl;
+    //    std::cout << "state.s =        " << state.s << std::endl;
+    //    std::cout << "state.d =        " << state.d << std::endl;
+    //    std::cout << "state.deltapsi = " << state.deltapsi << std::endl;
+    //    std::cout << "state.psidot =   " << state.psidot << std::endl;
+    //    std::cout << "state.vx =       " << state.vx << std::endl;
+    //    std::cout << "state.vy =       " << state.vy << std::endl;
 
     // todo input Fh_MAX
     float Fyfmax = 1000;
     float Fxmax = 2000;
 
-    // mode 0 input sampling
+    // input sampling prep: generate input vectors
     std::vector<float> Fyf_vec;
     std::vector<float> Fx_vec;
-    float angle = 0;
-    if(ctrl_mode==2){
-        angle = -float(M_PI/2.0);
-    } else {
-        angle = float(M_PI/2.0);
+    if (sampling_mode == 0){
+        std::cout << "preparing input sampling" << std::endl;
+        float t = 0;
+        if(ctrl_mode==2){
+            t = -float(M_PI/2.0);
+        } else {
+            t = float(M_PI/2.0);
+        }
+
+        float step = float(M_PI)/Ntrajs;
+        for (uint i=0;i<Ntrajs;i++) {
+            Fyf_vec.push_back(Fyfmax*std::sin(t));
+            Fx_vec.push_back(Fxmax*std::cos(t));
+            //std::cout << "angle = " << t << std::endl;
+            //std::cout << "Fyf = " << Fyfmax*sin(angle) << std::endl;
+            //std::cout << "Fx = " << Fxmax*cos(angle) << std::endl;
+            t += step;
+        }
     }
 
-
-    float step = float(M_PI)/Ntrajs;
-    for (uint i=0;i<Ntrajs;i++) {
-        Fyf_vec.push_back(Fyfmax*sin(angle));
-        Fx_vec.push_back(Fxmax*cos(angle));
-        std::cout << "angle = " << angle << std::endl;
-        std::cout << "Fyf = " << Fyfmax*sin(angle) << std::endl;
-        std::cout << "Fx = " << Fxmax*cos(angle) << std::endl;
-        angle += step;
+    // state space sampling prep: generate reference vectors
+    std::vector<float> dref;
+    if (sampling_mode == 1){
+        std::cout << "preparing state space sampling" << std::endl;
+        // use dlb and dub @ 0 for dref interval
+        float dlb = pathlocal.dlb.at(0);
+        float dub = pathlocal.dub.at(0);
+        //std::cout << "dlb = " << dlb << std::endl;
+        //std::cout << "dub = " << dub << std::endl;
+        dref = cpp_utils::linspace(dlb, dub, Ntrajs);
     }
 
-
-
+    // generate trajs
+    std::cout << "rolling out trajs" << std::endl;
     for (uint i=0;i<Ntrajs;i++) {
+        float Fyf = 0;
+        float Fx = 0;
 
-        float Fyf = Fyf_vec.at(i);
-        float Fx = Fx_vec.at(i);
+        // input sampling
+        if (sampling_mode == 0){
+            if(!Fyf_vec.size()){
+                throw "Empty Fyf vector at input sampling!";
+            }
+            Fyf = Fyf_vec.at(i);
+            Fx = Fx_vec.at(i);
+        }
 
-        // TMP for finalizing fssim integration
-        //float Fyf = 0;
-        //float Fx = 1000;
+        // state space sampling TODO put in function
+        if (sampling_mode == 1){
+            float derror = dref.at(i) - state.d;
+            Fyf = 0;
+            // saturate at Fyfmax
+            if(Fyf >= Fyfmax){
+                Fyf = Fyfmax;
+            }
+            if(Fyf<=-Fyfmax){
+                Fyf = -Fyfmax;
+            }
+            // compute Fx from standard parametric function of ellipse
+            float t = std::asin(Fyf/Fyfmax);
+            Fx = Fxmax*std::cos(t);
+        }
 
         // input initial state and control on integrator format
         real_t acadoWSstate[85];
@@ -405,6 +440,24 @@ bool RtisqpWrapper::computeTrajset(std::vector<planning_util::trajstruct> &trajs
             std::vector<float> kappac_vec = cpp_utils::interp(s_vec,pathlocal.s,pathlocal.kappa_c,false);
             acadoWSstate[80] = double(kappac_vec.at(0));
             traj.kappac.push_back(kappac_vec.at(0));
+
+            // if state space sampling: set new ctrl input
+            if (sampling_mode == 1){
+                float derror = dref.at(i) - traj.d.at(j) ;
+                Fyf = 500*derror - 1500*traj.deltapsi.at(j);
+                // saturate at Fyfmax
+                if(Fyf >= Fyfmax){
+                    Fyf = Fyfmax;
+                }
+                if(Fyf<=-Fyfmax){
+                    Fyf = -Fyfmax;
+                }
+                // compute Fx from standard parametric function of ellipse
+                float t = std::asin(Fyf/Fyfmax);
+                Fx = Fxmax*std::cos(t);
+                acadoWSstate[77] = double(Fyf);
+                acadoWSstate[78] = double(Fx);
+            }
         }
 
         trajset.push_back(traj);
