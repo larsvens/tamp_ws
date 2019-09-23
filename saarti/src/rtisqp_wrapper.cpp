@@ -1,9 +1,4 @@
-// Rename acado wrapper (both opt and rollout by integration)
-
-
 #include "saarti/rtisqp_wrapper.h"
-
-
 
 // constructor
 RtisqpWrapper::RtisqpWrapper()
