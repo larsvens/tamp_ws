@@ -26,8 +26,7 @@ struct trajstruct{
     bool exitroad;
 };
 
-
-// state representation
+// state vector representation
 struct statestruct{
     // state
     float s;
@@ -36,6 +35,13 @@ struct statestruct{
     float psidot;
     float vx;
     float vy;
+};
+
+// ctrl vector representation
+struct ctrlstruct{
+    // state
+    float Fyf;
+    float Fx;
 };
 
 // pathlocal representation
@@ -75,7 +81,5 @@ struct refstruct{
     std::vector<float> sref;
     std::vector<float> vxref;
 };
-
-
 
 }; // END NAMESPACE

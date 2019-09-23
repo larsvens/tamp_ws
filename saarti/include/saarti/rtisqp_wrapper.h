@@ -1,6 +1,5 @@
-// NO ROS INCLUDES HERE
-
-#pragma once
+#ifndef RTISQP_WRAPPER_H
+#define RTISQP_WRAPPER_H
 
 #include <eigen3/Eigen/Eigen>
 #include <iostream>
@@ -11,8 +10,6 @@
 #include <cstring>
 #include <cstdlib>
 #include <cmath>
-
-//using namespace std;
 
 // acado codegen
 #include "acado_common.h"
@@ -34,6 +31,14 @@
 #define NUM_STEPS  100		/* number of simulation steps */
 #define VERBOSE    1		/* show iterations: 1, silent: 0 */
 
+// timing
+#include <chrono>
+
+// namespaces
+using std::vector;
+using std::cout;
+using std::endl;
+
 ACADOvariables acadoVariables;
 ACADOworkspace acadoWorkspace;
 
@@ -45,15 +50,15 @@ public:
     RtisqpWrapper();
 
     // functions
-    bool setWeights(std::vector<double>, std::vector<double>, double);
+    bool setWeights(vector<double>, vector<double>, double);
     bool setInitialGuess(planning_util::trajstruct);
     bool setInitialState(planning_util::statestruct);
     bool setOptReference(planning_util::trajstruct, planning_util::refstruct refs);
     bool setInputConstraints(double mu, double Fzf);
     planning_util::posconstrstruct setStateConstraints(planning_util::trajstruct &traj,
                                                        planning_util::obstastruct obs,
-                                                       std::vector<float> lld,
-                                                       std::vector<float> rld);
+                                                       vector<float> lld,
+                                                       vector<float> rld);
     bool shiftStateAndControls();
     bool shiftTrajectoryFwdSimple(planning_util::trajstruct &traj);
     bool doPreparationStep();
@@ -61,11 +66,14 @@ public:
     Eigen::MatrixXd getStateTrajectory();
     Eigen::MatrixXd getControlTrajectory();
     planning_util::trajstruct getTrajectory();
-    bool computeTrajset(std::vector<planning_util::trajstruct> &trajset,
+    bool computeTrajset(vector<planning_util::trajstruct> &trajset,
                         planning_util::statestruct &state,
                         planning_util::pathstruct &pathlocal,
-                        uint Ntrajs,
-                        uint ctrl_mode,
-                        uint sampling_mode);
+                        uint Ntrajs);
+    bool setIntegratorState(real_t *acadoWSstate,
+                            planning_util::statestruct state,
+                            planning_util::ctrlstruct ctrl,
+                            float kappac);
 };
 
+#endif // RTISQP_WRAPPER_H

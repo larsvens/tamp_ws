@@ -54,6 +54,7 @@ void multiply_scalar_vector(std::vector<T> & vec, T scalar) {
 }
 
 
+
 //
 // coordinate transformations
 //

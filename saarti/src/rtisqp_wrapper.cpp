@@ -13,7 +13,7 @@ RtisqpWrapper::RtisqpWrapper()
 
 }
 
-bool RtisqpWrapper::setWeights(std::vector<double> Wx, std::vector<double> Wu, double Wslack){
+bool RtisqpWrapper::setWeights(vector<double> Wx, vector<double> Wu, double Wslack){
     // set diagonal elements of acadoVariables.w matrix. Size [Nx+Nu,Nx+Nu] (row major format)
     // states
     acadoVariables.W[0*(NX+NU) + 0] = Wx.at(0); // s
@@ -41,7 +41,7 @@ bool RtisqpWrapper::setWeights(std::vector<double> Wx, std::vector<double> Wu, d
         }
     }
 
-    std::cout << "Setting Weigth matrix W: " << std::endl << W  << std::endl;
+    cout << "Setting Weigth matrix W: " << endl << W  << endl;
     return true;
 }
 
@@ -74,8 +74,8 @@ bool RtisqpWrapper::setInitialGuess(planning_util::trajstruct traj){
 }
 
 bool RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_util::refstruct refs){
-    std::vector<float> sref = refs.sref;
-    std::vector<float> vxref = refs.vxref;
+    vector<float> sref = refs.sref;
+    vector<float> vxref = refs.vxref;
 
     // set ref for intermediate states
     for (uint k = 0; k < N; ++k)
@@ -107,31 +107,21 @@ bool RtisqpWrapper::setInputConstraints(double mu, double Fzf){
     uint N_ineq = 8; // nr of inequalities, todo read from file!
     uint N_ubA = sizeof(acadoVariables.ubAValues) / sizeof(*acadoVariables.ubAValues);
     uint N_per_k = N_ubA/N;
-    //std::cout << "size of acadoVariables.ubAValues: " << N_ubA << std::endl;
+    //cout << "size of acadoVariables.ubAValues: " << N_ubA << endl;
     for (uint k = 0; k < N ; ++k){
         for (uint j = 0; j < N_ineq; j++){ // edit the N_ineq first values of N_per_k
             uint idx = k*N_per_k + j;
-            //std::cout <<"at idx: " << idx << ", ubAval = " << acadoVariables.ubAValues[idx] << std::endl;
+            //cout <<"at idx: " << idx << ", ubAval = " << acadoVariables.ubAValues[idx] << endl;
             acadoVariables.ubAValues[idx] = mu; // tmp just to test effect (affine input const after state const?)
         }
     }
     return true;
 }
 
-
-//for (uint k = 0; k < N + 1; ++k){
-//    Xstarx(0,k) = acadoVariables.x[k * NX + 0]; // s
-//    Xstarx(1,k) = acadoVariables.x[k * NX + 1];
-//    Xstarx(2,k) = acadoVariables.x[k * NX + 2];
-//    Xstarx(3,k) = acadoVariables.x[k * NX + 3];
-//    Xstarx(4,k) = acadoVariables.x[k * NX + 4];
-//    Xstarx(5,k) = acadoVariables.x[k * NX + 5];
-//}
-
 planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util::trajstruct &traj,
                                                                   planning_util::obstastruct obs,
-                                                                  std::vector<float> lld,
-                                                                  std::vector<float> rld){
+                                                                  vector<float> lld,
+                                                                  vector<float> rld){
 
     planning_util::posconstrstruct posconstr;
 
@@ -242,7 +232,7 @@ bool RtisqpWrapper::doPreparationStep(){
 
 int RtisqpWrapper::doFeedbackStep(){
     int status = acado_feedbackStep();
-//    std::cout << "KKT value: " << scientific << acado_getKKT()
+//    cout << "KKT value: " << scientific << acado_getKKT()
 //              << ", objective value: " << scientific << acado_getObjective()
 //              << endl;
     return status;
@@ -292,170 +282,154 @@ planning_util::trajstruct RtisqpWrapper::getTrajectory(){
     return traj_out;
 }
 
-bool RtisqpWrapper::computeTrajset(std::vector<planning_util::trajstruct> &trajset,
+bool RtisqpWrapper::setIntegratorState(real_t *acadoWSstate,
+                                       planning_util::statestruct state,
+                                       planning_util::ctrlstruct ctrl,
+                                       float kappac){
+    // state
+    acadoWSstate[0] = double(state.s);
+    acadoWSstate[1] = double(state.d);
+    acadoWSstate[2] = double(state.deltapsi);
+    acadoWSstate[3] = double(state.psidot);
+    acadoWSstate[4] = double(state.vx);
+    acadoWSstate[5] = double(state.vy);
+    acadoWSstate[6] = 0.0; // dummy state
+    // ctrl
+    acadoWSstate[77] = double(ctrl.Fyf);
+    acadoWSstate[78] = double(ctrl.Fx);
+    acadoWSstate[79] = 0.0; // slack varreal_t[85]
+    // onlinedata
+    acadoWSstate[80] = double(kappac);
+    acadoWSstate[81] = 0.0; // slb
+    acadoWSstate[82] = 0.0; // sub
+    acadoWSstate[83] = 0.0; // dlb
+    acadoWSstate[84] = 0.0; // dub
+
+    return true;
+}
+
+
+/* Description: state space sampling trajectory rollout. Rolls out trajectories using a fast RK4
+ * integrator from the acado toolkit. The control input is recomputed at every stage. A vector of
+ * references is constructed as [dlb ... dub dlb ... dub], where the first half of the trajset has
+ * positive Fx and the second half has negative */
+bool RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                                    planning_util::statestruct &state,
                                    planning_util::pathstruct &pathlocal,
-                                   uint Ntrajs,
-                                   uint ctrl_mode,
-                                   uint sampling_mode){
-
-    // debug input state
-    //    std::cout << "debug comptrajeset: state: " << std::endl;
-    //    std::cout << "state.s =        " << state.s << std::endl;
-    //    std::cout << "state.d =        " << state.d << std::endl;
-    //    std::cout << "state.deltapsi = " << state.deltapsi << std::endl;
-    //    std::cout << "state.psidot =   " << state.psidot << std::endl;
-    //    std::cout << "state.vx =       " << state.vx << std::endl;
-    //    std::cout << "state.vy =       " << state.vy << std::endl;
+                                   uint Ntrajs){
+    if(Ntrajs % 2 !=0){
+        throw "Error, Ntrajs must be even";
+    }
 
     // todo input Fh_MAX
     float Fyfmax = 1000;
     float Fxmax = 2000;
 
-    // input sampling prep: generate input vectors
-    std::vector<float> Fyf_vec;
-    std::vector<float> Fx_vec;
-    if (sampling_mode == 0){
-        std::cout << "preparing input sampling" << std::endl;
-        float t = 0;
-        if(ctrl_mode==2){
-            t = -float(M_PI/2.0);
-        } else {
-            t = float(M_PI/2.0);
-        }
-
-        float step = float(M_PI)/Ntrajs;
-        for (uint i=0;i<Ntrajs;i++) {
-            Fyf_vec.push_back(Fyfmax*std::sin(t));
-            Fx_vec.push_back(Fxmax*std::cos(t));
-            //std::cout << "angle = " << t << std::endl;
-            //std::cout << "Fyf = " << Fyfmax*sin(angle) << std::endl;
-            //std::cout << "Fx = " << Fxmax*cos(angle) << std::endl;
-            t += step;
-        }
-    }
-
-    // state space sampling prep: generate reference vectors
-    std::vector<float> dref;
-    if (sampling_mode == 1){
-        std::cout << "preparing state space sampling" << std::endl;
-        // use dlb and dub @ 0 for dref interval
-        float dlb = pathlocal.dlb.at(0);
-        float dub = pathlocal.dub.at(0);
-        //std::cout << "dlb = " << dlb << std::endl;
-        //std::cout << "dub = " << dub << std::endl;
-        dref = cpp_utils::linspace(dlb, dub, Ntrajs);
-    }
+    // generate reference vectors
+    vector<float> dref;
+    // use dlb and dub @ 0 + some margin for dref interval
+    float mgn = 1.0;
+    float dlb = pathlocal.dlb.at(0)-mgn;
+    float dub = pathlocal.dub.at(0)+mgn;
+    // build dref vector
+    dref = cpp_utils::linspace(dlb, dub, Ntrajs/2);
+    vector<float> dref_copy = dref;
+    dref.insert(dref.end(), dref_copy.begin(), dref_copy.end());
 
     // generate trajs
-    std::cout << "rolling out trajs" << std::endl;
     for (uint i=0;i<Ntrajs;i++) {
-        float Fyf = 0;
-        float Fx = 0;
-
-        // input sampling
-        if (sampling_mode == 0){
-            if(!Fyf_vec.size()){
-                throw "Empty Fyf vector at input sampling!";
-            }
-            Fyf = Fyf_vec.at(i);
-            Fx = Fx_vec.at(i);
-        }
-
-        // state space sampling TODO put in function
-        if (sampling_mode == 1){
-            float derror = dref.at(i) - state.d;
-            Fyf = 0;
-            // saturate at Fyfmax
-            if(Fyf >= Fyfmax){
-                Fyf = Fyfmax;
-            }
-            if(Fyf<=-Fyfmax){
-                Fyf = -Fyfmax;
-            }
-            // compute Fx from standard parametric function of ellipse
-            float t = std::asin(Fyf/Fyfmax);
-            Fx = Fxmax*std::cos(t);
-        }
-
-        // input initial state and control on integrator format
         real_t acadoWSstate[85];
-        // state
-        acadoWSstate[0] = double(state.s);
-        acadoWSstate[1] = double(state.d);
-        acadoWSstate[2] = double(state.deltapsi);
-        acadoWSstate[3] = double(state.psidot);
-        acadoWSstate[4] = double(state.vx);
-        acadoWSstate[5] = double(state.vy);
-        acadoWSstate[6] = 0.0; // dummy state
-        // ctrl
-        acadoWSstate[77] = double(Fyf);
-        acadoWSstate[78] = double(Fx);
-        acadoWSstate[79] = 0.0; // slack var
-        // onlinedata
-        std::vector<float> s_vec = {state.s};
-        std::vector<float> kappac_vec = cpp_utils::interp(s_vec,pathlocal.s,pathlocal.kappa_c,false);
-        acadoWSstate[80] = double(kappac_vec.at(0));
-        acadoWSstate[81] = 0.0; // slb
-        acadoWSstate[82] = 0.0; // sub
-        acadoWSstate[83] = 0.0; // dlb
-        acadoWSstate[84] = 0.0; // dub
+        planning_util::statestruct rollingstate;
+        rollingstate.s = state.s;
+        rollingstate.d = state.d;
+        planning_util::ctrlstruct ctrl;
 
-
-        // integrate fwd
+        // integrator loop
+        auto t1_single = std::chrono::high_resolution_clock::now();
         planning_util::trajstruct traj;
-        traj.s.push_back(state.s);
+        bool is_initstate = true;
+        bool integrator_initiated = false;
+        float kappac;
+        double t_intgr_tot = 0;
+        double t_interp_tot = 0;
+        for (size_t j=0;j<N+1;j++) {
+            // compute control input
+            float derror = dref.at(i) - rollingstate.d;
+            ctrl.Fyf = 500*derror - 1500*rollingstate.deltapsi;
+            // saturate at Fyfmax
+            if(ctrl.Fyf >= Fyfmax){
+                ctrl.Fyf = Fyfmax;
+            }
+            if(ctrl.Fyf<=-Fyfmax){
+                ctrl.Fyf = -Fyfmax;
+            }
+            // Fx from standard parametric function of ellipse
+            float t = std::asin(ctrl.Fyf/Fyfmax);
+            ctrl.Fx = Fxmax*std::cos(t);
 
-        traj.d.push_back(state.d);
-        traj.deltapsi.push_back(state.deltapsi);
-        traj.psidot.push_back(state.psidot);
-        traj.vx.push_back(state.vx);
-        traj.vy.push_back(state.vy);
-        traj.Fyf.push_back(Fyf);
-        traj.Fx.push_back(Fx);
+            // if in second half of dref, use the negative value of Fx
+            if (i >= N/2){
+                ctrl.Fx = -ctrl.Fx;
+            }
+            acadoWSstate[77] = double(ctrl.Fyf);
+            acadoWSstate[78] = double(ctrl.Fx);
 
-        traj.kappac.push_back(kappac_vec.at(0));
+            // compute kappac at rollingstate.s
+            auto t1_interp = std::chrono::high_resolution_clock::now();
+            vector<float> kappac_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.kappa_c,false);
+            kappac = kappac_vec.at(0);
+            acadoWSstate[80] = double(kappac);
+            auto t2_interp = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> t_interp = t2_interp - t1_interp;
+            t_interp_tot += t_interp.count();
 
-        for (size_t j=1;j<N+1;j++) {
-            acado_integrate(acadoWSstate,1); // reset or not reset?
-            // extract variables
+            if (is_initstate){
+                // set init state in integrator
+                RtisqpWrapper::setIntegratorState(acadoWSstate,state,ctrl,kappac);
+                is_initstate = false;
+            }
+            else {
+                // integrate fwd
+                auto t1_intgr = std::chrono::high_resolution_clock::now();
+                if(!integrator_initiated){
+                    acado_integrate(acadoWSstate,1);
+                } else {
+                    acado_integrate(acadoWSstate,0);
+                }
+                auto t2_intgr = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double, std::milli> t_intgr = t2_intgr - t1_intgr;
+                t_intgr_tot += t_intgr.count();
+            }
+
+            // set s and d of the state that rolls fwd
+            rollingstate.s = float(acadoWSstate[0]);
+            rollingstate.d = float(acadoWSstate[1]);
+            rollingstate.deltapsi = float(acadoWSstate[2]);
+
+            // extract variables from integrator
             traj.s.push_back(float(acadoWSstate[0]));
             traj.d.push_back(float(acadoWSstate[1]));
             traj.deltapsi.push_back(float(acadoWSstate[2]));
             traj.psidot.push_back(float(acadoWSstate[3]));
             traj.vx.push_back(float(acadoWSstate[4]));
             traj.vy.push_back(float(acadoWSstate[5]));
+
+            traj.kappac.push_back(kappac);
             if(j<N){ // N+1 states and N ctrls
                 traj.Fyf.push_back(float(acadoWSstate[77]));
                 traj.Fx.push_back(float(acadoWSstate[78]));
             }
-
-            // get kappa at new s
-            std::vector<float> s_vec = {traj.s.at(j)};
-            std::vector<float> kappac_vec = cpp_utils::interp(s_vec,pathlocal.s,pathlocal.kappa_c,false);
-            acadoWSstate[80] = double(kappac_vec.at(0));
-            traj.kappac.push_back(kappac_vec.at(0));
-
-            // if state space sampling: set new ctrl input
-            if (sampling_mode == 1){
-                float derror = dref.at(i) - traj.d.at(j) ;
-                Fyf = 500*derror - 1500*traj.deltapsi.at(j);
-                // saturate at Fyfmax
-                if(Fyf >= Fyfmax){
-                    Fyf = Fyfmax;
-                }
-                if(Fyf<=-Fyfmax){
-                    Fyf = -Fyfmax;
-                }
-                // compute Fx from standard parametric function of ellipse
-                float t = std::asin(Fyf/Fyfmax);
-                Fx = Fxmax*std::cos(t);
-                acadoWSstate[77] = double(Fyf);
-                acadoWSstate[78] = double(Fx);
-            }
         }
-
         trajset.push_back(traj);
+        auto t2_single = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> t_single_rollout = t2_single - t1_single;
+        bool printtimings = false;
+        if(printtimings){
+            cout << "Rollout timings:" << endl;
+            cout << "single rollout took " << t_single_rollout.count() << " ms " << endl;
+            cout << "integration took " << t_intgr_tot << " ms " << endl;
+            cout << "interp took " << t_interp_tot << " ms " << endl;
+        }
     }
 
     return true;

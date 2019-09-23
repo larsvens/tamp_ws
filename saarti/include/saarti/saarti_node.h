@@ -19,10 +19,17 @@
 #include <common/Trajectory.h>
 #include <common/State.h>
 
+// timing
+#include <chrono>
+
 // misc
 #include <sstream>
 #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant" // supress warning at ros prints
 
+// namespaces
+using std::vector;
+using std::cout;
+using std::endl;
 
 namespace saarti_node{
 class SAARTI{
@@ -40,7 +47,7 @@ private:
 
     void trajset2cart();
 
-    void sd_pts2cart(std::vector<float> &s, std::vector<float> &d, std::vector<float> &Xout, std::vector<float> &Yout);
+    void sd_pts2cart(vector<float> &s, vector<float> &d, vector<float> &Xout, vector<float> &Yout);
 
     int trajset_eval_cost();
 
@@ -72,7 +79,7 @@ private:
     ros::Publisher posconstr_vis_pub_;
     planning_util::statestruct state_;
     planning_util::pathstruct pathlocal_;
-    std::vector<planning_util::trajstruct> trajset_;
+    vector<planning_util::trajstruct> trajset_;
     planning_util::obstastruct obst_;
     planning_util::refstruct refs_;
     RtisqpWrapper rtisqp_wrapper_;
@@ -83,8 +90,8 @@ private:
     uint sampling_mode_ = 1; // 0: input sampling, 1: state space sampling
 
     // weights
-    std::vector<double> Wx{10.0, 1.0, 1.0, 0.01, 0.01, 0.01};
-    std::vector<double> Wu{0.1, 0.1};
+    vector<double> Wx{10.0, 1.0, 1.0, 0.01, 0.01, 0.01};
+    vector<double> Wu{0.1, 0.1};
     double Wslack = 10000000;
 
 };
