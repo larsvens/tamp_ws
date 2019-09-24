@@ -15,7 +15,6 @@ from common.msg import State
 #from common.msg import VehicleOut
 from common.msg import Path
 from common.msg import DynamicVehicleParams
-from common.msg import StaticVehicleParams
 from coordinate_transforms import ptsCartesianToFrenet
 from fssim_common.msg import State as fssimState
 from geometry_msgs.msg import PoseStamped
@@ -42,7 +41,7 @@ class LocAndStateEst:
         self.ds = 0.5
 
         # set static vehicle params
-        self.setStaticParams()
+        self.setRosParams()
 
         # init local vars
         self.pathglobal = Path()
@@ -54,9 +53,9 @@ class LocAndStateEst:
         self.dynamic_params = DynamicVehicleParams()
         self.dynamic_params.mu_alg = 0.7
         self.dynamic_params.mu_real = 0.7
-        self.dynamic_params.Fz = self.sp.m * self.sp.g
-        self.dynamic_params.Fzf = self.dynamic_params.Fz*self.sp.lr/(self.sp.lf+self.sp.lr); # moment balance at 0 acc
-        self.dynamic_params.Fzr = self.dynamic_params.Fz*self.sp.lf/(self.sp.lf+self.sp.lr);
+        self.dynamic_params.Fz = self.m * self.g
+        self.dynamic_params.Fzf = self.dynamic_params.Fz*self.lr/(self.lf+self.lr); # moment balance at 0 acc
+        self.dynamic_params.Fzr = self.dynamic_params.Fz*self.lf/(self.lf+self.lr);
         self.dynamic_params.theta = 0.0
         self.dynamic_params.phi = 0.0
         
@@ -151,21 +150,12 @@ class LocAndStateEst:
         self.pathlocal.dlb =            np.interp(s,self.pathglobal.s,self.pathglobal.dlb)
         
 
-    def setStaticParams(self):
-        self.sp = StaticVehicleParams()
-        self.sp.g = rospy.get_param('/g')
-        self.sp.l = rospy.get_param('/l')
-        self.sp.w = rospy.get_param('/w')
-        self.sp.m = rospy.get_param('/m')
-        self.sp.Iz = rospy.get_param('/Iz')
-        self.sp.lf = rospy.get_param('/lf')
-        self.sp.lr = rospy.get_param('/lr')
-        self.sp.Cf = rospy.get_param('/Cf')
-        self.sp.Cr = rospy.get_param('/Cr')
-        self.sp.Da = rospy.get_param('/Da')
-        self.sp.deltamin = rospy.get_param('/deltamin')
-        self.sp.deltamax = rospy.get_param('/deltamax')
-        
+    def setRosParams(self):
+        self.m = rospy.get_param('/car/inertia/m')
+        self.g = rospy.get_param('/car/inertia/g')
+        self.lf = rospy.get_param('/car/kinematics/b_F')
+        self.lr = rospy.get_param('/car/kinematics/b_R')
+              
     def pathglobal_callback(self, msg):
         self.pathglobal = msg
         self.received_pathglobal = True

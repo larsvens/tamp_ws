@@ -43,7 +43,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         auto t1_loop = std::chrono::high_resolution_clock::now();
 
         // update adaptive constraints
-        rtisqp_wrapper_.setInputConstraints(1.0,1000);
+        rtisqp_wrapper_.setInputConstraints(0.5,1000);
 
         // set refs
         refs_ = setRefs(ctrl_mode_); // 0: tracking(unused todo remove), 1: min s, 2: max s,
@@ -60,7 +60,9 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         auto t2_rollout = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> t_rollout = t2_rollout - t1_rollout;
 
-        if(trajstar_last.s.size()>0){ // append trajstar last
+        // append fwd shifted trajstar last
+        if(trajstar_last.s.size()>0){
+            rtisqp_wrapper_.shiftTrajectoryFwdSimple(trajstar_last);
             trajset_.push_back(trajstar_last);
         }
         trajset2cart(); // only for visualization, comment out to save time
@@ -141,10 +143,8 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         trajset_vis_pub_.publish(trajset_ma_);
         posconstr_vis_pub_.publish(polarr);
 
-        // store fwd shifted trajstar for next iteration
+        // store trajstar for next iteration
         trajstar_last = trajstar;
-
-        rtisqp_wrapper_.shiftTrajectoryFwdSimple(trajstar_last);
 
         // print timings
         ROS_INFO_STREAM("planning iteration complete, Timings: ");
@@ -290,6 +290,7 @@ int SAARTI::trajset_eval_cost(){
             //cost = float(Wslack);
         }
         traj.cost = cost;
+        cout << "cost of traj nr " << i << ": " << cost << endl;
         traj.colliding = colliding;
         traj.exitroad = exitroad;
 

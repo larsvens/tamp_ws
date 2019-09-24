@@ -225,6 +225,20 @@ bool RtisqpWrapper::shiftTrajectoryFwdSimple(planning_util::trajstruct &traj){
     return true;
 }
 
+//bool RtisqpWrapper::shiftTrajectoryByIntegration(planning_util::trajstruct &traj, planning_util::statestruct &state){
+//    real_t acadoWSstate[85];
+//    planning_util::ctrlstruct ctrl;
+//    bool is_initstate = true;
+//    for (size_t k=0;k<N+1;k++) {
+//        ctrl.Fyf = traj.Fyf.at(k);
+//        ctrl.Fx  = traj.Fx.at(k);
+//        if (is_initstate){
+//            RtisqpWrapper::setIntegratorState(acadoWSstate,state,ctrl,kappac);
+//        }
+//    }
+//    return true;
+//}
+
 bool RtisqpWrapper::doPreparationStep(){
     acado_preparationStep();
     return true;
@@ -309,6 +323,11 @@ bool RtisqpWrapper::setIntegratorState(real_t *acadoWSstate,
 }
 
 
+void rolloutSingleTraj(planning_util::statestruct &initstate,
+                       planning_util::pathstruct &pathlocal){
+
+}
+
 /* Description: state space sampling trajectory rollout. Rolls out trajectories using a fast RK4
  * integrator from the acado toolkit. The control input is recomputed at every stage. A vector of
  * references is constructed as [dlb ... dub dlb ... dub], where the first half of the trajset has
@@ -322,8 +341,8 @@ bool RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
     }
 
     // todo input Fh_MAX
-    float Fyfmax = 1000;
-    float Fxmax = 2000;
+    float Fyfmax = 500;
+    float Fxmax = 1000;
 
     // generate reference vectors
     vector<float> dref;

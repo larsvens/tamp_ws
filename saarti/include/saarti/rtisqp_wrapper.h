@@ -61,6 +61,7 @@ public:
                                                        vector<float> rld);
     bool shiftStateAndControls();
     bool shiftTrajectoryFwdSimple(planning_util::trajstruct &traj);
+    bool shiftTrajectoryByIntegration(planning_util::trajstruct &traj,planning_util::statestruct &state);
     bool doPreparationStep();
     int  doFeedbackStep();
     Eigen::MatrixXd getStateTrajectory();
@@ -74,6 +75,8 @@ public:
                             planning_util::statestruct state,
                             planning_util::ctrlstruct ctrl,
                             float kappac);
+    void rolloutSingleTraj(planning_util::statestruct &initstate,
+                           planning_util::pathstruct &pathlocal);
 };
 
 #endif // RTISQP_WRAPPER_H

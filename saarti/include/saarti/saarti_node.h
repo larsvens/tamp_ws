@@ -86,7 +86,7 @@ private:
     visualization_msgs::MarkerArray trajset_ma_;
 
     // modes
-    uint ctrl_mode_ = 1;    // 0: tracking(unused todo remove), 1: min s, 2: max s,
+    uint ctrl_mode_ = 2;    // 0: tracking(unused todo remove), 1: min s, 2: max s,
     uint sampling_mode_ = 1; // 0: input sampling, 1: state space sampling
 
     // weights
