@@ -25,7 +25,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     // set weights
     rtisqp_wrapper_.setWeights(Wx,Wu,Wslack);
 
-    // wait until tmp_trajhat, state and path_local is received
+    // wait until state and path_local is received
     while( (state_.s <= 0) || pathlocal_.s.size() == 0 ){
         ROS_INFO_STREAM("waiting for state and path local");
         ros::spinOnce();
@@ -38,12 +38,15 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     // main loop
     while (ros::ok())
     {
-        cout << endl;
+        ROS_INFO_STREAM(" ");
         ROS_INFO_STREAM("main_ loop_");
         auto t1_loop = std::chrono::high_resolution_clock::now();
 
-        // update adaptive constraints
-        rtisqp_wrapper_.setInputConstraints(0.5,1000);
+        // Todo: update traction map
+
+        /*
+         * FEASIBLE TRAJECTORY ROLLOUT
+         */
 
         // set refs
         refs_ = setRefs(ctrl_mode_); // 0: tracking(unused todo remove), 1: min s, 2: max s,
@@ -80,8 +83,18 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         ROS_INFO_STREAM("trajhat_idx = " << trajhat_idx);
         ROS_INFO_STREAM("trajhat.cost = " << trajhat.cost);
         nav_msgs::Path p_trajhat = traj2navpath(trajhat);
+        if(trajhat.s.back() > 0.95f*pathlocal_.s.back()){
+            ROS_WARN_STREAM("Running out of path!");
+        }
 
-        // update current state
+        /*
+         * OPTIMIZATION
+         */
+
+        // update adaptive constraints for opt
+        rtisqp_wrapper_.setInputConstraints(0.5,1000);
+
+        // update state for opt
         ROS_INFO_STREAM("setting state..");
         rtisqp_wrapper_.setInitialState(state_);
 
@@ -123,6 +136,10 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         traj2cart(trajstar);
         nav_msgs::Path p_trajstar = traj2navpath(trajstar);
 
+        /*
+         * PUBLISH
+         */
+
         // publish trajhat
         common::Trajectory trajhat_msg = traj2msg(trajhat);
         trajhat_msg.slb = posconstr.slb;
@@ -150,7 +167,11 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         ROS_INFO_STREAM("planning iteration complete, Timings: ");
         auto t2_loop = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> t_loop = t2_loop - t1_loop;
-        ROS_INFO_STREAM("single saarti iteration took " << t_loop.count() << " ms ");
+        if(t_loop.count() > dt*1000 ){
+            ROS_WARN_STREAM("looptime exceeding dt! looptime is " << t_loop.count() << " ms ");
+        } else{
+            ROS_INFO_STREAM("looptime is " << t_loop.count() << " ms ");
+        }
         ROS_INFO_STREAM("rollout took                 " << t_rollout.count() << " ms ");
         ROS_INFO_STREAM("optimization took            " << t_opt.count() << " ms ");
 
@@ -158,6 +179,12 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         loop_rate.sleep();
     }
 }
+
+
+/*
+ * FUNCTIONS
+ */
+
 
 // print size of object for debugging
 void SAARTI::print_obj(planning_util::trajstruct traj){
@@ -290,7 +317,7 @@ int SAARTI::trajset_eval_cost(){
             //cost = float(Wslack);
         }
         traj.cost = cost;
-        cout << "cost of traj nr " << i << ": " << cost << endl;
+        //cout << "cost of traj nr " << i << ": " << cost << endl;
         traj.colliding = colliding;
         traj.exitroad = exitroad;
 
@@ -334,7 +361,12 @@ nav_msgs::Path SAARTI::traj2navpath(planning_util::trajstruct traj){
         pose.header.frame_id = "map";
         pose.pose.position.x = double(traj.X.at(i));
         pose.pose.position.y = double(traj.Y.at(i));
-        // todo heading
+        tf2::Quaternion q;
+        q.setRPY(0,0,double(traj.psi.at(i)));
+        pose.pose.orientation.w = q.w();
+        pose.pose.orientation.x = q.x();
+        pose.pose.orientation.y = q.y();
+        pose.pose.orientation.z = q.z();
         p.poses.push_back(pose);
     }
     return p;

@@ -4,6 +4,7 @@
 // ros
 #include "ros/ros.h"
 #include "ros/time.h"
+#include <tf2/LinearMath/Quaternion.h>
 
 #include "std_msgs/String.h"
 // visualization
