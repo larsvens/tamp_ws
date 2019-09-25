@@ -50,11 +50,11 @@ public:
     RtisqpWrapper();
 
     // functions
-    bool setWeights(vector<double>, vector<double>, double);
+    bool setWeights(vector<float>, vector<float>, float);
     bool setInitialGuess(planning_util::trajstruct);
     bool setInitialState(planning_util::statestruct);
     bool setOptReference(planning_util::trajstruct, planning_util::refstruct refs);
-    bool setInputConstraints(double mu, double Fzf);
+    bool setInputConstraints(float mu, float Fzf);
     planning_util::posconstrstruct setStateConstraints(planning_util::trajstruct &traj,
                                                        planning_util::obstastruct obs,
                                                        vector<float> lld,

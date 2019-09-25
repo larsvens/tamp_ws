@@ -91,9 +91,9 @@ private:
     uint sampling_mode_ = 1; // 0: input sampling, 1: state space sampling
 
     // weights
-    vector<double> Wx{10.0, 1.0, 1.0, 0.01, 0.01, 0.01};
-    vector<double> Wu{0.1, 0.1};
-    double Wslack = 10000000;
+    vector<float> Wx{10.0, 1.0, 1.0, 0.01, 0.01, 0.01};
+    vector<float> Wu{0.1, 0.1};
+    float Wslack = 10000000;
 
 };
 } // end namespace saarti_node
