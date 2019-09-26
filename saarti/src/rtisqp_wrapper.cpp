@@ -121,7 +121,8 @@ bool RtisqpWrapper::setInputConstraints(float mu, float Fzf){
 planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util::trajstruct &traj,
                                                                   planning_util::obstastruct obs,
                                                                   vector<float> lld,
-                                                                  vector<float> rld){
+                                                                  vector<float> rld,
+                                                                  float w){
 
     planning_util::posconstrstruct posconstr;
 
@@ -155,13 +156,13 @@ planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util:
 
         // adjust for lane boundaries
         if(dub > lld.at(k)){ // left lane boundary
-            dub = lld.at(k);
+            dub = lld.at(k) - 0.5f*w;
             if(dub-dlb < d_diff_default){
                 dlb = dub-d_diff_default;
             }
         }
         if(dlb < rld.at(k)){ // right lane boundary
-            dlb = rld.at(k);
+            dlb = rld.at(k) + 0.5f*w;
             if(dub-dlb < d_diff_default){
                 dub = dlb + d_diff_default;
             }
@@ -354,6 +355,12 @@ bool RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
     dref = cpp_utils::linspace(dlb, dub, Ntrajs/2);
     vector<float> dref_copy = dref;
     dref.insert(dref.end(), dref_copy.begin(), dref_copy.end());
+
+//    cout << "dref: ";
+//    for (uint i=0;i<dref.size();i++) {
+//        cout << dref.at(i) << "; " << endl;
+//    }
+    //cout << endl;
 
     // generate trajs
     for (uint i=0;i<Ntrajs;i++) {

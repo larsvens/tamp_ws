@@ -54,7 +54,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         // rollout
         ROS_INFO_STREAM("generating trajectory set");
         trajset_.clear();
-        int Nsamples = 6;
+        int Nsamples = 24; // default 24
         auto t1_rollout = std::chrono::high_resolution_clock::now();
         rtisqp_wrapper_.computeTrajset(trajset_,
                                        state_,
@@ -72,7 +72,13 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         trajset2ma();
 
         // cost eval and select
-        int trajhat_idx = trajset_eval_cost(); // error if negative
+        bool RUN_RTISQP = true; // tmp! make rosparam for runmode (see matlab code)
+        int trajhat_idx = 0;
+        if (RUN_RTISQP && (trajstar_last.s.size()>0)){
+            trajhat_idx = int(trajset_.size()-1); // pick final traj
+        } else {
+            trajhat_idx = trajset_eval_cost(); // error if negative
+        }
 
         planning_util::trajstruct trajhat;
         if(trajhat_idx >= 0){
@@ -112,7 +118,8 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         ROS_INFO_STREAM("setting state constraints..");
         vector<float> lld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dub,false);
         vector<float> rld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dlb,false);
-        planning_util::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obst_,lld,rld);
+        float w = 1.5; // TODO get from param
+        planning_util::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obst_,lld,rld,w);
         // visualize state constraint
         jsk_recognition_msgs::PolygonArray polarr = stateconstr2polarr(posconstr);
 
@@ -228,7 +235,76 @@ void SAARTI::traj2cart(planning_util::trajstruct &traj){
     else {
         vector<float> Xc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.X,false);
         vector<float> Yc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.Y,false);
-        vector<float> psic = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.psi_c,false);
+
+        // check psic for flips and record s
+        bool pathlocalhasflips = false;
+        vector<float> s_at_flips;
+        for (uint i=0;i<pathlocal_.s.size()-1;i++) {
+            if(std::abs(pathlocal_.psi_c.at(i+1) - pathlocal_.psi_c.at(i)) > float(M_PI)){
+                pathlocalhasflips = true;
+                s_at_flips.push_back(pathlocal_.s.at(i));
+            }
+        }
+
+        float s_flip_min = 9999999;
+        if(s_at_flips.size()){
+            s_flip_min = s_at_flips.at(0);
+        }
+        vector<float> psic;
+        if( pathlocalhasflips && traj.s.back() >= s_flip_min ){
+
+            ROS_WARN_STREAM("psic flips detected");
+            // make piecewise traj.s according to flips
+            vector<float> s_piece;
+            vector<vector<float>> s_piecewise;
+            uint count = 0;
+            for (uint i=0;i<traj.s.size();i++) {
+                if(traj.s.at(i) <= s_at_flips.at(count)){
+                    s_piece.push_back(traj.s.at(i));
+                } else {
+                    s_piecewise.push_back(s_piece);
+                    s_piece.clear();
+                    s_piece.push_back(traj.s.at(i));
+                    count++;
+                }
+            }
+            s_piecewise.push_back(s_piece);
+
+
+            // for each piece, interpolate
+            vector<float> psic_piece;
+            vector<vector<float>> psic_piecewise;
+            for (uint j=0;j<s_piecewise.size();j++){
+                psic_piece = cpp_utils::interp(s_piecewise.at(j),pathlocal_.s,pathlocal_.psi_c,false);
+                psic_piecewise.push_back(psic_piece);
+                psic_piece.clear();
+            }
+            // concatenate pieces back together
+            psic = psic_piecewise.at(0);
+            for (uint j=1;j<s_piecewise.size();j++){
+                psic.insert(psic.end(), psic_piecewise.at(j).begin(), psic_piecewise.at(j).end());
+            }
+
+            if(pathlocalhasflips && s_piecewise.size() == 1){
+                ROS_ERROR_STREAM("psic has flips, but only one piece in s_piecewise");
+            }
+            cout << "hasflips = " << pathlocalhasflips << endl;
+            cout << "s_at_flips.size() = " << s_at_flips.size() << endl;
+            cout << "s_at_flips.at(0) = " << s_at_flips.at(0) << endl;
+            cout << "s_piecewise.size() = " << s_piecewise.size() << endl;
+            cout << "psic_piecewise.size() = " << psic_piecewise.size() << endl;
+            cout << "psic.size() = " << psic.size() << endl;
+            cout << "traj.s.back() = " << traj.s.back() << endl;
+
+
+        } else {
+            psic = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.psi_c,false);
+        }
+
+        if (psic.size() != traj.s.size()){
+            ROS_ERROR_STREAM("psic has wrong size after interp! psic.size() = " << psic.size() << "traj.s.size() = " << traj.s.size() );
+        }
+
         for (uint j=0; j<traj.s.size();j++) {
             if(std::isnan(traj.s.at(j))){
                 ROS_ERROR("trajectory has nans");
@@ -239,6 +315,15 @@ void SAARTI::traj2cart(planning_util::trajstruct &traj){
             float X = Xc.at(j) - traj.d.at(j)*std::sin(psic.at(j));
             float Y = Yc.at(j) + traj.d.at(j)*std::cos(psic.at(j));
             float psi = traj.deltapsi.at(j) + psic.at(j);
+            // ensure psi is in [-pi pi]
+            float pi = float(M_PI);
+            while(psi > pi){
+                psi = psi - 2*pi;
+            }
+            while(psi <= -pi){
+                psi = psi + 2*pi;
+            }
+            // build vectors
             traj.X.push_back(X);
             traj.Y.push_back(Y);
             traj.psi.push_back(psi);
@@ -258,7 +343,7 @@ void SAARTI::trajset2cart(){
 void SAARTI::sd_pts2cart(vector<float> &s, vector<float> &d, vector<float> &Xout, vector<float> &Yout){
     vector<float> Xc = cpp_utils::interp(s,pathlocal_.s,pathlocal_.X,false);
     vector<float> Yc = cpp_utils::interp(s,pathlocal_.s,pathlocal_.Y,false);
-    vector<float> psic = cpp_utils::interp(s,pathlocal_.s,pathlocal_.psi_c,false);
+    vector<float> psic = cpp_utils::interp(s,pathlocal_.s,pathlocal_.psi_c,false); // TODO HANDLE FLIPS IN PSIC
     for (uint j=0; j<s.size();j++) {
         // X = Xc - d*sin(psic);
         // Y = Yc + d*cos(psic);
@@ -434,8 +519,9 @@ void SAARTI::state_callback(const common::State::ConstPtr& msg){
     state_.vy = msg->vy;
 
     // curvilinear dynamics breaks when vx == 0
-    if (state_.vx <= 0.1f){
-        state_.vx = 0.1f;
+    float v_th = 1.0;
+    if (state_.vx <= v_th){
+        state_.vx = v_th;
     }
 }
 

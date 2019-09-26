@@ -147,7 +147,7 @@ class TrackInterface:
             while(psic_piecewise[j][-1] - psic_piecewise[j+1][0] > np.pi):
                 psic_piecewise[j+1] = psic_piecewise[j+1] + 2*np.pi
                 
-            while(psic_piecewise[j][-1] - psic_piecewise[j+1][0] < -np.pi):
+            while(psic_piecewise[j][-1] - psic_piecewise[j+1][0] <= -np.pi):
                 psic_piecewise[j+1] = psic_piecewise[j+1] - 2*np.pi
         
         # concatenate pieces
@@ -175,7 +175,7 @@ class TrackInterface:
         for i in range(psic_out.size):
             while(psic_out[i] > np.pi):
                 psic_out[i] = psic_out[i] -2*np.pi
-            while(psic_out[i] < -np.pi):
+            while(psic_out[i] <= -np.pi):
                 psic_out[i] = psic_out[i] +2*np.pi
 
         # set kappac        
@@ -198,13 +198,18 @@ class TrackInterface:
         
         # plot to see what we're doing  
         if plot_orientation:   
-            fig, axs = plt.subplots(2,1)
+            fig, axs = plt.subplots(3,1)
             axs[0].plot(s,psic,'k*')
+            axs[0].set_title('psic')
             #for j in range(len(psic_piecewise)):
             #    ax.plot(s_piecewise[j],psic_piecewise[j],'.')
             #ax.plot(s,psic_cont,'r')        
             axs[0].plot(s,psic_out,'m.')
+            
             axs[1].plot(s,kappac_out,'.m')
+            axs[1].set_title('kappac')
+            
+            
             plt.show()
         
         if plot_track:

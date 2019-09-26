@@ -58,7 +58,8 @@ public:
     planning_util::posconstrstruct setStateConstraints(planning_util::trajstruct &traj,
                                                        planning_util::obstastruct obs,
                                                        vector<float> lld,
-                                                       vector<float> rld);
+                                                       vector<float> rld,
+                                                       float w);
     bool shiftStateAndControls();
     bool shiftTrajectoryFwdSimple(planning_util::trajstruct &traj);
     bool shiftTrajectoryByIntegration(planning_util::trajstruct &traj,planning_util::statestruct &state);

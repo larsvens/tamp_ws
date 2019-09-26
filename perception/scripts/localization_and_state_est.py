@@ -37,7 +37,7 @@ class LocAndStateEst:
         self.rate = rospy.Rate(1/self.dt) # 10hz
         
         # params of local path
-        self.N = 200
+        self.N = 400
         self.ds = 0.5
 
         # set static vehicle params
@@ -124,6 +124,11 @@ class LocAndStateEst:
         self.state.d = d[0]
         psi_c = np.interp(s,self.pathlocal.s,self.pathlocal.psi_c)
         self.state.deltapsi = self.state.psi - psi_c
+        # correction of detapsi @ psi flips
+        while(self.state.deltapsi > np.pi):
+            self.state.deltapsi = self.state.deltapsi -2*np.pi
+        while(self.state.deltapsi < -np.pi):
+            self.state.deltapsi = self.state.deltapsi +2*np.pi
 
 
     def updateLocalPath(self):
