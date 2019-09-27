@@ -127,7 +127,7 @@ class LocAndStateEst:
         # correction of detapsi @ psi flips
         while(self.state.deltapsi > np.pi):
             self.state.deltapsi = self.state.deltapsi -2*np.pi
-        while(self.state.deltapsi < -np.pi):
+        while(self.state.deltapsi <= -np.pi):
             self.state.deltapsi = self.state.deltapsi +2*np.pi
 
 

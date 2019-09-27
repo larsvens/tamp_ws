@@ -236,40 +236,45 @@ void SAARTI::traj2cart(planning_util::trajstruct &traj){
         vector<float> Xc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.X,false);
         vector<float> Yc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.Y,false);
 
-        // check psic for flips and record s
-        bool pathlocalhasflips = false;
+        // PSIC FLIP CHECKS
         vector<float> s_at_flips;
         for (uint i=0;i<pathlocal_.s.size()-1;i++) {
             if(std::abs(pathlocal_.psi_c.at(i+1) - pathlocal_.psi_c.at(i)) > float(M_PI)){
-                pathlocalhasflips = true;
                 s_at_flips.push_back(pathlocal_.s.at(i));
             }
         }
+        s_at_flips.push_back(pathlocal_.s.back()); // handle last point as a flip to avoid empty vector
 
-        float s_flip_min = 9999999;
-        if(s_at_flips.size()){
-            s_flip_min = s_at_flips.at(0);
-        }
         vector<float> psic;
-        if( pathlocalhasflips && traj.s.back() >= s_flip_min ){
+        if( (s_at_flips.size()>1) && (traj.s.back() >= s_at_flips.at(0)) ){
 
-            ROS_WARN_STREAM("psic flips detected");
+            ROS_WARN_STREAM("psic flips detected! Nr of flips: " << s_at_flips.size()-1);
+            for(uint i=0; i<s_at_flips.size();i++){
+                ROS_WARN_STREAM("s_at_flips.at(" << i << ") = " << s_at_flips.at(i)  );
+            }
             // make piecewise traj.s according to flips
             vector<float> s_piece;
             vector<vector<float>> s_piecewise;
             uint count = 0;
+            bool finalpiece = false;
             for (uint i=0;i<traj.s.size();i++) {
-                if(traj.s.at(i) <= s_at_flips.at(count)){
+                if((traj.s.at(i) < s_at_flips.at(count)) || finalpiece ){
                     s_piece.push_back(traj.s.at(i));
                 } else {
                     s_piecewise.push_back(s_piece);
                     s_piece.clear();
                     s_piece.push_back(traj.s.at(i));
                     count++;
+                    if (count == s_at_flips.size()-1){
+                        finalpiece = true;
+                    }
+                    if(count >= s_at_flips.size()){
+                        ROS_ERROR_STREAM("variable count became too large for some reason, count = " << count);
+                    }
                 }
             }
             s_piecewise.push_back(s_piece);
-
+            ROS_WARN_STREAM(" finished s_piecewise with size " << s_piecewise.size() );
 
             // for each piece, interpolate
             vector<float> psic_piece;
@@ -279,31 +284,29 @@ void SAARTI::traj2cart(planning_util::trajstruct &traj){
                 psic_piecewise.push_back(psic_piece);
                 psic_piece.clear();
             }
+            ROS_WARN_STREAM(" finished psic_piecewise with size " << psic_piecewise.size() );
+
             // concatenate pieces back together
             psic = psic_piecewise.at(0);
             for (uint j=1;j<s_piecewise.size();j++){
                 psic.insert(psic.end(), psic_piecewise.at(j).begin(), psic_piecewise.at(j).end());
             }
 
-            if(pathlocalhasflips && s_piecewise.size() == 1){
-                ROS_ERROR_STREAM("psic has flips, but only one piece in s_piecewise");
+            if(s_at_flips.size() != s_piecewise.size()){
+                ROS_ERROR_STREAM("s_at_flips and s_piecewise have different size! s_at_flips.size() = " << s_at_flips.size() << "s_piecewise.size() = " << s_piecewise.size());
             }
-            cout << "hasflips = " << pathlocalhasflips << endl;
-            cout << "s_at_flips.size() = " << s_at_flips.size() << endl;
-            cout << "s_at_flips.at(0) = " << s_at_flips.at(0) << endl;
-            cout << "s_piecewise.size() = " << s_piecewise.size() << endl;
-            cout << "psic_piecewise.size() = " << psic_piecewise.size() << endl;
-            cout << "psic.size() = " << psic.size() << endl;
-            cout << "traj.s.back() = " << traj.s.back() << endl;
-
 
         } else {
             psic = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.psi_c,false);
         }
 
+
+
         if (psic.size() != traj.s.size()){
             ROS_ERROR_STREAM("psic has wrong size after interp! psic.size() = " << psic.size() << "traj.s.size() = " << traj.s.size() );
         }
+
+        // END OF PSIC FLIP CHECK
 
         for (uint j=0; j<traj.s.size();j++) {
             if(std::isnan(traj.s.at(j))){
