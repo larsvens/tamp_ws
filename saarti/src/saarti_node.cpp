@@ -118,7 +118,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         ROS_INFO_STREAM("setting state constraints..");
         vector<float> lld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dub,false);
         vector<float> rld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dlb,false);
-        float w = 1.5; // TODO get from param
+        float w = 2.0; // TODO get from param
         planning_util::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obst_,lld,rld,w);
         // visualize state constraint
         jsk_recognition_msgs::PolygonArray polarr = stateconstr2polarr(posconstr);

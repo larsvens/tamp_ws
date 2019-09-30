@@ -70,7 +70,7 @@ class CtrlInterface:
 
             # compute control
             delta_out = rho*(self.lf + self.lr) # kinematic feed fwd
-            dc_out = 0.00005*self.trajstar.Fx[0]
+            dc_out = 0.00010*self.trajstar.Fx[0]
             
             # prints 
             print ""
