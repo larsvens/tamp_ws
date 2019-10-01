@@ -12,7 +12,6 @@
 import numpy as np
 import rospy
 from common.msg import State
-#from common.msg import VehicleOut
 from common.msg import Path
 from common.msg import DynamicVehicleParams
 from coordinate_transforms import ptsCartesianToFrenet
@@ -45,6 +44,7 @@ class LocAndStateEst:
 
         # init local vars
         self.pathglobal = Path()
+        self.pathrolling = Path() # used to run several laps
         self.pathlocal = Path()
         self.state = State()
         self.vehicle_out = fssimState()
@@ -75,22 +75,20 @@ class LocAndStateEst:
         print "locandstateest: running main"
         
         # Main loop
-        first_iteration = True
         while not rospy.is_shutdown():
 
             # update dynamic params
             self.dynamic_params.header.stamp = rospy.Time.now()
             self.dynamic_param_pub.publish(self.dynamic_params)
-            
-            # update local path around new state 
+
+            # update pathrolling to handle multiple laps
+            if (self.state.s > self.pathrolling.s[0]+self.s_lap + 10): # if we're on the second lap of pathrolling
+                self.pathrolling.s = self.pathrolling.s + self.s_lap
+           
+            # update local path 
             self.updateLocalPath()
             self.pathlocal.header.stamp = rospy.Time.now()
             self.pathlocalpub.publish(self.pathlocal)
-            
-            # update global s to handle multiple laps
-            #if (not first_iteration):
-                #self.updateGlobal_s()
-                #print "pathglobal_s: ", self.pathglobal_s
             
             # visualize local path in rviz
             pathlocal_vis = navPath()
@@ -109,11 +107,8 @@ class LocAndStateEst:
             self.updateState()
             self.statepub.publish(self.state)
 
-            first_iteration = False
             self.rate.sleep()   
             
-
-
     def updateState(self):
         self.state.X = self.vehicle_out.x
         self.state.Y = self.vehicle_out.y
@@ -152,32 +147,16 @@ class LocAndStateEst:
         s = np.linspace(self.smin_local,smax_local,self.N)
         
         # interpolate on global path
-        self.pathlocal.X =              np.interp(s,self.pathglobal_s,self.pathglobal.X)
-        self.pathlocal.Y =              np.interp(s,self.pathglobal_s,self.pathglobal.Y)
+        self.pathlocal.X =              np.interp(s,self.pathrolling.s,self.pathrolling.X)
+        self.pathlocal.Y =              np.interp(s,self.pathrolling.s,self.pathrolling.Y)
         self.pathlocal.s =              s
-        self.pathlocal.psi_c =          np.interp(s,self.pathglobal_s,self.pathglobal.psi_c)
-        self.pathlocal.theta_c =        np.interp(s,self.pathglobal_s,self.pathglobal.theta_c)
-        self.pathlocal.kappa_c =        np.interp(s,self.pathglobal_s,self.pathglobal.kappa_c)
-        self.pathlocal.kappaprime_c =   np.interp(s,self.pathglobal_s,self.pathglobal.kappaprime_c)
-        self.pathlocal.dub =            np.interp(s,self.pathglobal_s,self.pathglobal.dub)
-        self.pathlocal.dlb =            np.interp(s,self.pathglobal_s,self.pathglobal.dlb)
-        
-    def updateGlobal_s(self):
-       
-        # find index of pathglobal_s close behind smin_local
-        high_idx = np.argmin(np.abs(self.pathglobal_s - self.smin_local)) - 10
-        #print np.min(np.abs(self.pathglobal_s - self.smin_local))
-        print self.smin_local
-        for i in range(self.low_idx,high_idx):
-            self.pathglobal_s[i] = self.pathglobal_s[i] + self.s_lap
-
-        
-        print "high_idx = ", high_idx
-        print "low_idx  = ", self.low_idx
-        
-        self.low_idx = high_idx
-        
-        
+        self.pathlocal.psi_c =          np.interp(s,self.pathrolling.s,self.pathrolling.psi_c)
+        self.pathlocal.theta_c =        np.interp(s,self.pathrolling.s,self.pathrolling.theta_c)
+        self.pathlocal.kappa_c =        np.interp(s,self.pathrolling.s,self.pathrolling.kappa_c)
+        self.pathlocal.kappaprime_c =   np.interp(s,self.pathrolling.s,self.pathrolling.kappaprime_c)
+        self.pathlocal.dub =            np.interp(s,self.pathrolling.s,self.pathrolling.dub)
+        self.pathlocal.dlb =            np.interp(s,self.pathrolling.s,self.pathrolling.dlb)
+            
     def setRosParams(self):
         self.m = rospy.get_param('/car/inertia/m')
         self.g = rospy.get_param('/car/inertia/g')
@@ -186,12 +165,23 @@ class LocAndStateEst:
               
     def pathglobal_callback(self, msg):
         self.pathglobal = msg
-        self.pathglobal_s = np.array(self.pathglobal.s) # new variable that increases with laps
-        #self.startidx_last = 0
-        self.low_idx = 0
+        
+        # get s of one lap
         stot_global = self.pathglobal.s[-1]
         dist_sf = np.sqrt( (self.pathglobal.X[0]-self.pathglobal.X[-1])**2 + (self.pathglobal.Y[0]-self.pathglobal.Y[-1])**2)
-        self.s_lap = stot_global + dist_sf           
+        self.s_lap = stot_global + dist_sf  
+        
+        # start pathrolling as two first laps
+        self.pathrolling.X = np.concatenate((np.array(self.pathglobal.X),np.array(self.pathglobal.X)),axis=0)
+        self.pathrolling.Y = np.concatenate((np.array(self.pathglobal.Y),np.array(self.pathglobal.Y)),axis=0)
+        self.pathrolling.s = np.concatenate((np.array(self.pathglobal.s),np.array(self.pathglobal.s) + self.s_lap ),axis=0)
+        self.pathrolling.psi_c = np.concatenate((np.array(self.pathglobal.psi_c),np.array(self.pathglobal.psi_c)),axis=0)
+        self.pathrolling.theta_c = np.concatenate((np.array(self.pathglobal.theta_c),np.array(self.pathglobal.theta_c)),axis=0)
+        self.pathrolling.kappa_c = np.concatenate((np.array(self.pathglobal.kappa_c),np.array(self.pathglobal.kappa_c)),axis=0)
+        self.pathrolling.kappaprime_c = np.concatenate((np.array(self.pathglobal.kappaprime_c),np.array(self.pathglobal.kappaprime_c)),axis=0)
+        self.pathrolling.dub = np.concatenate((np.array(self.pathglobal.dub),np.array(self.pathglobal.dub)),axis=0)
+        self.pathrolling.dlb = np.concatenate((np.array(self.pathglobal.dlb),np.array(self.pathglobal.dlb)),axis=0)
+        
         self.received_pathglobal = True
     
     def vehicle_out_callback(self, msg):
