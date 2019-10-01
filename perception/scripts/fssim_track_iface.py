@@ -13,6 +13,8 @@ from geometry_msgs.msg import PoseStamped
 from fssim_common.msg import Track
 from common.msg import Path
 from coordinate_transforms import ptsFrenetToCartesian
+from util import angleToInterval
+from util import angleToContinous
 
 import matplotlib.pyplot as plt
 # adjust for high dpi screen
@@ -172,11 +174,14 @@ class TrackInterface:
         
         # put psi_c back on interval [-pi,pi]
         psic_out = psic_spl(s)
-        for i in range(psic_out.size):
-            while(psic_out[i] > np.pi):
-                psic_out[i] = psic_out[i] -2*np.pi
-            while(psic_out[i] <= -np.pi):
-                psic_out[i] = psic_out[i] +2*np.pi
+        plt.plot(psic_out)
+        psic_out = angleToInterval(psic_out)
+
+        # tmp test helpers
+        #plt.plot(psic_out,'*')
+        #psic_out = angleToContinous(psic_out)
+        #plt.plot(psic_out,'.')
+        #plt.show()
 
         # set kappac        
         kappac_out = kappac_spl(s)

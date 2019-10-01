@@ -28,6 +28,9 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     // wait until state and path_local is received
     while( (state_.s <= 0) || pathlocal_.s.size() == 0 ){
         ROS_INFO_STREAM("waiting for state and path local");
+        if(state_.s < 0){
+            ROS_ERROR_STREAM("state.s is negative! s = " << state_.s);
+        }
         ros::spinOnce();
         loop_rate.sleep();
     }
@@ -84,13 +87,13 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         if(trajhat_idx >= 0){
             trajhat = trajset_.at(uint(trajhat_idx));
         } else {
-            ROS_ERROR("no traj selected");
+            ROS_ERROR_STREAM("no traj selected");
         }
         ROS_INFO_STREAM("trajhat_idx = " << trajhat_idx);
         ROS_INFO_STREAM("trajhat.cost = " << trajhat.cost);
         nav_msgs::Path p_trajhat = traj2navpath(trajhat);
         if(trajhat.s.back() > 0.95f*pathlocal_.s.back()){
-            ROS_WARN_STREAM("Running out of path!");
+            ROS_ERROR_STREAM("Running out of path!");
         }
 
         /*
@@ -189,27 +192,9 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
 
 /*
- * FUNCTIONS
+ * FUNCTIONS todo put some in util
  */
 
-
-// print size of object for debugging
-void SAARTI::print_obj(planning_util::trajstruct traj){
-    // state
-    cout << "length of s: " << traj.s.size() << endl;
-    cout << "length of d: " << traj.d.size() << endl;
-    cout << "length of deltapsi: " << traj.deltapsi.size() << endl;
-    cout << "length of psidot: " << traj.psidot.size() << endl;
-    cout << "length of vx: " << traj.vx.size() << endl;
-    cout << "length of vy: " << traj.vy.size() << endl;
-    // control
-    cout << "length of Fyf: " << traj.Fyf.size() << endl;
-    cout << "length of Fx: " << traj.Fx.size() << endl;
-    // cartesian pose
-    cout << "length of X: " << traj.X.size() << endl;
-    cout << "length of Y: " << traj.Y.size() << endl;
-    cout << "length of psi: " << traj.psi.size() << endl;
-}
 
 // sets refs to be used in rollout and optimization
 planning_util::refstruct SAARTI::setRefs(uint ctrlmode){
@@ -235,78 +220,10 @@ void SAARTI::traj2cart(planning_util::trajstruct &traj){
     else {
         vector<float> Xc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.X,false);
         vector<float> Yc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.Y,false);
-
-        // PSIC FLIP CHECKS
-        vector<float> s_at_flips;
-        for (uint i=0;i<pathlocal_.s.size()-1;i++) {
-            if(std::abs(pathlocal_.psi_c.at(i+1) - pathlocal_.psi_c.at(i)) > float(M_PI)){
-                s_at_flips.push_back(pathlocal_.s.at(i));
-            }
-        }
-        s_at_flips.push_back(pathlocal_.s.back()); // handle last point as a flip to avoid empty vector
-
-        vector<float> psic;
-        if( (s_at_flips.size()>1) && (traj.s.back() >= s_at_flips.at(0)) ){
-
-            ROS_WARN_STREAM("psic flips detected! Nr of flips: " << s_at_flips.size()-1);
-            for(uint i=0; i<s_at_flips.size();i++){
-                ROS_WARN_STREAM("s_at_flips.at(" << i << ") = " << s_at_flips.at(i)  );
-            }
-            // make piecewise traj.s according to flips
-            vector<float> s_piece;
-            vector<vector<float>> s_piecewise;
-            uint count = 0;
-            bool finalpiece = false;
-            for (uint i=0;i<traj.s.size();i++) {
-                if((traj.s.at(i) < s_at_flips.at(count)) || finalpiece ){
-                    s_piece.push_back(traj.s.at(i));
-                } else {
-                    s_piecewise.push_back(s_piece);
-                    s_piece.clear();
-                    s_piece.push_back(traj.s.at(i));
-                    count++;
-                    if (count == s_at_flips.size()-1){
-                        finalpiece = true;
-                    }
-                    if(count >= s_at_flips.size()){
-                        ROS_ERROR_STREAM("variable count became too large for some reason, count = " << count);
-                    }
-                }
-            }
-            s_piecewise.push_back(s_piece);
-            ROS_WARN_STREAM(" finished s_piecewise with size " << s_piecewise.size() );
-
-            // for each piece, interpolate
-            vector<float> psic_piece;
-            vector<vector<float>> psic_piecewise;
-            for (uint j=0;j<s_piecewise.size();j++){
-                psic_piece = cpp_utils::interp(s_piecewise.at(j),pathlocal_.s,pathlocal_.psi_c,false);
-                psic_piecewise.push_back(psic_piece);
-                psic_piece.clear();
-            }
-            ROS_WARN_STREAM(" finished psic_piecewise with size " << psic_piecewise.size() );
-
-            // concatenate pieces back together
-            psic = psic_piecewise.at(0);
-            for (uint j=1;j<s_piecewise.size();j++){
-                psic.insert(psic.end(), psic_piecewise.at(j).begin(), psic_piecewise.at(j).end());
-            }
-
-            if(s_at_flips.size() != s_piecewise.size()){
-                ROS_ERROR_STREAM("s_at_flips and s_piecewise have different size! s_at_flips.size() = " << s_at_flips.size() << "s_piecewise.size() = " << s_piecewise.size());
-            }
-
-        } else {
-            psic = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.psi_c,false);
-        }
-
-
-
-        if (psic.size() != traj.s.size()){
-            ROS_ERROR_STREAM("psic has wrong size after interp! psic.size() = " << psic.size() << "traj.s.size() = " << traj.s.size() );
-        }
-
-        // END OF PSIC FLIP CHECK
+        // handle discontinuities in psic
+        vector<float> pathlocal_psic_cont = angle_to_continous(pathlocal_.psi_c);
+        vector<float> psic = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_psic_cont,false);
+        angle_to_interval(psic); // bring traj.psic back to [-pi pi]
 
         for (uint j=0; j<traj.s.size();j++) {
             if(std::isnan(traj.s.at(j))){
@@ -318,20 +235,15 @@ void SAARTI::traj2cart(planning_util::trajstruct &traj){
             float X = Xc.at(j) - traj.d.at(j)*std::sin(psic.at(j));
             float Y = Yc.at(j) + traj.d.at(j)*std::cos(psic.at(j));
             float psi = traj.deltapsi.at(j) + psic.at(j);
-            // ensure psi is in [-pi pi]
-            float pi = float(M_PI);
-            while(psi > pi){
-                psi = psi - 2*pi;
-            }
-            while(psi <= -pi){
-                psi = psi + 2*pi;
-            }
+
             // build vectors
             traj.X.push_back(X);
             traj.Y.push_back(Y);
             traj.psi.push_back(psi);
         }
         traj.kappac = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.kappa_c,false);
+        // ensure psi is in [-pi pi]
+        angle_to_interval(traj.psi);
     }
 }
 
@@ -346,7 +258,10 @@ void SAARTI::trajset2cart(){
 void SAARTI::sd_pts2cart(vector<float> &s, vector<float> &d, vector<float> &Xout, vector<float> &Yout){
     vector<float> Xc = cpp_utils::interp(s,pathlocal_.s,pathlocal_.X,false);
     vector<float> Yc = cpp_utils::interp(s,pathlocal_.s,pathlocal_.Y,false);
-    vector<float> psic = cpp_utils::interp(s,pathlocal_.s,pathlocal_.psi_c,false); // TODO HANDLE FLIPS IN PSIC
+    vector<float> pathlocal_psic_cont = angle_to_continous(pathlocal_.psi_c);
+    vector<float> psic = cpp_utils::interp(s,pathlocal_.s,pathlocal_psic_cont,false);
+    angle_to_interval(psic);
+
     for (uint j=0; j<s.size();j++) {
         // X = Xc - d*sin(psic);
         // Y = Yc + d*cos(psic);
@@ -356,6 +271,39 @@ void SAARTI::sd_pts2cart(vector<float> &s, vector<float> &d, vector<float> &Xout
         Xout.push_back(X);
         Yout.push_back(Y);
     }
+}
+
+void SAARTI::angle_to_interval(vector<float> &psi){
+    // default interval: [-pi pi]
+    float pi = float(M_PI);
+    for (uint i=0; i<psi.size(); i++){
+        while(psi.at(i) > pi){
+            psi.at(i) = psi.at(i) - 2*pi;
+        }
+        while(psi.at(i) <= -pi){
+            psi.at(i) = psi.at(i) + 2*pi;
+        }
+    }
+}
+
+vector<float> SAARTI::angle_to_continous(vector<float> &psi){
+    float pi = float(M_PI);
+    float offset = 0;
+    vector<float> psi_cont;
+    for (uint i=0;i<psi.size()-1;i++) {
+        psi_cont.push_back(psi.at(i) + offset);
+        if(psi.at(i+1) - psi.at(i) > pi){ // detecting up-flip
+            offset = offset - 2*pi;
+        }
+        if(psi.at(i+1) - psi.at(i) < -pi){ // detecting down-flip
+            offset = offset + 2*pi;
+        }
+    }
+    psi_cont.push_back(psi.back() + offset); // final value
+    if (psi_cont.size() != psi.size()){
+        ROS_ERROR_STREAM("fault in angle_to_continous");
+    }
+    return psi_cont;
 }
 
 // cost evaluation and collision checking of trajset

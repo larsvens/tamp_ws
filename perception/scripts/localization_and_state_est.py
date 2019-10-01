@@ -15,6 +15,8 @@ from common.msg import State
 from common.msg import Path
 from common.msg import DynamicVehicleParams
 from coordinate_transforms import ptsCartesianToFrenet
+from util import angleToInterval
+from util import angleToContinous
 from fssim_common.msg import State as fssimState
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path as navPath
@@ -36,7 +38,7 @@ class LocAndStateEst:
         self.rate = rospy.Rate(1/self.dt) # 10hz
         
         # params of local path
-        self.N = 400
+        self.N = 500
         self.ds = 0.5
 
         # set static vehicle params
@@ -72,8 +74,9 @@ class LocAndStateEst:
             print "locandstateest: waiting for vehicle_out"
             self.rate.sleep()
 
-        print "locandstateest: running main"
-        
+        print "locandstateest: running main with: "
+        print "lap length: ", self.s_lap
+        print "length of local path: ", self.N*self.ds
         # Main loop
         while not rospy.is_shutdown():
 
@@ -137,11 +140,9 @@ class LocAndStateEst:
 
     def updateLocalPath(self):
        
-        # define length of local path and params for interp
-        #N = 200
-        #ds = 0.5
         stot_local = self.N*self.ds
-        self.smin_local = self.state.s - 1
+        self.smin_local = max(self.state.s - 1,0)
+        #print "smin_local = ", self.smin_local
         smax_local = self.smin_local+stot_local
         
         s = np.linspace(self.smin_local,smax_local,self.N)
@@ -150,7 +151,8 @@ class LocAndStateEst:
         self.pathlocal.X =              np.interp(s,self.pathrolling.s,self.pathrolling.X)
         self.pathlocal.Y =              np.interp(s,self.pathrolling.s,self.pathrolling.Y)
         self.pathlocal.s =              s
-        self.pathlocal.psi_c =          np.interp(s,self.pathrolling.s,self.pathrolling.psi_c)
+        self.pathlocal.psi_c =          np.interp(s,self.pathrolling.s,angleToContinous(self.pathrolling.psi_c)) # interpolating on continous psic
+        self.pathlocal.psi_c =          angleToInterval(self.pathlocal.psi_c)
         self.pathlocal.theta_c =        np.interp(s,self.pathrolling.s,self.pathrolling.theta_c)
         self.pathlocal.kappa_c =        np.interp(s,self.pathrolling.s,self.pathrolling.kappa_c)
         self.pathlocal.kappaprime_c =   np.interp(s,self.pathrolling.s,self.pathrolling.kappaprime_c)

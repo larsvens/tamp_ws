@@ -50,6 +50,10 @@ private:
 
     void sd_pts2cart(vector<float> &s, vector<float> &d, vector<float> &Xout, vector<float> &Yout);
 
+    void angle_to_interval(vector<float> &psi);
+
+    vector<float> angle_to_continous(vector<float> &psi);
+
     int trajset_eval_cost();
 
     common::Trajectory traj2msg(planning_util::trajstruct traj);
@@ -65,6 +69,7 @@ private:
     void pathlocal_callback(const common::Path::ConstPtr& msg);
 
     void obstacles_callback(const common::Obstacles::ConstPtr& msg);
+
 
 
     double dt;
