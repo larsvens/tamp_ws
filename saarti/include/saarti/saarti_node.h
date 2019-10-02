@@ -39,39 +39,16 @@ public:
     SAARTI(ros::NodeHandle nh);
 
 private:
+    // modes (todo get from launch)
+    uint ctrl_mode_ = 2;    // 0: tracking(unused todo remove), 1: min s, 2: max s,
+    uint sampling_mode_ = 1; // 0: input sampling, 1: state space sampling
 
-    void print_obj(planning_util::trajstruct traj);
+    // weights (todo get from launch)
+    vector<float> Wx{10.0, 1.0, 1.0, 0.01, 0.01, 0.01};
+    vector<float> Wu{0.1, 0.1};
+    float Wslack = 10000000;
 
-    planning_util::refstruct setRefs(uint ctrlmode);
-
-    void traj2cart(planning_util::trajstruct &traj);
-
-    void trajset2cart();
-
-    void sd_pts2cart(vector<float> &s, vector<float> &d, vector<float> &Xout, vector<float> &Yout);
-
-    void angle_to_interval(vector<float> &psi);
-
-    vector<float> angle_to_continous(vector<float> &psi);
-
-    int trajset_eval_cost();
-
-    common::Trajectory traj2msg(planning_util::trajstruct traj);
-
-    nav_msgs::Path traj2navpath(planning_util::trajstruct traj);
-
-    void trajset2ma();
-
-    jsk_recognition_msgs::PolygonArray stateconstr2polarr(planning_util::posconstrstruct pc);
-
-    void state_callback(const common::State::ConstPtr& msg);
-
-    void pathlocal_callback(const common::Path::ConstPtr& msg);
-
-    void obstacles_callback(const common::Obstacles::ConstPtr& msg);
-
-
-
+    // variables
     double dt;
     ros::NodeHandle nh_;
     ros::Subscriber pathlocal_sub_;
@@ -89,16 +66,26 @@ private:
     planning_util::obstastruct obst_;
     planning_util::refstruct refs_;
     RtisqpWrapper rtisqp_wrapper_;
-    visualization_msgs::MarkerArray trajset_ma_;
 
-    // modes
-    uint ctrl_mode_ = 2;    // 0: tracking(unused todo remove), 1: min s, 2: max s,
-    uint sampling_mode_ = 1; // 0: input sampling, 1: state space sampling
+    // functions
+    void print_obj(planning_util::trajstruct traj);
+    planning_util::refstruct setRefs(uint ctrlmode);
+    void traj2cart(planning_util::trajstruct &traj);
+    void trajset2cart();
+    void sd_pts2cart(vector<float> &s, vector<float> &d, vector<float> &Xout, vector<float> &Yout);
+    void angle_to_interval(vector<float> &psi);
+    vector<float> angle_to_continous(vector<float> &psi);
+    int trajset_eval_cost();
+    common::Trajectory traj2msg(planning_util::trajstruct traj);
+    nav_msgs::Path traj2navpath(planning_util::trajstruct traj);
+    void trajset2ma();
+    visualization_msgs::Marker trajset2cubelist();
+    jsk_recognition_msgs::PolygonArray stateconstr2polarr(planning_util::posconstrstruct pc);
+    void state_callback(const common::State::ConstPtr& msg);
+    void pathlocal_callback(const common::Path::ConstPtr& msg);
+    void obstacles_callback(const common::Obstacles::ConstPtr& msg);
 
-    // weights
-    vector<float> Wx{10.0, 1.0, 1.0, 0.01, 0.01, 0.01};
-    vector<float> Wu{0.1, 0.1};
-    float Wslack = 10000000;
+
 
 };
 } // end namespace saarti_node

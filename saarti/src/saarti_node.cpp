@@ -16,7 +16,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     // visualization
     trajhat_vis_pub_ = nh.advertise<nav_msgs::Path>("trajhat_vis",1);
     trajstar_vis_pub_ = nh.advertise<nav_msgs::Path>("trajstar_vis",1);
-    trajset_vis_pub_ = nh.advertise<visualization_msgs::MarkerArray>("trajset_vis",1);
+    trajset_vis_pub_ = nh.advertise<visualization_msgs::Marker>("trajset_vis",1);
     posconstr_vis_pub_ = nh.advertise<jsk_recognition_msgs::PolygonArray>("posconstr_vis",1);
 
     // init wrapper for rtisqp solver
@@ -72,7 +72,9 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             trajset_.push_back(trajstar_last);
         }
         trajset2cart(); // only for visualization, comment out to save time
-        trajset2ma();
+        visualization_msgs::Marker trajset_cubelist = trajset2cubelist();
+
+        //trajset2ma();
 
         // cost eval and select
         bool RUN_RTISQP = true; // tmp! make rosparam for runmode (see matlab code)
@@ -167,7 +169,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         // publish visualization msgs
         trajhat_vis_pub_.publish(p_trajhat);
         trajstar_vis_pub_.publish(p_trajstar);
-        trajset_vis_pub_.publish(trajset_ma_);
+        trajset_vis_pub_.publish(trajset_cubelist);
         posconstr_vis_pub_.publish(polarr);
 
         // store trajstar for next iteration
@@ -408,32 +410,30 @@ nav_msgs::Path SAARTI::traj2navpath(planning_util::trajstruct traj){
     return p;
 }
 
-// fill trajset marker array for visualization
-void SAARTI::trajset2ma(){
-    trajset_ma_.markers.clear();
-    int count = 0;
+// represent trajset as cubelist for fast rendering visualization
+visualization_msgs::Marker SAARTI::trajset2cubelist(){
+    visualization_msgs::Marker m;
+    m.type = visualization_msgs::Marker::CUBE_LIST;
+    m.scale.x = 0.1;
+    m.scale.y = 0.1;
+    m.scale.z = 0.05;
+    m.color.a = 1.0;
+    m.color.r = 0.0;
+    m.color.g = 0.0;
+    m.color.b = 1.0;
+    m.header.stamp = ros::Time::now();
+    m.header.frame_id = "map";
+    m.pose.orientation.w = 1.0;
     for (uint i=0; i<trajset_.size(); i++) {
         planning_util::trajstruct traj = trajset_.at(i);
         for (uint j=0; j<traj.s.size();j++) {
-            visualization_msgs::Marker m;
-            m.header.stamp = ros::Time::now();
-            m.header.frame_id = "map";
-            m.id = count;
-            m.pose.position.x = double(traj.X.at(j));
-            m.pose.position.y = double(traj.Y.at(j));
-            // style
-            m.type = m.CUBE;
-            m.scale.x = 0.1;
-            m.scale.y = 0.1;
-            m.scale.z = 0.01;
-            m.color.a = 1.0;
-            m.color.r = 0.0;
-            m.color.g = 1.0;
-            m.color.b = 0.0;
-            trajset_ma_.markers.push_back(m);
-            count++;
+            geometry_msgs::Point pt;
+            pt.x = double(traj.X.at(j));
+            pt.y = double(traj.Y.at(j));
+            m.points.push_back(pt);
         }
     }
+    return m;
 }
 
 // create visualization obj for state constraints
