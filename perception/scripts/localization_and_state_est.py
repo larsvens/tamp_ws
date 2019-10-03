@@ -156,9 +156,10 @@ class LocAndStateEst:
         self.pathlocal.theta_c =        np.interp(s,self.pathrolling.s,self.pathrolling.theta_c)
         self.pathlocal.kappa_c =        np.interp(s,self.pathrolling.s,self.pathrolling.kappa_c)
         self.pathlocal.kappaprime_c =   np.interp(s,self.pathrolling.s,self.pathrolling.kappaprime_c)
+        self.pathlocal.mu =             np.interp(s,self.pathrolling.s,self.pathrolling.mu)
         self.pathlocal.dub =            np.interp(s,self.pathrolling.s,self.pathrolling.dub)
         self.pathlocal.dlb =            np.interp(s,self.pathrolling.s,self.pathrolling.dlb)
-            
+        
     def setRosParams(self):
         self.m = rospy.get_param('/car/inertia/m')
         self.g = rospy.get_param('/car/inertia/g')
@@ -181,6 +182,7 @@ class LocAndStateEst:
         self.pathrolling.theta_c = np.concatenate((np.array(self.pathglobal.theta_c),np.array(self.pathglobal.theta_c)),axis=0)
         self.pathrolling.kappa_c = np.concatenate((np.array(self.pathglobal.kappa_c),np.array(self.pathglobal.kappa_c)),axis=0)
         self.pathrolling.kappaprime_c = np.concatenate((np.array(self.pathglobal.kappaprime_c),np.array(self.pathglobal.kappaprime_c)),axis=0)
+        self.pathrolling.mu = np.concatenate((np.array(self.pathglobal.mu),np.array(self.pathglobal.mu)),axis=0)
         self.pathrolling.dub = np.concatenate((np.array(self.pathglobal.dub),np.array(self.pathglobal.dub)),axis=0)
         self.pathrolling.dlb = np.concatenate((np.array(self.pathglobal.dlb),np.array(self.pathglobal.dlb)),axis=0)
         

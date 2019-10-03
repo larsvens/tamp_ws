@@ -236,8 +236,10 @@ class TrackInterface:
         self.pathglobal.kappa_c = kappac_out
         self.pathglobal.kappaprime_c = kappacprime_out
         self.pathglobal.theta_c = np.zeros(N) # grade/bank implement later
+        self.pathglobal.mu = 2.0*np.ones(N) # todo read from config file
         self.pathglobal.dub = dub
         self.pathglobal.dlb = dlb
+        
         print "publishing pathglobal"
         self.pathglobalpub.publish(self.pathglobal)
 
