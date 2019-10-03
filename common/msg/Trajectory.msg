@@ -1,6 +1,7 @@
 Header  header
 float32[] t
 float32[] kappac
+float32[] mu
 float32[] s
 float32[] d
 float32[] X

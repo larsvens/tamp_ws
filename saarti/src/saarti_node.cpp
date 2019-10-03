@@ -4,8 +4,12 @@ namespace saarti_node{
 
 SAARTI::SAARTI(ros::NodeHandle nh){
     nh_ = nh;
+
     dt = 0.1;
     ros::Rate loop_rate(1/dt);
+
+    // params
+    get_static_params();
 
     // pubs & subs
     trajhat_pub_ = nh.advertise<common::Trajectory>("trajhat",1);
@@ -45,7 +49,13 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         ROS_INFO_STREAM("main_ loop_");
         auto t1_loop = std::chrono::high_resolution_clock::now();
 
-        // Todo: update traction map
+        // update estimate
+        for (uint k=0;k<N;k++) {
+            Ukt_.Fyf_lb.push_back(-500);
+            Ukt_.Fyf_ub.push_back(500);
+            Ukt_.Fx_lb.push_back(-1000);
+            Ukt_.Fx_ub.push_back(1000);
+        }
 
         /*
          * FEASIBLE TRAJECTORY ROLLOUT
@@ -66,30 +76,25 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                 init_traj.Fyf.push_back(0);
                 init_traj.Fx.push_back(500); // todo get from mu
             }
-            rtisqp_wrapper_.rolloutSingleTraj(init_traj,state_,pathlocal_);
+            rtisqp_wrapper_.rolloutSingleTraj(init_traj,state_,pathlocal_,sp_);
             trajset_.push_back(init_traj);
         // SAARTI
         } else if(algo_setting_ == 1){
             ROS_INFO_STREAM("generating trajectory set");
-            rtisqp_wrapper_.computeTrajset(trajset_,
-                                           state_,
-                                           pathlocal_,
-                                           uint(Ntrajs_rollout_));
+            rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,uint(Ntrajs_rollout_));
         }
         auto t2_rollout = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> t_rollout = t2_rollout - t1_rollout;
 
-
-
-        // append fwd shifted trajstar last
+        // append trajprime
         if(trajstar_last.s.size()>0){
-            rtisqp_wrapper_.shiftTrajectoryFwdSimple(trajstar_last);
-            trajset_.push_back(trajstar_last);
+            //rtisqp_wrapper_.shiftTrajectoryFwdSimple(trajstar_last);
+            planning_util::trajstruct trajprime =
+                    rtisqp_wrapper_.shiftTrajectoryByIntegration(trajstar_last,state_,pathlocal_,sp_);
+            trajset_.push_back(trajprime);
         }
         trajset2cart(); // only for visualization, comment out to save time
         visualization_msgs::Marker trajset_cubelist = trajset2cubelist();
-
-        //trajset2ma();
 
         // cost eval and select
         bool RUN_RTISQP = true; // tmp! make rosparam for runmode (see matlab code)
@@ -111,6 +116,8 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         nav_msgs::Path p_trajhat = traj2navpath(trajhat);
         if(trajhat.s.back() > 0.95f*pathlocal_.s.back()){
             ROS_ERROR_STREAM("Running out of path!");
+            ROS_ERROR_STREAM("trajhat.s.back() = " << trajhat.s.back());
+            ROS_ERROR_STREAM("pathlocal_.s.back() = " << pathlocal_.s.back());
         }
 
         /*
@@ -118,7 +125,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
          */
 
         // update adaptive constraints for opt
-        rtisqp_wrapper_.setInputConstraints(0.3f,1000);
+        rtisqp_wrapper_.setInputConstraints(0.3f,1000); // todo input static params etc
 
         // update state for opt
         ROS_INFO_STREAM("setting state..");
@@ -234,6 +241,16 @@ void SAARTI::traj2cart(planning_util::trajstruct &traj){
         ROS_ERROR("traj2cart on traj of 0 length");
     }
     else {
+        // clear previous cartesian if exists
+        if (traj.X.size() != 0){
+            ROS_WARN_STREAM("traj already has cartesian, clearing X, Y, psi, kappac");
+            traj.X.clear();
+            traj.Y.clear();
+            traj.psi.clear();
+            traj.kappac.clear();
+        }
+
+
         vector<float> Xc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.X,false);
         vector<float> Yc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.Y,false);
         // handle discontinuities in psic
@@ -502,7 +519,7 @@ void SAARTI::pathlocal_callback(const common::Path::ConstPtr& msg){
     pathlocal_.psi_c = msg->psi_c;
     pathlocal_.kappa_c = msg->kappa_c;
     pathlocal_.theta_c = msg->theta_c;
-    pathlocal_.psi_c = msg->psi_c;
+    pathlocal_.mu = msg->mu;
     pathlocal_.dub = msg->dub;
     pathlocal_.dlb = msg->dlb;
 }
@@ -515,11 +532,19 @@ void SAARTI::obstacles_callback(const common::Obstacles::ConstPtr& msg){
     obst_.Rmgn = msg->Rmgn;
 }
 
+// get static params from rosparam
+void SAARTI::get_static_params(){
+    sp_.m =  float(nh_.param("/car/inertia/m",1000.0));
+    sp_.g =  float(nh_.param("/car/inertia/g",9.81));
+    sp_.lf = float(nh_.param("/car/kinematics/b_F",2.0));
+    sp_.lr = float(nh_.param("/car/kinematics/b_R",2.0));
+}
+
 } // end namespace
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "motionplanner");
+    ros::init(argc, argv, "saarti_node");
     ros::NodeHandle nh;
     saarti_node::SAARTI saarti(nh);
     return 0;

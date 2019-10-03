@@ -66,6 +66,8 @@ private:
     vector<planning_util::trajstruct> trajset_;
     planning_util::obstastruct obst_;
     planning_util::refstruct refs_;
+    planning_util::inputconstrstruct Ukt_;
+    planning_util::staticparamstruct sp_;
     RtisqpWrapper rtisqp_wrapper_;
 
     // functions
@@ -85,9 +87,7 @@ private:
     void state_callback(const common::State::ConstPtr& msg);
     void pathlocal_callback(const common::Path::ConstPtr& msg);
     void obstacles_callback(const common::Obstacles::ConstPtr& msg);
-
-
-
+    void get_static_params();
 };
 } // end namespace saarti_node
 #endif // SAARTI_NODE_H

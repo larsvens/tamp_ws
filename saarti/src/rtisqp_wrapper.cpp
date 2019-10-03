@@ -200,11 +200,13 @@ bool RtisqpWrapper::shiftStateAndControls(){
 }
 
 bool RtisqpWrapper::shiftTrajectoryFwdSimple(planning_util::trajstruct &traj){
+    if(!traj.s.size()){
+        throw std::invalid_argument("trying to shift empty trajectory");
+    }
+
     // will shift all states fwd except the final one that is duplicated
     for (uint k = 0; k < N-1; ++k){
-        if(!traj.s.size()){
-            throw std::invalid_argument("trying to shift empty trajectory");
-        }
+
         // state
         traj.s.at(k) = traj.s.at(k+1);
         traj.d.at(k) = traj.d.at(k+1);
@@ -226,19 +228,22 @@ bool RtisqpWrapper::shiftTrajectoryFwdSimple(planning_util::trajstruct &traj){
     return true;
 }
 
-//bool RtisqpWrapper::shiftTrajectoryByIntegration(planning_util::trajstruct &traj, planning_util::statestruct &state){
-//    real_t acadoWSstate[85];
-//    planning_util::ctrlstruct ctrl;
-//    bool is_initstate = true;
-//    for (size_t k=0;k<N+1;k++) {
-//        ctrl.Fyf = traj.Fyf.at(k);
-//        ctrl.Fx  = traj.Fx.at(k);
-//        if (is_initstate){
-//            RtisqpWrapper::setIntegratorState(acadoWSstate,state,ctrl,kappac);
-//        }
-//    }
-//    return true;
-//}
+planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_util::trajstruct &traj,
+                                                                      planning_util::statestruct &state,
+                                                                      planning_util::pathstruct &pathlocal,
+                                                                      planning_util::staticparamstruct &sp){
+    if(!traj.s.size()){
+        throw std::invalid_argument("Error in shiftTrajectoryByIntegration: trying to shift empty trajectory");
+    }
+
+    // grab ctrl sequence from trajstar last and integrate fwd from state
+    planning_util::trajstruct traj_out;
+    traj_out.Fyf = traj.Fyf;
+    traj_out.Fx = traj.Fx;
+
+    RtisqpWrapper::rolloutSingleTraj(traj_out,state,pathlocal,sp);
+    return traj_out;
+}
 
 bool RtisqpWrapper::doPreparationStep(){
     acado_preparationStep();
@@ -252,31 +257,6 @@ int RtisqpWrapper::doFeedbackStep(){
 //              << endl;
     return status;
 }
-
-//Eigen::MatrixXd RtisqpWrapper::getStateTrajectory(){
-//    // row: state, column: time
-//    // todo: put as loops s.t. not problem dependent
-//    Eigen::MatrixXd Xstarx(NX,N+1);
-//    for (uint k = 0; k < N + 1; ++k){
-//        Xstarx(0,k) = acadoVariables.x[k * NX + 0]; // s
-//        Xstarx(1,k) = acadoVariables.x[k * NX + 1];
-//        Xstarx(2,k) = acadoVariables.x[k * NX + 2];
-//        Xstarx(3,k) = acadoVariables.x[k * NX + 3];
-//        Xstarx(4,k) = acadoVariables.x[k * NX + 4];
-//        Xstarx(5,k) = acadoVariables.x[k * NX + 5];
-//    }
-//    return Xstarx;
-//}
-
-//Eigen::MatrixXd RtisqpWrapper::getControlTrajectory(){
-//    // row: control variable, column: time
-//    Eigen::MatrixXd Xstaru(NU,N);
-//    for (uint k = 0; k < N; ++k){
-//        Xstaru(0,k) = acadoVariables.u[k * NU + 0];
-//        Xstaru(1,k) = acadoVariables.u[k * NU + 1];
-//    }
-//    return Xstaru;
-//}
 
 planning_util::trajstruct RtisqpWrapper::getTrajectory(){
     planning_util::trajstruct traj_out;
@@ -297,30 +277,34 @@ planning_util::trajstruct RtisqpWrapper::getTrajectory(){
     return traj_out;
 }
 
-
-
 // usage: set control sequence of traj ahead of time, the function will roll dynamics fwd according to those controls
 void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
-                       planning_util::statestruct &initstate,
-                       planning_util::pathstruct  &pathlocal){
+                                      planning_util::statestruct &initstate,
+                                      planning_util::pathstruct  &pathlocal,
+                                      planning_util::staticparamstruct &sp){
 
     if (traj.s.size() != 0){
-        throw "Error in rolloutSingleTraj, state sequence is nonzero at entry";
+        throw std::invalid_argument("Error in rolloutSingleTraj, state sequence is nonzero at entry");
     }
     if (traj.Fyf.size() != N){
-        throw "Error in rolloutSingleTraj, control sequence has not been set or is wrong";
+        throw std::invalid_argument("Error in rolloutSingleTraj, control sequence has not been set or is wrong");
     }
 
     // initialize variables
     planning_util::statestruct rollingstate = initstate;
     real_t acadoWSstate[85];
-
     // get kappac at initstate
     vector<float> kappac_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.kappa_c,false);
     float kappac = kappac_vec.at(0);
+    // get mu at initstate
+    vector<float> mu_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.mu,false);
+    float mu = mu_vec.at(0);
 
-    // set initial state in traj and integrator
+    // set initial state in traj
     planning_util::traj_push_back_state(traj,rollingstate);
+    traj.kappac.push_back(kappac);
+    traj.mu.push_back(mu);
+    // set initial state in integrator
     acadoWSstate[0] = rollingstate.s;
     acadoWSstate[1] = rollingstate.d;
     acadoWSstate[2] = rollingstate.deltapsi;
@@ -332,8 +316,23 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
     // roll loop
     bool integrator_initiated = false;
     for (size_t i=0;i<N;i++) {
-        acadoWSstate[77] = traj.Fyf.at(i);
-        acadoWSstate[78] = traj.Fx.at(i);
+        float Fyf = traj.Fyf.at(i);
+        float Fx  = traj.Fx.at(i);
+
+        // adjust values according to mu UPDATE after introducing Fxf input
+        float Fz = sp.m*sp.g ;
+        float Fhmax = Fz*mu;
+        float Fh = std::sqrt(2*Fyf*2*Fyf + Fx*Fx); // assuming Fyfmax = 0.5*Fxmax
+        if(Fh > Fhmax){
+            float scalefactor = Fh/Fhmax;
+            //cout << "Fh    " << Fh << endl;
+            //cout << "Fhmax " << Fhmax << endl;
+            //Fyf = Fyf/scalefactor;
+            //Fx = Fx/scalefactor;
+        }
+
+        acadoWSstate[77] = Fyf;
+        acadoWSstate[78] = Fx;
 
         // integrate fwd
         if(!integrator_initiated){
@@ -355,9 +354,17 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
         // update kappac at rollingstate
         vector<float> kappac_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.kappa_c,false);
         acadoWSstate[80] = kappac_vec.at(0);
+        traj.kappac.push_back(kappac);
+        // update mu at rollingstate
+        vector<float> mu_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.mu,false);
+        mu = mu_vec.at(0);
+        traj.mu.push_back(mu);
     }
     if (traj.s.size() != N+1){
-        throw "Error in rolloutSingleTraj, state sequence is not equal to N+1 at return";
+        throw std::invalid_argument("Error in rolloutSingleTraj, state sequence is not equal to N+1 at return");
+    }
+    if (traj.mu.size() != N+1){
+        throw std::invalid_argument("Error in rolloutSingleTraj, length of mu estimate is not equal to N+1 at return");
     }
 }
 
@@ -399,8 +406,6 @@ bool RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
     for (uint i=0;i<Ntrajs;i++) { // loop over trajectory set
         real_t acadoWSstate[85];
         planning_util::statestruct rollingstate = state;
-        //rollingstate.s = state.s;
-        //rollingstate.d = state.d;
         planning_util::ctrlstruct ctrl;
 
         // integrator loop
@@ -409,6 +414,8 @@ bool RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
         bool is_initstate = true;
         bool integrator_initiated = false;
         float kappac;
+        float mu;
+
         double t_intgr_tot = 0;
         double t_interp_tot = 0;
         for (size_t j=0;j<N+1;j++) { // loop over single trajectory
@@ -426,6 +433,9 @@ bool RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             float t = std::asin(ctrl.Fyf/Fyfmax);
             ctrl.Fx = Fxmax*std::cos(t);
 
+            // TODO: IMPROVE ROLLOUT CONTROLLER
+            // TODO: acadohelper to clean this and singlerollout
+
             // if in second half of dref, use the negative value of Fx
 //            if (i >= Ntrajs/2){
 //                ctrl.Fx = -ctrl.Fx;
@@ -433,11 +443,15 @@ bool RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             acadoWSstate[77] = ctrl.Fyf;
             acadoWSstate[78] = ctrl.Fx;
 
-            // compute kappac at rollingstate.s
+            // interp to get kappac at rollingstate.s
             auto t1_interp = std::chrono::high_resolution_clock::now();
             vector<float> kappac_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.kappa_c,false);
             kappac = kappac_vec.at(0);
             acadoWSstate[80] = kappac;
+            // interp to get mu at rollingstate.s
+            vector<float> mu_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.mu,false);
+            mu = mu_vec.at(0);
+            // interp timing
             auto t2_interp = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::milli> t_interp = t2_interp - t1_interp;
             t_interp_tot += t_interp.count();
@@ -474,11 +488,13 @@ bool RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             traj.vx.push_back(acadoWSstate[4]);
             traj.vy.push_back(acadoWSstate[5]);
 
-            traj.kappac.push_back(kappac);
             if(j<N){ // N+1 states and N ctrls
                 traj.Fyf.push_back(acadoWSstate[77]);
                 traj.Fx.push_back(acadoWSstate[78]);
             }
+            // push back interpolated vars
+            traj.kappac.push_back(kappac);
+            traj.mu.push_back(mu);
         }
         trajset.push_back(traj);
         auto t2_single = std::chrono::high_resolution_clock::now();

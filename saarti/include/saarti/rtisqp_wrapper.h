@@ -62,7 +62,10 @@ public:
                                                        float w);
     bool shiftStateAndControls();
     bool shiftTrajectoryFwdSimple(planning_util::trajstruct &traj);
-    bool shiftTrajectoryByIntegration(planning_util::trajstruct &traj,planning_util::statestruct &state);
+    planning_util::trajstruct shiftTrajectoryByIntegration(planning_util::trajstruct &traj,
+                                                           planning_util::statestruct &state,
+                                                           planning_util::pathstruct &pathlocal,
+                                                           planning_util::staticparamstruct &sp);
     bool doPreparationStep();
     int  doFeedbackStep();
     Eigen::MatrixXd getStateTrajectory();
@@ -74,7 +77,8 @@ public:
                         uint Ntrajs);
     void rolloutSingleTraj(planning_util::trajstruct  &traj,
                            planning_util::statestruct &initstate,
-                           planning_util::pathstruct  &pathlocal);
+                           planning_util::pathstruct  &pathlocal,
+                           planning_util::staticparamstruct &sp);
 
     bool setIntegratorState(real_t *acadoWSstate,
                             planning_util::statestruct state,

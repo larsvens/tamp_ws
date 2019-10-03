@@ -28,6 +28,8 @@ struct trajstruct{
     std::vector<float> X;
     std::vector<float> Y;
     std::vector<float> psi;
+    // frictionestimate
+    std::vector<float> mu;
     // eval
     float cost;
     bool colliding;
@@ -36,7 +38,6 @@ struct trajstruct{
 
 // state vector representation
 struct statestruct{
-    // state
     float s;
     float d;
     float deltapsi;
@@ -47,7 +48,6 @@ struct statestruct{
 
 // ctrl vector representation
 struct ctrlstruct{
-    // state
     float Fyf;
     float Fx;
 };
@@ -63,6 +63,7 @@ struct pathstruct{
     std::vector<float> phi_c;
     std::vector<float> dub;
     std::vector<float> dlb;
+    std::vector<float> mu;
 };
 
 // obstacle representation
@@ -74,6 +75,14 @@ struct obstastruct{
     std::vector<float> Rmgn;
     std::vector<float> X;
     std::vector<float> Y;
+};
+
+// input constraint container
+struct inputconstrstruct{
+    std::vector<float> Fyf_lb;
+    std::vector<float> Fyf_ub;
+    std::vector<float> Fx_lb;
+    std::vector<float> Fx_ub;
 };
 
 // position constraint container
@@ -90,6 +99,13 @@ struct refstruct{
     std::vector<float> vxref;
 };
 
+// static params container
+struct staticparamstruct{
+    float m;
+    float g;
+    float lf;
+    float lr;
+};
 
 /*
  * Helper functions
