@@ -55,16 +55,31 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         refs_ = setRefs(ctrl_mode_); // 0: tracking(unused todo remove), 1: min s, 2: max s,
 
         // rollout
-        ROS_INFO_STREAM("generating trajectory set");
+        ROS_INFO_STREAM("selecting initial guess");
         trajset_.clear();
-        int Nsamples = 24; // default 24
         auto t1_rollout = std::chrono::high_resolution_clock::now();
-        rtisqp_wrapper_.computeTrajset(trajset_,
-                                       state_,
-                                       pathlocal_,
-                                       uint(Nsamples));
+        // regular RTI (initialize with single rollout)
+        if (algo_setting_== 0 && trajstar_last.s.size()==0) {
+            ROS_INFO_STREAM("generating init traj for RTISQP");
+            planning_util::trajstruct init_traj;
+            for (uint i=0;i<N;i++) {
+                init_traj.Fyf.push_back(0);
+                init_traj.Fx.push_back(500); // todo get from mu
+            }
+            rtisqp_wrapper_.rolloutSingleTraj(init_traj,state_,pathlocal_);
+            trajset_.push_back(init_traj);
+        // SAARTI
+        } else if(algo_setting_ == 1){
+            ROS_INFO_STREAM("generating trajectory set");
+            rtisqp_wrapper_.computeTrajset(trajset_,
+                                           state_,
+                                           pathlocal_,
+                                           uint(Ntrajs_rollout_));
+        }
         auto t2_rollout = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> t_rollout = t2_rollout - t1_rollout;
+
+
 
         // append fwd shifted trajstar last
         if(trajstar_last.s.size()>0){
@@ -103,7 +118,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
          */
 
         // update adaptive constraints for opt
-        rtisqp_wrapper_.setInputConstraints(0.5,1000);
+        rtisqp_wrapper_.setInputConstraints(0.3f,1000);
 
         // update state for opt
         ROS_INFO_STREAM("setting state..");
@@ -184,7 +199,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         } else{
             ROS_INFO_STREAM("looptime is " << t_loop.count() << " ms ");
         }
-        ROS_INFO_STREAM("rollout took                 " << t_rollout.count() << " ms ");
+        ROS_INFO_STREAM("rollout took                 " << t_rollout.count() << " ms " << "(" << Ntrajs_rollout_ << "trajs)");
         ROS_INFO_STREAM("optimization took            " << t_opt.count() << " ms ");
 
         ros::spinOnce();
@@ -196,7 +211,6 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 /*
  * FUNCTIONS todo put some in util
  */
-
 
 // sets refs to be used in rollout and optimization
 planning_util::refstruct SAARTI::setRefs(uint ctrlmode){
@@ -275,6 +289,7 @@ void SAARTI::sd_pts2cart(vector<float> &s, vector<float> &d, vector<float> &Xout
     }
 }
 
+// wraps an angle variable on the interval [-pi pi]
 void SAARTI::angle_to_interval(vector<float> &psi){
     // default interval: [-pi pi]
     float pi = float(M_PI);
@@ -288,6 +303,7 @@ void SAARTI::angle_to_interval(vector<float> &psi){
     }
 }
 
+// unwraps an angle variable on the interval [-pi pi] to continous
 vector<float> SAARTI::angle_to_continous(vector<float> &psi){
     float pi = float(M_PI);
     float offset = 0;
@@ -368,6 +384,7 @@ int SAARTI::trajset_eval_cost(){
     return trajhat_idx;
 }
 
+// builds trajectry message from traj struct
 common::Trajectory SAARTI::traj2msg(planning_util::trajstruct traj){
     common::Trajectory trajmsg;
     // state
@@ -461,6 +478,7 @@ jsk_recognition_msgs::PolygonArray SAARTI::stateconstr2polarr(planning_util::pos
     return polarr;
 }
 
+// state callback
 void SAARTI::state_callback(const common::State::ConstPtr& msg){
     state_.s = msg->s;
     state_.d = msg->d;
@@ -476,6 +494,7 @@ void SAARTI::state_callback(const common::State::ConstPtr& msg){
     }
 }
 
+// pathlocal callback
 void SAARTI::pathlocal_callback(const common::Path::ConstPtr& msg){
     pathlocal_.X = msg->X;
     pathlocal_.Y = msg->Y;
@@ -488,6 +507,7 @@ void SAARTI::pathlocal_callback(const common::Path::ConstPtr& msg){
     pathlocal_.dlb = msg->dlb;
 }
 
+// obstacles callback
 void SAARTI::obstacles_callback(const common::Obstacles::ConstPtr& msg){
     obst_.s = msg->s;
     obst_.d = msg->d;

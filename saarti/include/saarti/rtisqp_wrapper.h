@@ -72,12 +72,15 @@ public:
                         planning_util::statestruct &state,
                         planning_util::pathstruct &pathlocal,
                         uint Ntrajs);
+    void rolloutSingleTraj(planning_util::trajstruct  &traj,
+                           planning_util::statestruct &initstate,
+                           planning_util::pathstruct  &pathlocal);
+
     bool setIntegratorState(real_t *acadoWSstate,
                             planning_util::statestruct state,
                             planning_util::ctrlstruct ctrl,
                             float kappac);
-    void rolloutSingleTraj(planning_util::statestruct &initstate,
-                           planning_util::pathstruct &pathlocal);
+
 };
 
 #endif // RTISQP_WRAPPER_H

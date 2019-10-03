@@ -41,7 +41,8 @@ public:
 private:
     // modes (todo get from launch)
     uint ctrl_mode_ = 2;    // 0: tracking(unused todo remove), 1: min s, 2: max s,
-    uint sampling_mode_ = 1; // 0: input sampling, 1: state space sampling
+    uint algo_setting_ = 0; // 0: RTI, 1: SAA-RTI
+    int Ntrajs_rollout_ = 24; // default 24
 
     // weights (todo get from launch)
     vector<float> Wx{10.0, 1.0, 1.0, 0.01, 0.01, 0.01};

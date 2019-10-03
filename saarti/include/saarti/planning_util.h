@@ -1,6 +1,14 @@
+#ifndef PLANNING_UTIL_H
+#define PLANNING_UTIL_H
+
+#include <cstdlib>
 #include <vector>
 
 namespace planning_util {
+
+/*
+ * Variable containers
+ */
 
 // trajectory representation
 struct trajstruct{
@@ -82,4 +90,33 @@ struct refstruct{
     std::vector<float> vxref;
 };
 
+
+/*
+ * Helper functions
+ */
+
+void traj_push_back_state(trajstruct &traj, statestruct &state){
+    traj.s.push_back(state.s);
+    traj.d.push_back(state.d);
+    traj.deltapsi.push_back(state.deltapsi);
+    traj.psidot.push_back(state.psidot);
+    traj.vx.push_back(state.vx);
+    traj.vy.push_back(state.vy);
+}
+
+void state_at_idx_in_traj(trajstruct &traj, statestruct &state, uint idx){
+    if (idx>=traj.s.size() ){
+        throw "Error in state_at_idx_in_traj, idx out of range";
+    }
+    state.s = traj.s.at(idx);
+    state.d = traj.d.at(idx);
+    state.deltapsi = traj.deltapsi.at(idx);
+    state.psidot = traj.psidot.at(idx);
+    state.vx = traj.vx.at(idx);
+    state.vy = traj.vy.at(idx);
+}
+
+
 }; // END NAMESPACE
+
+#endif // PLANNING_UTIL_H
