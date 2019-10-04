@@ -240,6 +240,13 @@ planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_u
     planning_util::trajstruct traj_out;
     traj_out.Fyf = traj.Fyf;
     traj_out.Fx = traj.Fx;
+    // if moving, shift u one step fwd before rollout
+    if(state.vx > 1.0f){
+        for (uint k = 0; k < N-1; ++k){
+            traj_out.Fyf.at(k) = traj_out.Fyf.at(k+1);
+            traj_out.Fx.at(k) = traj_out.Fx.at(k+1);
+        }
+    }
 
     RtisqpWrapper::rolloutSingleTraj(traj_out,state,pathlocal,sp);
     return traj_out;
