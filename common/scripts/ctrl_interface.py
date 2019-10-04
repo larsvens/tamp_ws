@@ -10,6 +10,7 @@ from common.msg import Trajectory
 from fssim_common.msg import Cmd
 from fssim_common.msg import State as fssimState
 from visualization_msgs.msg import Marker
+from std_msgs.msg import Float32
 
 class CtrlInterface:
     def __init__(self):
@@ -19,7 +20,8 @@ class CtrlInterface:
         self.vehicle_out_sub = rospy.Subscriber("/fssim/base_pose_ground_truth", fssimState, self.vehicle_out_callback)
         self.vehicleinpub = rospy.Publisher('/fssim/cmd', Cmd, queue_size=10)
         self.lhptpub = rospy.Publisher('/lhpt_vis', Marker, queue_size=1)
-        self.rate = rospy.Rate(10) # TMP!
+        self.vx_errorpub = rospy.Publisher('/vx_error_vis', Float32, queue_size=1)
+        self.rate = rospy.Rate(100)
 
         # set static vehicle params
         self.setStaticParams()
@@ -28,6 +30,8 @@ class CtrlInterface:
         self.vehicle_in = Cmd()
         self.vehicle_out = fssimState()
         self.trajstar = Trajectory()
+        # ctrl errors
+        self.vx_error = Float32()
 
         # wait for messages before entering main loop
         while(not self.trajstar.Fyf):
@@ -43,6 +47,10 @@ class CtrlInterface:
             vx = self.vehicle_out.vx
             vy = self.vehicle_out.vy
             
+            #
+            # LATERAL CTRL
+            #
+            
             # compute local curvature of trajhat (rho)
             lhpt_idx = 5;
             lhpt = {"X": self.trajstar.X[lhpt_idx], "Y": self.trajstar.Y[lhpt_idx]}
@@ -51,10 +59,7 @@ class CtrlInterface:
             lh_dist = np.sqrt(deltaX**2 + deltaY**2)
             lh_angle = np.arctan2(deltaY,deltaX) - psi 
             rho = 2*np.sin(lh_angle)/lh_dist
-
-
-
-            
+           
             # compute delta corresponding to Fyf request (linear tire, Rajamani) 
             Fyf_request = self.trajstar.Fyf[0]
             alpha_f = Fyf_request/(2*self.Cf)
@@ -65,8 +70,12 @@ class CtrlInterface:
             else:
                 theta_Vf = np.arctan2(vy+self.lf*psidot,vx)
 
+            #
+            # LONGITUDINAL CTRL
+            #
 
-
+            # compute velocity error
+            self.vx_error = self.trajstar.vx[1]-vx
 
             # compute control
             delta_out = rho*(self.lf + self.lr) # kinematic feed fwd
@@ -91,6 +100,7 @@ class CtrlInterface:
             print "dc_out = ", str(dc_out)                    
 
             # publish ctrl cmd            
+            self.vx_errorpub.publish(self.vx_error)
             self.vehicle_in.delta = delta_out
             self.vehicle_in.dc = dc_out
             self.vehicleinpub.publish(self.vehicle_in)

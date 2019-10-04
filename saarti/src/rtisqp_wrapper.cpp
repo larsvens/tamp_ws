@@ -334,8 +334,8 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
             float scalefactor = Fh/Fhmax;
             //cout << "Fh    " << Fh << endl;
             //cout << "Fhmax " << Fhmax << endl;
-            //Fyf = Fyf/scalefactor;
-            //Fx = Fx/scalefactor;
+            Fyf = Fyf/scalefactor;
+            Fx = Fx/scalefactor;
         }
 
         acadoWSstate[77] = Fyf;

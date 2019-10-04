@@ -62,7 +62,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
          */
 
         // set refs
-        refs_ = setRefs(ctrl_mode_); // 0: tracking(unused todo remove), 1: min s, 2: max s,
+        refs_ = setRefs(ref_mode_); // 0: min s, 1: max s,
 
         // rollout
         ROS_INFO_STREAM("selecting initial guess");
@@ -223,11 +223,11 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 planning_util::refstruct SAARTI::setRefs(uint ctrlmode){
     planning_util::refstruct refs;
     switch (ctrlmode) {
-    case 1:  // minimize vx (emg brake)
+    case 0:  // minimize vx (emg brake)
         refs.sref.assign(N+1,state_.s);
         refs.vxref.assign(N+1,0.0);
         break;
-    case 2: // maximize s (racing)
+    case 1: // maximize s (racing)
         refs.sref.assign(N+1, state_.s + 300);
         refs.vxref.assign(N+1, state_.vx + 25);
         break;

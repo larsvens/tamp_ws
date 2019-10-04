@@ -40,8 +40,9 @@ public:
 
 private:
     // modes (todo get from launch)
-    uint ctrl_mode_ = 2;    // 0: tracking(unused todo remove), 1: min s, 2: max s,
+    uint ref_mode_ = 1;    // 0: min s, 1: max s,
     uint algo_setting_ = 0; // 0: RTI, 1: SAA-RTI
+    uint adaptive_ = 0;     // 0: takes mu estimate from pathlocal struct, 1: static mu estimate from param
     int Ntrajs_rollout_ = 24; // default 24
 
     // weights (todo get from launch)
