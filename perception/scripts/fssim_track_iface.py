@@ -35,9 +35,10 @@ class TrackInterface:
         self.rate = rospy.Rate(1)
         
         # set params
-        ds = 0.5 # step size in s
+        ds = 0.5 # step size in s # 0.5 nominal
         plot_track = False
-        plot_orientation = False
+        plot_orientation = True
+        plot_dlbdub = False
         
         # wait for track
         while(not self.received_track):
@@ -158,14 +159,16 @@ class TrackInterface:
             psic_cont = np.concatenate((psic_cont,psic_piecewise[j+1]))        
         
         # downsample for smoother curve
-        step = 11
+        step = 5 #11
         print "interpolating downsampled psic with step size ", str(step)
         s_ds = s[0::step]
+        s_ds = np.append(s_ds,s[-1]) # append final value for closed circuit
         psic_ds = psic_cont[0::step]
+        psic_ds = np.append(psic_ds,psic_cont[-1]) # append final value for closed circuit
         
         # interpolate 
         t, c, k = interpolate.splrep(s_ds, psic_ds, s=0, k=4)
-        psic_spl = interpolate.BSpline(t, c, k, extrapolate=True)
+        psic_spl = interpolate.BSpline(t, c, k, extrapolate=False)
         
         # compute derrivatives (compare with naive numerical) 
         print "computing derivatives of psic"
@@ -174,7 +177,7 @@ class TrackInterface:
         
         # put psi_c back on interval [-pi,pi]
         psic_out = psic_spl(s)
-        plt.plot(psic_out)
+        #plt.plot(psic_out)
         psic_out = angleToInterval(psic_out)
 
         # tmp test helpers
@@ -201,6 +204,10 @@ class TrackInterface:
         dub = np.array(dub)
         dlb = np.array(dlb)      
         
+        # check if dlb or dub is close to 1/kappa
+        
+        
+        
         # plot to see what we're doing  
         if plot_orientation:   
             fig, axs = plt.subplots(3,1)
@@ -226,6 +233,14 @@ class TrackInterface:
             ax.plot(cl_X,cl_Y, '*k') # cones left
             ax.plot(cr_X,cr_Y, '*k') # cones right 
             ax.plot(ccl_X,ccl_Y, '*r') # coarse centerline
+            plt.show()
+            
+        if plot_dlbdub:
+            fig, axs = plt.subplots(3,1)
+            axs[0].plot(s,dlb,'.b')
+            axs[1].plot(s,dub,'.b')
+            axs[2].plot(s,1.0/kappac_out,'r.')
+            #axs[2]([np.min(dlb),np.max(dub)])
             plt.show()
         
         # put all in message and publish

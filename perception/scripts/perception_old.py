@@ -12,7 +12,7 @@ from common.msg import StaticVehicleParams
 
 from coordinate_transforms import ptsCartesianToFrenet
 
-class LocAndStateEst:
+class Perception:
     # constructor
     def __init__(self):
         # init node subs pubs

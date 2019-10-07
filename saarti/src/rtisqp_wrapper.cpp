@@ -129,13 +129,17 @@ planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util:
     for (uint k = 0; k < N + 1; ++k)
     {
         // "funnel" - larger deviation allowed farther ahead
-        float s_diff_default = 2+(k*0.20f);
+        float s_diff_default = 2+(k*0.1f);
         float d_diff_default = 2+(k*0.04f);
 
         float slb = traj.s.at(k)-s_diff_default;
         float sub = traj.s.at(k)+s_diff_default;
-        float dlb = traj.d.at(k)-d_diff_default;
-        float dub = traj.d.at(k)+d_diff_default;
+
+        //float dlb = traj.d.at(k)-d_diff_default;
+        //float dub = traj.d.at(k)+d_diff_default;
+
+        float dlb = rld.at(k)+0.5f*w;
+        float dub = lld.at(k)-0.5f*w;
 
         // adjust lbs and ubs for obstacles
         uint Nobs = uint(obs.s.size());
@@ -154,20 +158,31 @@ planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util:
             }
         }
 
-        // adjust for lane boundaries
-        if(dub > lld.at(k)){ // left lane boundary
-            dub = lld.at(k) - 0.5f*w;
-            if(dub-dlb < d_diff_default){
-                dlb = dub-d_diff_default;
-            }
-        }
-        if(dlb < rld.at(k)){ // right lane boundary
-            dlb = rld.at(k) + 0.5f*w;
-            if(dub-dlb < d_diff_default){
-                dub = dlb + d_diff_default;
-            }
-        }
+        // adjust for lane boundaries (including vehicle width)
 
+//        if(dub > lld.at(k) - 0.5f*w){ // left lane boundary
+//            dub = lld.at(k) - 0.5f*w;
+
+
+////            if(dub-dlb < d_diff_default){
+////                dlb = dub-d_diff_default;
+////            }
+//        }
+//        if(dlb < rld.at(k) + 0.5f*w){ // right lane boundary
+//            dlb = rld.at(k) + 0.5f*w;
+
+
+////            if(dub-dlb < d_diff_default){
+////                dub = dlb + d_diff_default;
+////            }
+//        }
+
+        // make sure constraint area does not diminish on narrow tracks
+        float d_rangemin = 0.5;
+        if(dub-dlb < d_rangemin){
+            dlb = -0.5f*d_rangemin;
+            dub = 0.5f*d_rangemin;
+        }
         posconstr.slb.push_back(slb);
         posconstr.sub.push_back(sub);
         posconstr.dlb.push_back(dlb);

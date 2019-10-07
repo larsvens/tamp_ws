@@ -5,7 +5,7 @@ namespace saarti_node{
 SAARTI::SAARTI(ros::NodeHandle nh){
     nh_ = nh;
 
-    dt = 0.1;
+    dt = 0.05;
     ros::Rate loop_rate(1/dt);
 
     // params
@@ -145,7 +145,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         ROS_INFO_STREAM("setting state constraints..");
         vector<float> lld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dub,false);
         vector<float> rld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dlb,false);
-        float w = 2.0; // TODO get from param
+        float w = 1.5; // TODO get from param
         planning_util::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obst_,lld,rld,w);
         // visualize state constraint
         jsk_recognition_msgs::PolygonArray polarr = stateconstr2polarr(posconstr);
@@ -475,7 +475,7 @@ jsk_recognition_msgs::PolygonArray SAARTI::stateconstr2polarr(planning_util::pos
     jsk_recognition_msgs::PolygonArray polarr;
     polarr.header.stamp = ros::Time::now();
     polarr.header.frame_id = "map";
-    for (uint i=0;i<pc.dlb.size();i++){
+    for (uint i=0;i<pc.dlb.size();i+=5){
         geometry_msgs::PolygonStamped poly;
         poly.header.stamp = ros::Time::now();
         poly.header.frame_id = "map";

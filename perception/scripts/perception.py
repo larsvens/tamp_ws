@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Descrition: Publishes state, local path and dynamic params
+# Descrition: Publishes local path along with estimated friction along it
 # inputs:
 # state from fssim (topic /fssim/base_pose_ground_truth)
 # global path from track interface (topic pathglobal)
@@ -13,23 +13,23 @@ import numpy as np
 import rospy
 from common.msg import State
 from common.msg import Path
-from common.msg import DynamicVehicleParams
+
 from coordinate_transforms import ptsCartesianToFrenet
 from util import angleToInterval
 from util import angleToContinous
-from fssim_common.msg import State as fssimState
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path as navPath
+import time
 
-class LocAndStateEst:
+
+
+class Perception:
     # constructor
     def __init__(self):
         # init node subs pubs
-        rospy.init_node('loc_est', anonymous=True)
+        rospy.init_node('perception', anonymous=True)
         self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
-        self.vehicle_out_sub = rospy.Subscriber("/fssim/base_pose_ground_truth", fssimState, self.vehicle_out_callback)
-        self.dynamic_param_pub = rospy.Publisher('dynamic_vehicle_params', DynamicVehicleParams, queue_size=10)
-        self.statepub = rospy.Publisher('state', State, queue_size=10)
+        self.state_sub = rospy.Subscriber("state", State, self.state_callback)
         self.pathlocalpub = rospy.Publisher('pathlocal', Path, queue_size=10)
         self.pathlocalvispub = rospy.Publisher('pathlocal_vis', navPath, queue_size=10)
 
@@ -38,7 +38,7 @@ class LocAndStateEst:
         self.rate = rospy.Rate(1/self.dt) # 10hz
         
         # params of local path
-        self.N = 500
+        self.N = 300
         self.ds = 0.5
 
         # set static vehicle params
@@ -49,48 +49,35 @@ class LocAndStateEst:
         self.pathrolling = Path() # used to run several laps
         self.pathlocal = Path()
         self.state = State()
-        self.vehicle_out = fssimState()
-        
-        # init dynamic params    
-        self.dynamic_params = DynamicVehicleParams()
-        self.dynamic_params.mu_alg = 0.7
-        self.dynamic_params.mu_real = 0.7
-        self.dynamic_params.Fz = self.m * self.g
-        self.dynamic_params.Fzf = self.dynamic_params.Fz*self.lr/(self.lf+self.lr); # moment balance at 0 acc
-        self.dynamic_params.Fzr = self.dynamic_params.Fz*self.lf/(self.lf+self.lr);
-        self.dynamic_params.theta = 0.0
-        self.dynamic_params.phi = 0.0
-        
+               
         # msg receive checks
         self.received_pathglobal = False
-        self.received_vehicle_out = False
+        self.received_state = False
         
         # wait for messages before entering main loop
         while(not self.received_pathglobal):
-            print "locandstateest: waiting for pathglobal"
+            print "perception: waiting for pathglobal"
             self.rate.sleep()
         
-        while(not self.received_vehicle_out):
-            print "locandstateest: waiting for vehicle_out"
+        while(not self.received_state):
+            print "perception: waiting for state"
             self.rate.sleep()
 
-        print "locandstateest: running main with: "
-        print "lap length: ", self.s_lap
-        print "length of local path: ", self.N*self.ds
+        print "perception: running main with: "
+        print "perception: lap length: ", self.s_lap
+        print "perception: length of local path: ", self.N*self.ds
         # Main loop
         while not rospy.is_shutdown():
-
-            # update dynamic params
-            self.dynamic_params.header.stamp = rospy.Time.now()
-            self.dynamic_param_pub.publish(self.dynamic_params)
-
+            
+            # check timing wrt dt
+            start = time.time()
+ 
             # update pathrolling to handle multiple laps
             if (self.state.s > self.pathrolling.s[0]+self.s_lap + 10): # if we're on the second lap of pathrolling
                 self.pathrolling.s = self.pathrolling.s + self.s_lap
            
             # update local path 
             self.updateLocalPath()
-            self.pathlocal.header.stamp = rospy.Time.now()
             self.pathlocalpub.publish(self.pathlocal)
             
             # visualize local path in rviz
@@ -106,37 +93,14 @@ class LocAndStateEst:
                 pathlocal_vis.poses.append(pose)
             self.pathlocalvispub.publish(pathlocal_vis)
 
-            # compute vehicle state from vehicle_out info
-            self.updateState()
-            self.statepub.publish(self.state)
+            end = time.time()
+            comptime = end-start
+            print("perception: compute took ", comptime)
+            if (comptime > self.dt):
+                rospy.logwarn("perception: compute time exceeding dt!")
 
             self.rate.sleep()   
             
-    def updateState(self):
-        self.state.X = self.vehicle_out.x
-        self.state.Y = self.vehicle_out.y
-        self.state.psi = self.vehicle_out.yaw
-        self.state.psidot = self.vehicle_out.r
-        self.state.vx = self.vehicle_out.vx
-        self.state.vy = self.vehicle_out.vy
-
-        # get s, d and deltapsi
-        s,d = ptsCartesianToFrenet(np.array(self.state.X), \
-                                   np.array(self.state.Y), \
-                                   np.array(self.pathlocal.X), \
-                                   np.array(self.pathlocal.Y), \
-                                   np.array(self.pathlocal.psi_c), \
-                                   np.array(self.pathlocal.s))
-        self.state.s = s[0]
-        self.state.d = d[0]
-        psi_c = np.interp(s,self.pathlocal.s,self.pathlocal.psi_c)
-        self.state.deltapsi = self.state.psi - psi_c
-        # correction of detapsi @ psi flips
-        while(self.state.deltapsi > np.pi):
-            self.state.deltapsi = self.state.deltapsi -2*np.pi
-        while(self.state.deltapsi <= -np.pi):
-            self.state.deltapsi = self.state.deltapsi +2*np.pi
-
 
     def updateLocalPath(self):
        
@@ -148,6 +112,8 @@ class LocAndStateEst:
         s = np.linspace(self.smin_local,smax_local,self.N)
         
         # interpolate on global path
+        self.pathlocal.header.stamp = rospy.Time.now()
+        self.pathlocal.header.frame_id = "map"
         self.pathlocal.X =              np.interp(s,self.pathrolling.s,self.pathrolling.X)
         self.pathlocal.Y =              np.interp(s,self.pathrolling.s,self.pathrolling.Y)
         self.pathlocal.s =              s
@@ -188,12 +154,12 @@ class LocAndStateEst:
         
         self.received_pathglobal = True
     
-    def vehicle_out_callback(self, msg):
-        self.vehicle_out = msg
-        self.received_vehicle_out = True
+    def state_callback(self, msg):
+        self.state = msg
+        self.received_state = True
 
 if __name__ == '__main__':
-    lse = LocAndStateEst()
+    lse = Perception()
     try:
         rospy.spin()
     except KeyboardInterrupt:
