@@ -4,13 +4,12 @@ namespace saarti_node{
 
 SAARTI::SAARTI(ros::NodeHandle nh){
     nh_ = nh;
-
-    dt = 0.05;
+    // node rate
+    double dt = nh_.param("/dt", 0.1);
     ros::Rate loop_rate(1/dt);
 
-    // params
-    get_static_params();
-    nh_.getParam("/Wx", Wx_);
+    // load rosparams
+    get_rosparams();
 
     // pubs & subs
     trajhat_pub_ = nh.advertise<common::Trajectory>("trajhat",1);
@@ -23,10 +22,8 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     trajstar_vis_pub_ = nh.advertise<nav_msgs::Path>("trajstar_vis",1);
     trajset_vis_pub_ = nh.advertise<visualization_msgs::Marker>("trajset_vis",1);
     posconstr_vis_pub_ = nh.advertise<jsk_recognition_msgs::PolygonArray>("posconstr_vis",1);
-
     // init wrapper for rtisqp solver
     rtisqp_wrapper_ = RtisqpWrapper();
-
     // set weights
     rtisqp_wrapper_.setWeights(Wx_,WNx_,Wu_,Wslack_);
 
@@ -221,7 +218,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
  */
 
 // sets refs to be used in rollout and optimization
-planning_util::refstruct SAARTI::setRefs(uint ctrlmode){
+planning_util::refstruct SAARTI::setRefs(int ctrlmode){
     planning_util::refstruct refs;
     switch (ctrlmode) {
     case 0:  // minimize vx (emg brake)
@@ -539,7 +536,36 @@ void SAARTI::obstacles_callback(const common::Obstacles::ConstPtr& msg){
 }
 
 // get static params from rosparam
-void SAARTI::get_static_params(){
+void SAARTI::get_rosparams(){
+
+    // opt config
+    if(!nh_.getParam("/Wx", Wx_)){
+        ROS_ERROR_STREAM("failed to load param Wx");
+    }
+    if(!nh_.getParam("/WNx", WNx_)){
+        ROS_ERROR_STREAM("failed to load param WNx");
+    }
+    if(!nh_.getParam("/Wu", Wu_)){
+        ROS_ERROR_STREAM("failed to load param Wu");
+    }
+    if(!nh_.getParam("/Wslack", Wslack_)){
+        ROS_ERROR_STREAM("failed to load param Wslack");
+    }
+
+    // modes
+    if(!nh_.getParam("/ref_mode", ref_mode_)){
+        ROS_ERROR_STREAM("failed to load param /refmode");
+    }
+    if(!nh_.getParam("/algo_setting", algo_setting_)){
+        ROS_ERROR_STREAM("failed to load param /algo_setting");
+    }
+
+    //nh_.getParam("/adaptive", adaptive_);
+
+    // rollout config
+    nh_.getParam("/Ntrajs_rollout", Ntrajs_rollout_);
+
+    // static vehicle model params
     sp_.m =  float(nh_.param("/car/inertia/m",1000.0));
     sp_.g =  float(nh_.param("/car/inertia/g",9.81));
     sp_.lf = float(nh_.param("/car/kinematics/b_F",2.0));

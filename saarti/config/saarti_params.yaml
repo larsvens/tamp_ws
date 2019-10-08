@@ -1,4 +1,33 @@
+#
 # saarti algorithm configuration
+#
+
+# replanning rate
+dt: 0.1
+
+# Reference mode, 
+# 0: minimize s
+# 1: maximize s
+ref_mode: 1 
+
+# Algorithm mode, 
+# 0: RTI
+# 1: SAA-RTI 
+algo_setting: 0
+
+# Adaptation mode,
+# 0: takes mu estimate from pathlocal struct
+# 1: static mu estimate from param  
+adaptive: 0 
+mu_static: 1.0
+
+# rollout config
+Ntrajs_rollout: 24 # default 24
+
+# optimization config
 Wx: [10.0, 0.1, 0.1, 0.1, 0.1, 0.1]
-WNX: [100.0, 0.1, 0.1, 0.1, 0.1, 0.1]
+WNx: [100.0, 0.1, 0.1, 0.1, 0.1, 0.1]
 Wu: [0.1, 0.1]
+Wslack: 10000000
+
+

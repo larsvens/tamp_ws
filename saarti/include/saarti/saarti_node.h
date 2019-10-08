@@ -39,18 +39,18 @@ public:
     SAARTI(ros::NodeHandle nh);
 
 private:
-    // modes (todo get from launch)
-    uint ref_mode_ = 1;    // 0: min s, 1: max s,
-    uint algo_setting_ = 0; // 0: RTI, 1: SAA-RTI
-    uint adaptive_ = 0;     // 0: takes mu estimate from pathlocal struct, 1: static mu estimate from param
-    int Ntrajs_rollout_ = 24; // default 24
+    // modes
+    int ref_mode_;
+    int algo_setting_;
+    //int adaptive_;
+    //float mu_static; // used for nonadaptive case
+    int Ntrajs_rollout_;
 
-    // weights (todo get from launch)
-    //vector<float> Wx_{10.0, 0.1, 0.1, 0.1, 0.1, 0.1};
+    // weights
     vector<float> Wx_;
-    vector<float> WNx_{100.0, 0.1, 0.1, 0.1, 0.1, 0.1};
-    vector<float> Wu_{0.1, 0.1};
-    float Wslack_ = 10000000;
+    vector<float> WNx_;
+    vector<float> Wu_;
+    float Wslack_;
 
     // variables
     double dt;
@@ -75,7 +75,7 @@ private:
 
     // functions
     void print_obj(planning_util::trajstruct traj);
-    planning_util::refstruct setRefs(uint ctrlmode);
+    planning_util::refstruct setRefs(int ctrlmode);
     void traj2cart(planning_util::trajstruct &traj);
     void trajset2cart();
     void sd_pts2cart(vector<float> &s, vector<float> &d, vector<float> &Xout, vector<float> &Yout);
@@ -90,7 +90,7 @@ private:
     void state_callback(const common::State::ConstPtr& msg);
     void pathlocal_callback(const common::Path::ConstPtr& msg);
     void obstacles_callback(const common::Obstacles::ConstPtr& msg);
-    void get_static_params();
+    void get_rosparams();
 };
 } // end namespace saarti_node
 #endif // SAARTI_NODE_H
