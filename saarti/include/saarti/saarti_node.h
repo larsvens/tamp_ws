@@ -46,9 +46,11 @@ private:
     int Ntrajs_rollout_ = 24; // default 24
 
     // weights (todo get from launch)
-    vector<float> Wx{10.0, 1.0, 1.0, 0.01, 0.01, 0.01};
-    vector<float> Wu{0.1, 0.1};
-    float Wslack = 10000000;
+    //vector<float> Wx_{10.0, 0.1, 0.1, 0.1, 0.1, 0.1};
+    vector<float> Wx_;
+    vector<float> WNx_{100.0, 0.1, 0.1, 0.1, 0.1, 0.1};
+    vector<float> Wu_{0.1, 0.1};
+    float Wslack_ = 10000000;
 
     // variables
     double dt;

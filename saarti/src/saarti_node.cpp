@@ -10,6 +10,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
     // params
     get_static_params();
+    nh_.getParam("/Wx", Wx_);
 
     // pubs & subs
     trajhat_pub_ = nh.advertise<common::Trajectory>("trajhat",1);
@@ -27,7 +28,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     rtisqp_wrapper_ = RtisqpWrapper();
 
     // set weights
-    rtisqp_wrapper_.setWeights(Wx,Wu,Wslack);
+    rtisqp_wrapper_.setWeights(Wx_,WNx_,Wu_,Wslack_);
 
     // wait until state and path_local is received
     while( (state_.s <= 0) || pathlocal_.s.size() == 0 ){
@@ -343,7 +344,7 @@ vector<float> SAARTI::angle_to_continous(vector<float> &psi){
 
 // cost evaluation and collision checking of trajset
 int SAARTI::trajset_eval_cost(){
-    float mincost = float(Wslack)*10;
+    float mincost = float(Wslack_)*10;
     int trajhat_idx = -1;
     for (uint i=0;i<trajset_.size();i++) {
         planning_util::trajstruct traj = trajset_.at(i);
@@ -376,15 +377,15 @@ int SAARTI::trajset_eval_cost(){
             //cout << "s before rc add = " << s << endl;
             //cout << "vx before rc add = " << vx << endl;
             //cout << "cost before rc add = " << cost << endl;
-            cost += (sref-s)*float(Wx.at(0))*(sref-s) + (vxref-vx)*float(Wx.at(4))*(vxref-vx);
+            cost += (sref-s)*float(Wx_.at(0))*(sref-s) + (vxref-vx)*float(Wx_.at(4))*(vxref-vx);
             //cout << "cost after rc add = " << cost << endl;
         }
         if(colliding){
-            cost += float(Wslack);
+            cost += float(Wslack_);
             //cost = float(Wslack);
         }
         if(exitroad){
-            cost += float(Wslack);
+            cost += float(Wslack_);
             //cost = float(Wslack);
         }
         traj.cost = cost;
@@ -508,6 +509,11 @@ void SAARTI::state_callback(const common::State::ConstPtr& msg){
     float v_th = 1.0;
     if (state_.vx <= v_th){
         state_.vx = v_th;
+    }
+
+    // input checks on state
+    if (std::abs(state_.deltapsi) > 0.2f){
+        ROS_ERROR_STREAM("deltapsi large! deltapsi = " << state_.deltapsi );
     }
 }
 

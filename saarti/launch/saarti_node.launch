@@ -1,0 +1,10 @@
+<!-- starts saarti node with params -->
+
+<launch>
+     <!-- load params -->
+     <rosparam command="load" file="$(find saarti)/config/saarti_params.yaml" /> 
+
+     <!-- saarti node -->
+     <node pkg="saarti" type="saarti_node" name="saarti_node" output="screen"> </node>
+
+</launch>

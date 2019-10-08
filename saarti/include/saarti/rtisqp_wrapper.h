@@ -50,7 +50,7 @@ public:
     RtisqpWrapper();
 
     // functions
-    bool setWeights(vector<float>, vector<float>, float);
+    bool setWeights(vector<float>, vector<float>, vector<float>, float);
     bool setInitialGuess(planning_util::trajstruct);
     bool setInitialState(planning_util::statestruct);
     bool setOptReference(planning_util::trajstruct, planning_util::refstruct refs);

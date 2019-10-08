@@ -37,7 +37,7 @@ class TrackInterface:
         # set params
         ds = 0.5 # step size in s # 0.5 nominal
         plot_track = False
-        plot_orientation = True
+        plot_orientation = False
         plot_dlbdub = False
         
         # wait for track

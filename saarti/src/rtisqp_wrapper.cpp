@@ -13,8 +13,9 @@ RtisqpWrapper::RtisqpWrapper()
 
 }
 
-bool RtisqpWrapper::setWeights(vector<float> Wx, vector<float> Wu, float Wslack){
+bool RtisqpWrapper::setWeights(vector<float> Wx, vector<float> WNx, vector<float> Wu, float Wslack){
     // set diagonal elements of acadoVariables.w matrix. Size [Nx+Nu,Nx+Nu] (row major format)
+    // running cost
     // states
     acadoVariables.W[0*(NX+NU) + 0] = Wx.at(0); // s
     acadoVariables.W[1*(NX+NU) + 1] = Wx.at(1); // d
@@ -28,12 +29,12 @@ bool RtisqpWrapper::setWeights(vector<float> Wx, vector<float> Wu, float Wslack)
     acadoVariables.W[8*(NX+NU) + 8] = Wu.at(1); // Fx
     acadoVariables.W[9*(NX+NU) + 9] = Wslack;   // slack variable
 
-    // construct eigen matrix to check
+    // construct eigen matrix to check W
     Eigen::MatrixXd W(NX+NU,NX+NU);
     uint row = 0;
     uint col = 0;
     for (uint i = 0;i<(NX+NU)*(NX+NU);i++) {
-        W(row,col) = acadoVariables.W[i];
+        W(row,col) = double(acadoVariables.W[i]);
         col++;
         if(col >= (NX+NU)){
             col = 0;
@@ -41,7 +42,30 @@ bool RtisqpWrapper::setWeights(vector<float> Wx, vector<float> Wu, float Wslack)
         }
     }
 
-    cout << "Setting Weigth matrix W: " << endl << W  << endl;
+    // terminal cost
+    // states
+    acadoVariables.WN[0*(NX) + 0] = WNx.at(0); // s
+    acadoVariables.WN[1*(NX) + 1] = WNx.at(1); // d
+    acadoVariables.WN[2*(NX) + 2] = WNx.at(2); // deltapsi
+    acadoVariables.WN[3*(NX) + 3] = WNx.at(3); // psidot
+    acadoVariables.WN[4*(NX) + 4] = WNx.at(4); // vx
+    acadoVariables.WN[5*(NX) + 5] = WNx.at(5); // vy
+    acadoVariables.WN[6*(NX) + 6] = 0.0;      // dummy state for slack
+
+    // construct eigen matrix to check WN
+    Eigen::MatrixXd WN(NX,NX);
+    row = 0;
+    col = 0;
+    for (uint i = 0;i<NX*NX;i++) {
+        WN(row,col) = double(acadoVariables.WN[i]);
+        col++;
+        if(col >= (NX)){
+            col = 0;
+            row++;
+        }
+    }
+
+    cout << "Setting Weigth matrices:" << endl << "W = " << W  << endl << "WN = " << WN << endl;
     return true;
 }
 
@@ -77,6 +101,8 @@ bool RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_uti
     vector<float> sref = refs.sref;
     vector<float> vxref = refs.vxref;
 
+    // TODO: rm vx-ref
+
     // set ref for intermediate states
     for (uint k = 0; k < N; ++k)
     {
@@ -84,7 +110,7 @@ bool RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_uti
         acadoVariables.y[k * NY + 1] = traj.d.at(k);         // d
         acadoVariables.y[k * NY + 2] = traj.deltapsi.at(k);  // deltapsi
         acadoVariables.y[k * NY + 3] = traj.psidot.at(k);    // psidot
-        acadoVariables.y[k * NY + 4] = vxref.at(k);          // vx
+        acadoVariables.y[k * NY + 4] = traj.vx.at(k);        // vx
         acadoVariables.y[k * NY + 5] = traj.vy.at(k);        // vy
         acadoVariables.y[k * NY + 6] = 0.0;                  // dummy
         acadoVariables.y[k * NY + 7] = traj.Fyf.at(k);       // Fyf
