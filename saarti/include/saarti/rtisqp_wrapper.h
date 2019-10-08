@@ -50,28 +50,28 @@ public:
     RtisqpWrapper();
 
     // functions
-    bool setWeights(vector<float>, vector<float>, vector<float>, float);
-    bool setInitialGuess(planning_util::trajstruct);
-    bool setInitialState(planning_util::statestruct);
-    bool setOptReference(planning_util::trajstruct, planning_util::refstruct refs);
-    bool setInputConstraints(float mu, float Fzf);
+    void setWeights(vector<float>, vector<float>, vector<float>, float);
+    void setInitialGuess(planning_util::trajstruct);
+    void setInitialState(planning_util::statestruct);
+    void setOptReference(planning_util::trajstruct, planning_util::refstruct refs);
+    void setInputConstraints(float mu, float Fzf);
     planning_util::posconstrstruct setStateConstraints(planning_util::trajstruct &traj,
                                                        planning_util::obstastruct obs,
                                                        vector<float> lld,
                                                        vector<float> rld,
                                                        float w);
-    bool shiftStateAndControls();
-    bool shiftTrajectoryFwdSimple(planning_util::trajstruct &traj);
+    void shiftStateAndControls();
+    void shiftTrajectoryFwdSimple(planning_util::trajstruct &traj);
     planning_util::trajstruct shiftTrajectoryByIntegration(planning_util::trajstruct &traj,
                                                            planning_util::statestruct &state,
                                                            planning_util::pathstruct &pathlocal,
                                                            planning_util::staticparamstruct &sp);
-    bool doPreparationStep();
+    void doPreparationStep();
     int  doFeedbackStep();
     Eigen::MatrixXd getStateTrajectory();
     Eigen::MatrixXd getControlTrajectory();
     planning_util::trajstruct getTrajectory();
-    bool computeTrajset(vector<planning_util::trajstruct> &trajset,
+    void computeTrajset(vector<planning_util::trajstruct> &trajset,
                         planning_util::statestruct &state,
                         planning_util::pathstruct &pathlocal,
                         uint Ntrajs);
@@ -80,7 +80,7 @@ public:
                            planning_util::pathstruct  &pathlocal,
                            planning_util::staticparamstruct &sp);
 
-    bool setIntegratorState(real_t *acadoWSstate,
+    void setIntegratorState(real_t *acadoWSstate,
                             planning_util::statestruct state,
                             planning_util::ctrlstruct ctrl,
                             float kappac);

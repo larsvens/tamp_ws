@@ -13,7 +13,7 @@ RtisqpWrapper::RtisqpWrapper()
 
 }
 
-bool RtisqpWrapper::setWeights(vector<float> Wx, vector<float> WNx, vector<float> Wu, float Wslack){
+void RtisqpWrapper::setWeights(vector<float> Wx, vector<float> WNx, vector<float> Wu, float Wslack){
     // set diagonal elements of acadoVariables.w matrix. Size [Nx+Nu,Nx+Nu] (row major format)
     // running cost
     // states
@@ -66,10 +66,9 @@ bool RtisqpWrapper::setWeights(vector<float> Wx, vector<float> WNx, vector<float
     }
 
     cout << "Setting Weigth matrices:" << endl << "W = " << W  << endl << "WN = " << WN << endl;
-    return true;
 }
 
-bool RtisqpWrapper::setInitialGuess(planning_util::trajstruct traj){
+void RtisqpWrapper::setInitialGuess(planning_util::trajstruct traj){
     // set state trajectory guess
     if(traj.s.size() != N+1){
         throw std::invalid_argument("faulty state trajectory in setInitialGuess");
@@ -93,11 +92,9 @@ bool RtisqpWrapper::setInitialGuess(planning_util::trajstruct traj){
     {
         acadoVariables.od[k * NOD + 0] = traj.kappac.at(k);
     }
-
-    return true;
 }
 
-bool RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_util::refstruct refs){
+void RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_util::refstruct refs){
     vector<float> sref = refs.sref;
     vector<float> vxref = refs.vxref;
 
@@ -125,11 +122,9 @@ bool RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_uti
     acadoVariables.yN[ 4 ] = traj.vx.at(N);        // vx
     acadoVariables.yN[ 5 ] = traj.vy.at(N);        // vy
     acadoVariables.yN[ 6 ] = 0;                    // dummy
-
-    return true;
 }
 
-bool RtisqpWrapper::setInputConstraints(float mu, float Fzf){
+void RtisqpWrapper::setInputConstraints(float mu, float Fzf){
     uint N_ineq = 8; // nr of inequalities, todo read from file!
     uint N_ubA = sizeof(acadoVariables.ubAValues) / sizeof(*acadoVariables.ubAValues);
     uint N_per_k = N_ubA/N;
@@ -141,7 +136,6 @@ bool RtisqpWrapper::setInputConstraints(float mu, float Fzf){
             acadoVariables.ubAValues[idx] = mu; // tmp just to test effect (affine input const after state const?)
         }
     }
-    return true;
 }
 
 planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util::trajstruct &traj,
@@ -223,7 +217,7 @@ planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util:
     return posconstr;
 }
 
-bool RtisqpWrapper::setInitialState(planning_util::statestruct state){
+void RtisqpWrapper::setInitialState(planning_util::statestruct state){
     acadoVariables.x0[0] = state.s;
     acadoVariables.x0[1] = state.d;
     acadoVariables.x0[2] = state.deltapsi;
@@ -231,16 +225,17 @@ bool RtisqpWrapper::setInitialState(planning_util::statestruct state){
     acadoVariables.x0[4] = state.vx;
     acadoVariables.x0[5] = state.vy;
     acadoVariables.x0[6] = 0.0; // dummy
-    return true;
 }
 
-bool RtisqpWrapper::shiftStateAndControls(){
+void RtisqpWrapper::shiftStateAndControls(){
     acado_shiftStates(2, 0, 0);
     acado_shiftControls( 0 );
-    return true;
 }
 
-bool RtisqpWrapper::shiftTrajectoryFwdSimple(planning_util::trajstruct &traj){
+// TODO REMOVE
+void RtisqpWrapper::shiftTrajectoryFwdSimple(planning_util::trajstruct &traj){
+
+
     if(!traj.s.size()){
         throw std::invalid_argument("trying to shift empty trajectory");
     }
@@ -266,7 +261,6 @@ bool RtisqpWrapper::shiftTrajectoryFwdSimple(planning_util::trajstruct &traj){
         traj.Y.at(k) = traj.Y.at(k+1);
         traj.psi.at(k) = traj.psi.at(k+1);
     }
-    return true;
 }
 
 planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_util::trajstruct &traj,
@@ -293,9 +287,8 @@ planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_u
     return traj_out;
 }
 
-bool RtisqpWrapper::doPreparationStep(){
+void RtisqpWrapper::doPreparationStep(){
     acado_preparationStep();
-    return true;
 }
 
 int RtisqpWrapper::doFeedbackStep(){
@@ -421,7 +414,7 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
  * integrator from the acado toolkit. The control input is recomputed at every stage. A vector of
  * references is constructed as [dlb ... dub dlb ... dub], where the first half of the trajset has
  * positive Fx and the second half has negative */
-bool RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
+void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                                    planning_util::statestruct &state,
                                    planning_util::pathstruct &pathlocal,
                                    uint Ntrajs){
@@ -555,11 +548,10 @@ bool RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             cout << "interp took " << t_interp_tot << " ms " << endl;
         }
     }
-
-    return true;
 }
 
-bool RtisqpWrapper::setIntegratorState(real_t *acadoWSstate,
+// TODO REMOVE
+void RtisqpWrapper::setIntegratorState(real_t *acadoWSstate,
                                        planning_util::statestruct state,
                                        planning_util::ctrlstruct ctrl,
                                        float kappac){
@@ -581,7 +573,5 @@ bool RtisqpWrapper::setIntegratorState(real_t *acadoWSstate,
     acadoWSstate[82] = 0.0; // sub
     acadoWSstate[83] = 0.0; // dlb
     acadoWSstate[84] = 0.0; // dub
-
-    return true;
 }
 
