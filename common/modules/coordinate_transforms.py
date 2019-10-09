@@ -29,19 +29,27 @@ def ptsCartesianToFrenet(X,Y,Xpath,Ypath,psipath,spath):
             if (dist<mindist):
                 mindist = dist
                 idx = i
-                
-        Xc = Xpath[idx] 
-        Yc = Ypath[idx] 
-        psic = psipath[idx] 
-        sc = spath[idx] 
         
-        # compute angles etc
-        deltaX = X - Xc
-        deltaY = Y - Yc
-        alpha1 = -np.arctan2(deltaX,deltaY)
-        alpha2 = psic - alpha1
-        M = np.sqrt(deltaX**2 + deltaY**2)
-        deltas = M*np.sin(alpha2)
+        # make sure deltas is positive
+        deltas = -1
+        while(deltas < 0):
+        
+            Xc = Xpath[idx] 
+            Yc = Ypath[idx] 
+            psic = psipath[idx] 
+            sc = spath[idx] 
+            
+            # compute angles etc
+            deltaX = X - Xc
+            deltaY = Y - Yc
+            alpha1 = -np.arctan2(deltaX,deltaY)
+            alpha2 = psic - alpha1
+            M = np.sqrt(deltaX**2 + deltaY**2)
+            deltas = M*np.sin(alpha2)
+            
+            # iteratively reduce idx until deltas positive
+            idx = idx - 1
+            
         d[k] = M*np.cos(alpha2)
         s[k] = sc + deltas
         

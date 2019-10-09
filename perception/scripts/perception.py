@@ -5,7 +5,6 @@
 # state from fssim (topic /fssim/base_pose_ground_truth)
 # global path from track interface (topic pathglobal)
 # outputs: 
-# /state (cartesian + frenet)
 # /pathlocal
 # + rviz visualizations
 
@@ -38,7 +37,7 @@ class Perception:
         self.rate = rospy.Rate(1/self.dt) # 10hz
         
         # params of local path
-        self.N = 300
+        self.N = 400
         self.ds = 0.5
 
         # set static vehicle params
@@ -73,7 +72,7 @@ class Perception:
             start = time.time()
  
             # update pathrolling to handle multiple laps
-            if (self.state.s > self.pathrolling.s[0]+self.s_lap + 10): # if we're on the second lap of pathrolling
+            if (self.state.s > self.pathrolling.s[0]+self.s_lap + 25): # if we're on the second lap of pathrolling
                 self.pathrolling.s = self.pathrolling.s + self.s_lap
            
             # update local path 
@@ -95,7 +94,7 @@ class Perception:
 
             end = time.time()
             comptime = end-start
-            print("perception: compute took ", comptime)
+            #print("perception: compute took ", comptime)
             if (comptime > self.dt):
                 rospy.logwarn("perception: compute time exceeding dt!")
 
@@ -112,6 +111,13 @@ class Perception:
         s = np.linspace(self.smin_local,smax_local,self.N)
         
         # interpolate on global path
+        
+        if (s[0] < self.pathrolling.s[0] or s[-1] > self.pathrolling.s[-1]):
+            rospy.logerr("perception: pathlocal.s not on pathrolling interval!")
+            print "state.s       ", self.state.s
+            print "pathlocal.s   ", s
+            print "pathrolling.s ", self.pathrolling.s
+        
         self.pathlocal.header.stamp = rospy.Time.now()
         self.pathlocal.header.frame_id = "map"
         self.pathlocal.X =              np.interp(s,self.pathrolling.s,self.pathrolling.X)
@@ -125,6 +131,9 @@ class Perception:
         self.pathlocal.mu =             np.interp(s,self.pathrolling.s,self.pathrolling.mu)
         self.pathlocal.dub =            np.interp(s,self.pathrolling.s,self.pathrolling.dub)
         self.pathlocal.dlb =            np.interp(s,self.pathrolling.s,self.pathrolling.dlb)
+        
+        
+        
         
     def setRosParams(self):
         self.m = rospy.get_param('/car/inertia/m')
