@@ -264,7 +264,7 @@ void RtisqpWrapper::shiftTrajectoryFwdSimple(planning_util::trajstruct &traj){
 }
 
 planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_util::trajstruct &traj,
-                                                                      planning_util::statestruct &state,
+                                                                      planning_util::statestruct state, // todo rm?
                                                                       planning_util::pathstruct &pathlocal,
                                                                       planning_util::staticparamstruct &sp){
     if(!traj.s.size()){
@@ -275,8 +275,12 @@ planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_u
     planning_util::trajstruct traj_out;
     traj_out.Fyf = traj.Fyf;
     traj_out.Fx = traj.Fx;
-    // if moving, shift u one step fwd before rollout
+
+    // if moving, shift u one step fwd before rollout and roll from x_{1|t-1}
     if(state.vx > 1.0f){
+        // get state at 1 in traj
+        planning_util::state_at_idx_in_traj(traj, state, 1);
+        // shift ctrl sequence
         for (uint k = 0; k < N-1; ++k){
             traj_out.Fyf.at(k) = traj_out.Fyf.at(k+1);
             traj_out.Fx.at(k) = traj_out.Fx.at(k+1);

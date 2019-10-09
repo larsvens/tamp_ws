@@ -28,8 +28,8 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     rtisqp_wrapper_.setWeights(Wx_,WNx_,Wu_,Wslack_);
 
     // wait until state and path_local is received
-    while( (state_.s <= 0) || pathlocal_.s.size() == 0 ){
-        ROS_INFO_STREAM("waiting for state and path local");
+    while( (state_.s < 0) || pathlocal_.s.size() == 0){
+        ROS_INFO_STREAM("waiting for state and/or path local");
         if(state_.s < 0){
             ROS_ERROR_STREAM("state.s is negative! s = " << state_.s);
         }

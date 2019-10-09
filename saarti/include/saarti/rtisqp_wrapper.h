@@ -63,7 +63,7 @@ public:
     void shiftStateAndControls();
     void shiftTrajectoryFwdSimple(planning_util::trajstruct &traj);
     planning_util::trajstruct shiftTrajectoryByIntegration(planning_util::trajstruct &traj,
-                                                           planning_util::statestruct &state,
+                                                           planning_util::statestruct state,
                                                            planning_util::pathstruct &pathlocal,
                                                            planning_util::staticparamstruct &sp);
     void doPreparationStep();
