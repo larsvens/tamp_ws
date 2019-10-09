@@ -90,9 +90,9 @@ class StateEst:
             self.passed_halfway = False
             print "state est: completed lap, lap count = ", self.lapcounter
         
-#        # make sure s is >= 0 on first lap
-#        if(s_this_lap < 0 or (self.lapcounter == 0 and s_this_lap > 0.75*self.s_lap and not self.passed_halfway) ):
-#            s_this_lap = 0.0
+        # make sure s is >= 0 on first lap
+        if(self.lapcounter == 0 and s_this_lap > 0.75*self.s_lap and not self.passed_halfway):
+            s_this_lap = 0.0
         
         self.state_out.s = s_this_lap + self.lapcounter*self.s_lap    
                     
