@@ -23,7 +23,7 @@ void RtisqpWrapper::setWeights(vector<float> Wx, vector<float> WNx, vector<float
     acadoVariables.W[3*(NX+NU) + 3] = Wx.at(3); // psidot
     acadoVariables.W[4*(NX+NU) + 4] = Wx.at(4); // vx
     acadoVariables.W[5*(NX+NU) + 5] = Wx.at(5); // vy
-    acadoVariables.W[6*(NX+NU) + 6] = 0.0;      // dummy state for slack
+    acadoVariables.W[6*(NX+NU) + 6] = 0.0001f;      // dummy state for slack
     // controls
     acadoVariables.W[7*(NX+NU) + 7] = Wu.at(0); // Fyf
     acadoVariables.W[8*(NX+NU) + 8] = Wu.at(1); // Fx
@@ -103,9 +103,11 @@ void RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_uti
     // set ref for intermediate states
     for (uint k = 0; k < N; ++k)
     {
-        acadoVariables.y[k * NY + 0] = sref.at(k);           // s
-        acadoVariables.y[k * NY + 1] = traj.d.at(k);         // d
-        acadoVariables.y[k * NY + 2] = traj.deltapsi.at(k);  // deltapsi
+        acadoVariables.y[k * NY + 0] = traj.s.at(k)+10;        // s
+        //acadoVariables.y[k * NY + 1] = traj.d.at(k);         // d
+        acadoVariables.y[k * NY + 1] = 0;         // d
+        //acadoVariables.y[k * NY + 2] = traj.deltapsi.at(k);  // deltapsi
+        acadoVariables.y[k * NY + 2] = 0; // deltapsi test
         acadoVariables.y[k * NY + 3] = traj.psidot.at(k);    // psidot
         acadoVariables.y[k * NY + 4] = traj.vx.at(k);        // vx
         acadoVariables.y[k * NY + 5] = traj.vy.at(k);        // vy
@@ -115,9 +117,11 @@ void RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_uti
         acadoVariables.y[k * NY + 9] = 0.0;                  // slack
     }
     // set ref for final state
-    acadoVariables.yN[ 0 ] = sref.at(N);           // s
-    acadoVariables.yN[ 1 ] = traj.d.at(N);         // d
-    acadoVariables.yN[ 2 ] = traj.deltapsi.at(N);  // deltapsi
+    acadoVariables.yN[ 0 ] = traj.s.at(N)+10;           // s
+    //acadoVariables.yN[ 1 ] = traj.d.at(N);         // d
+    acadoVariables.yN[ 1 ] = 0;         // d test
+    //acadoVariables.yN[ 2 ] = traj.deltapsi.at(N);  // deltapsi
+    acadoVariables.yN[ 2 ] = 0;  // deltapsi test
     acadoVariables.yN[ 3 ] = traj.psidot.at(N);    // psidot
     acadoVariables.yN[ 4 ] = traj.vx.at(N);        // vx
     acadoVariables.yN[ 5 ] = traj.vy.at(N);        // vy

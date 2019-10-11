@@ -7,6 +7,7 @@ from fssim_common.msg import State as fssimState
 from common.msg import State as saartiState
 from coordinate_transforms import ptsCartesianToFrenet
 from util import angleToInterval
+from util import angleToContinous
 from std_msgs.msg import Float32
 
 class StateEst:
@@ -58,7 +59,7 @@ class StateEst:
             self.statepub.publish(self.state_out)
             
             # rqt debug
-            self.debug_val = self.state_out.s
+            self.debug_val = self.state_out.deltapsi
             self.debugpub.publish(self.debug_val)
             
             self.rate.sleep()   
@@ -73,6 +74,7 @@ class StateEst:
         self.state_out.vy = self.state_in.vy
 
         # get s, d and deltapsi
+        
         s,d = ptsCartesianToFrenet(np.array(self.state_out.X), \
                                    np.array(self.state_out.Y), \
                                    np.array(self.pathglobal.X), \
@@ -97,10 +99,16 @@ class StateEst:
         self.state_out.s = s_this_lap + self.lapcounter*self.s_lap    
                     
         self.state_out.d = d[0]
-        psi_c = np.interp(s,self.pathglobal.s,self.pathglobal.psi_c)
+        
+        psi_c = np.interp(s,self.pathglobal.s,self.pathglobal_psic_cont)
+        angleToInterval(psi_c)
+        
         self.state_out.deltapsi = self.state_out.psi - psi_c
         # correction of detapsi @ psi flips
         self.state_out.deltapsi = angleToInterval(self.state_out.deltapsi)
+        self.state_out.deltapsi = self.state_out.deltapsi[0]
+        print "state est, deltapsi = ", self.state_out.deltapsi
+        print "state est, psi      = ", self.state_out.psi
         
     def vehicle_out_callback(self, msg):
         self.state_in = msg
@@ -108,6 +116,7 @@ class StateEst:
         
     def pathglobal_callback(self, msg):
         self.pathglobal = msg      
+        self.pathglobal_psic_cont = angleToContinous(np.array(self.pathglobal.psi_c))
         self.received_pathglobal = True
 
 if __name__ == '__main__':

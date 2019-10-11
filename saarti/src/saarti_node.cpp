@@ -22,6 +22,8 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     trajstar_vis_pub_ = nh.advertise<nav_msgs::Path>("trajstar_vis",1);
     trajset_vis_pub_ = nh.advertise<visualization_msgs::Marker>("trajset_vis",1);
     posconstr_vis_pub_ = nh.advertise<jsk_recognition_msgs::PolygonArray>("posconstr_vis",1);
+    vectordebug_pub_ = nh.advertise<jsk_recognition_msgs::PlotData>("saarti_plot_debug",1);
+
     // init wrapper for rtisqp solver
     rtisqp_wrapper_ = RtisqpWrapper();
     // set weights
@@ -95,11 +97,12 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         visualization_msgs::Marker trajset_cubelist = trajset2cubelist();
 
         // cost eval and select
-        bool RUN_RTISQP = true; // tmp! make rosparam for runmode (see matlab code)
-        int trajhat_idx = 0;
-        if (RUN_RTISQP && (trajstar_last.s.size()>0)){
+        int trajhat_idx;
+        if (algo_setting_== 0 && (trajstar_last.s.size()>0)){
+            // RTISQP
             trajhat_idx = int(trajset_.size()-1); // pick final traj
         } else {
+            // SAARTI
             trajhat_idx = trajset_eval_cost(); // error if negative
         }
 
@@ -118,6 +121,15 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             ROS_ERROR_STREAM("pathlocal_.s.back() = " << pathlocal_.s.back());
         }
 
+
+        // debug pathlocal and trajhat
+        jsk_recognition_msgs::PlotData pd;
+        pd.xs = trajhat.s;
+        pd.ys = trajhat.deltapsi;
+        pd.label = "pathlocal_dub";
+        pd.type = jsk_recognition_msgs::PlotData::SCATTER;
+        vectordebug_pub_.publish(pd);
+
         /*
          * OPTIMIZATION
          */
@@ -127,7 +139,19 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
         // update state for opt
         ROS_INFO_STREAM("setting state..");
+        // debug - assuming correct deltapsi
+//        planning_util::statestruct plannedstate;
+//        planning_util::state_at_idx_in_traj(trajhat,plannedstate,1);
+//        state_.deltapsi = plannedstate.deltapsi;
         rtisqp_wrapper_.setInitialState(state_);
+
+        // check trajhat w.r.t zerodivision
+        for (uint k=0; k<trajhat.s.size(); k++){
+            if (std::abs(1.0f - trajhat.d.at(k)*trajhat.kappac.at(k)) < 0.1f){
+                ROS_ERROR_STREAM("DIVISION BY ZERO IN DYNAMICS: 1-d*kappac =" << 1.0f - trajhat.d.at(k)*trajhat.kappac.at(k) );
+                trajhat.kappac.at(k) = trajhat.kappac.at(k)*0.9f;
+            }
+        }
 
         // set initial guess and shift fwd
         ROS_INFO_STREAM("setting initial guess..");
@@ -143,7 +167,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         ROS_INFO_STREAM("setting state constraints..");
         vector<float> lld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dub,false);
         vector<float> rld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dlb,false);
-        float w = 1.5; // TODO get from param
+        float w = 1.75; // TODO get from param
         planning_util::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obst_,lld,rld,w);
         // visualize state constraint
         jsk_recognition_msgs::PolygonArray polarr = stateconstr2polarr(posconstr);

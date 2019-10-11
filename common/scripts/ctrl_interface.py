@@ -70,16 +70,27 @@ class CtrlInterface:
             else:
                 theta_Vf = np.arctan2(vy+self.lf*psidot,vx)
 
+            # compute control
+            delta_out = rho*(self.lf + self.lr) # kinematic feed fwd
+
+
             #
             # LONGITUDINAL CTRL
             #
+            Fx_request = self.trajstar.Fx[0]
+            # todo: const double Fx = dc * param_.driveTrain.cm1 - aero_.getFdrag(x) - param_.driveTrain.cr0;
 
             # compute velocity error
             self.vx_error = self.trajstar.vx[1]-vx
-
-            # compute control
-            delta_out = rho*(self.lf + self.lr) # kinematic feed fwd
-            dc_out = 0.00010*self.trajstar.Fx[0]
+            
+            # feedfwd 
+            Cr0 = 180
+            Cm1 = 5000          
+            dc_out = (Fx_request+Cr0)/Cm1 # not including aero
+            
+            # old
+            #dc_out = 0.00010*self.trajstar.Fx[0]
+            
             
             # prints 
             print ""

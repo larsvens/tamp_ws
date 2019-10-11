@@ -3,7 +3,7 @@
 #
 
 # replanning rate
-dt: 0.1
+dt: 0.05
 
 # Reference mode, 
 # 0: minimize s
@@ -25,9 +25,9 @@ mu_static: 1.0
 Ntrajs_rollout: 24 # default 24
 
 # optimization config
-Wx: [10.0, 0.1, 0.1, 0.1, 0.1, 0.1]
-WNx: [100.0, 0.1, 0.1, 0.1, 0.1, 0.1]
+Wx:  [200.0, 1.0, 10.0, 0.1, 0.1, 0.1]
+WNx: [200.0, 1.0, 10.0, 0.1, 0.1, 0.1]
 Wu: [0.1, 0.1]
-Wslack: 10000000
+Wslack: 100000000
 
 

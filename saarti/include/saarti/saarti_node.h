@@ -5,11 +5,12 @@
 #include "ros/ros.h"
 #include "ros/time.h"
 #include <tf2/LinearMath/Quaternion.h>
-
 #include "std_msgs/String.h"
+
 // visualization
 #include "visualization_msgs/MarkerArray.h"
 #include "jsk_recognition_msgs/PolygonArray.h"
+#include "jsk_recognition_msgs/PlotData.h"
 #include "geometry_msgs/PolygonStamped.h"
 #include "nav_msgs/Path.h"
 
@@ -64,6 +65,7 @@ private:
     ros::Publisher trajhat_vis_pub_;
     ros::Publisher trajstar_vis_pub_;
     ros::Publisher posconstr_vis_pub_;
+    ros::Publisher vectordebug_pub_;
     planning_util::statestruct state_;
     planning_util::pathstruct pathlocal_;
     vector<planning_util::trajstruct> trajset_;
