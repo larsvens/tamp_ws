@@ -149,7 +149,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         for (uint k=0; k<trajhat.s.size(); k++){
             if (std::abs(1.0f - trajhat.d.at(k)*trajhat.kappac.at(k)) < 0.1f){
                 ROS_ERROR_STREAM("DIVISION BY ZERO IN DYNAMICS: 1-d*kappac =" << 1.0f - trajhat.d.at(k)*trajhat.kappac.at(k) );
-                trajhat.kappac.at(k) = trajhat.kappac.at(k)*0.9f;
+                //trajhat.kappac.at(k) = trajhat.kappac.at(k)*0.9f;
             }
         }
 

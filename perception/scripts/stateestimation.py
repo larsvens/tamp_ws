@@ -107,8 +107,8 @@ class StateEst:
         # correction of detapsi @ psi flips
         self.state_out.deltapsi = angleToInterval(self.state_out.deltapsi)
         self.state_out.deltapsi = self.state_out.deltapsi[0]
-        print "state est, deltapsi = ", self.state_out.deltapsi
-        print "state est, psi      = ", self.state_out.psi
+        #print "state est, deltapsi = ", self.state_out.deltapsi
+        #print "state est, psi      = ", self.state_out.psi
         
     def vehicle_out_callback(self, msg):
         self.state_in = msg

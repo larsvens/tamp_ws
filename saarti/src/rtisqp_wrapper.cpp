@@ -267,7 +267,7 @@ void RtisqpWrapper::shiftTrajectoryFwdSimple(planning_util::trajstruct &traj){
     }
 }
 
-planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_util::trajstruct &traj,
+planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_util::trajstruct traj,
                                                                       planning_util::statestruct state, // todo rm?
                                                                       planning_util::pathstruct &pathlocal,
                                                                       planning_util::staticparamstruct &sp){

@@ -13,11 +13,14 @@ import rospy
 from common.msg import State
 from common.msg import Path
 
-from coordinate_transforms import ptsCartesianToFrenet
 from util import angleToInterval
 from util import angleToContinous
+from coordinate_transforms import ptsFrenetToCartesian
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path as navPath
+from geometry_msgs.msg import Point32
+from geometry_msgs.msg import PolygonStamped
+from jsk_recognition_msgs.msg import PolygonArray
 import time
 
 
@@ -30,7 +33,8 @@ class Perception:
         self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
         self.state_sub = rospy.Subscriber("state", State, self.state_callback)
         self.pathlocalpub = rospy.Publisher('pathlocal', Path, queue_size=10)
-        self.pathlocalvispub = rospy.Publisher('pathlocal_vis', navPath, queue_size=10)
+        #self.pathlocalvispub_old = rospy.Publisher('pathlocal_vis', navPath, queue_size=10)
+        self.pathlocalvispub = rospy.Publisher('pathlocal_vis', PolygonArray, queue_size=1)
 
         # node params
         self.dt = 0.1
@@ -65,6 +69,7 @@ class Perception:
         print "perception: running main with: "
         print "perception: lap length: ", self.s_lap
         print "perception: length of local path: ", self.N*self.ds
+        
         # Main loop
         while not rospy.is_shutdown():
             
@@ -90,7 +95,11 @@ class Perception:
                 pose.pose.position.x = self.pathlocal.X[i]
                 pose.pose.position.y = self.pathlocal.Y[i]       
                 pathlocal_vis.poses.append(pose)
-            self.pathlocalvispub.publish(pathlocal_vis)
+            #self.pathlocalvispub_old.publish(pathlocal_vis)
+
+
+            pa = self.pathLocalToPolArr()
+            self.pathlocalvispub.publish(pa)
 
             end = time.time()
             comptime = end-start
@@ -132,8 +141,38 @@ class Perception:
         self.pathlocal.dub =            np.interp(s,self.pathrolling.s,self.pathrolling.dub)
         self.pathlocal.dlb =            np.interp(s,self.pathrolling.s,self.pathrolling.dlb)
         
+    def pathLocalToPolArr(self):
+        pa = PolygonArray()
+        pa.header.stamp = rospy.Time.now()
+        pa.header.frame_id = "map"
+        for i in range(self.N-1):
+
+            spoly = np.array([self.pathlocal.s[i], self.pathlocal.s[i+1],self.pathlocal.s[i+1],self.pathlocal.s[i]])
+            dpoly = np.array([self.pathlocal.dub[i], self.pathlocal.dub[i+1],self.pathlocal.dlb[i+1],self.pathlocal.dlb[i]])
+            Xpoly, Ypoly = ptsFrenetToCartesian(spoly,dpoly,self.pathlocal.X,self.pathlocal.Y,self.pathlocal.psi_c,self.pathlocal.s)
+
+            p = PolygonStamped()
+            p.header.stamp = rospy.Time.now()
+            p.header.frame_id = "map"
+            p.polygon.points = [Point32(x=Xpoly[0], y=Ypoly[0], z=0.0),
+                                Point32(x=Xpoly[1], y=Ypoly[1], z=0.0),
+                                Point32(x=Xpoly[2], y=Ypoly[2], z=0.0),
+                                Point32(x=Xpoly[3], y=Ypoly[3], z=0.0)]
+
+
+            pa.polygons.append(p)
+            #pa.Color.r = 1.0
+            #p.color.g = 0.0
+            #p.color.b = 0.0        
         
+        # color for mu
+        pa.likelihood = self.pathlocal.mu[0:-1]*(0.2/np.max(self.pathlocal.mu)) # discarding final value
+               
+        #pa.color.r = 1.0
+        #pa.color.g = 0.0
+        #pa.color.b = 0.0
         
+        return pa
         
     def setRosParams(self):
         self.m = rospy.get_param('/car/inertia/m')

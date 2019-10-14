@@ -198,16 +198,26 @@ class TrackInterface:
             X = fcl_X[i]
             Y = fcl_Y[i]
             # left
-            dub.append(np.amin(np.sqrt((fll_X-X)**2 + (fll_Y-Y)**2)))
+            dub_ele =  np.amin(np.sqrt((fll_X-X)**2 + (fll_Y-Y)**2))
             # right
-            dlb.append(-np.amin(np.sqrt((frl_X-X)**2 + (frl_Y-Y)**2)))
+            dlb_ele = -np.amin(np.sqrt((frl_X-X)**2 + (frl_Y-Y)**2))
+            
+            # correction if dlb or dub w.r.t zero division in dynamics  
+            th = 0.2            
+            while(abs(1.0-dub_ele*kappac_out[i]) < th):
+                dub_ele=dub_ele-0.01
+                print "adjusting dub"
+            while(abs(1.0-dlb_ele*kappac_out[i]) < th):
+                dlb_ele=dlb_ele+0.01
+                print "adjusting dub"
+                
+            dub.append(dub_ele)
+            dlb.append(dlb_ele)
+                
         dub = np.array(dub)
         dlb = np.array(dlb)      
         
-        # check if dlb or dub is close to 1/kappa
-        
-        
-        
+  
         # plot to see what we're doing  
         if plot_orientation:   
             fig, axs = plt.subplots(3,1)
@@ -251,7 +261,12 @@ class TrackInterface:
         self.pathglobal.kappa_c = kappac_out
         self.pathglobal.kappaprime_c = kappacprime_out
         self.pathglobal.theta_c = np.zeros(N) # grade/bank implement later
-        self.pathglobal.mu = 2.0*np.ones(N) # todo read from config file
+        
+        mu_nominal = 1.5# todo read from config file
+        mu_slipery = 1.5
+        self.pathglobal.mu = (mu_nominal)*np.ones(N) 
+        for i in range(100): ## TMP test
+            self.pathglobal.mu[i] = mu_slipery
         self.pathglobal.dub = dub
         self.pathglobal.dlb = dlb
         
