@@ -1,5 +1,8 @@
 ## TAMP: Workspace for developing traction adaptive motion planning using sampling augmented adaptive RTI
-![](doc/sw_arch.png)
+
+<p align="center"> 
+<img src="doc/tamp_demo.gif" width="600" />
+</p>
 
 ### Setup instructions  
 
@@ -29,3 +32,5 @@ cd to root of the repo
 `source devel/setup.bash`
 
 `roslaunch single_experiment.launch`
+
+
