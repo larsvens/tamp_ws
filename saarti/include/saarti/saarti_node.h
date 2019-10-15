@@ -21,8 +21,10 @@
 #include <common/Trajectory.h>
 #include <common/State.h>
 
-// timing
+// timing and threads
 #include <chrono>
+#include <thread>
+#include <future>
 
 // misc
 #include <sstream>
@@ -54,7 +56,7 @@ private:
     float Wslack_;
 
     // variables
-    double dt;
+    double dt_;
     ros::NodeHandle nh_;
     ros::Subscriber pathlocal_sub_;
     ros::Subscriber obstacles_sub_;
@@ -93,6 +95,7 @@ private:
     void pathlocal_callback(const common::Path::ConstPtr& msg);
     void obstacles_callback(const common::Obstacles::ConstPtr& msg);
     void get_rosparams();
+    void run_optimization();
 };
 } // end namespace saarti_node
 #endif // SAARTI_NODE_H

@@ -203,7 +203,7 @@ class TrackInterface:
             dlb_ele = -np.amin(np.sqrt((frl_X-X)**2 + (frl_Y-Y)**2))
             
             # correction if dlb or dub w.r.t zero division in dynamics  
-            th = 0.2            
+            th = 0.3            
             while(abs(1.0-dub_ele*kappac_out[i]) < th):
                 dub_ele=dub_ele-0.01
                 print "adjusting dub"

@@ -3,7 +3,7 @@
 #
 
 # replanning rate
-dt: 0.05
+dt: 0.1
 
 # Reference mode, 
 # 0: minimize s

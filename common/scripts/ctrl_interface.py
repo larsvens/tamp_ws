@@ -132,6 +132,7 @@ class CtrlInterface:
             m.color.g = 0.0;
             m.color.b = 1.0;
             self.lhptpub.publish(m)
+            self.rate.sleep()
 
     def trajstar_callback(self, msg):
         self.trajstar = msg

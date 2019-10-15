@@ -275,15 +275,19 @@ planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_u
         throw std::invalid_argument("Error in shiftTrajectoryByIntegration: trying to shift empty trajectory");
     }
 
-    // grab ctrl sequence from trajstar last and integrate fwd from state
+    // grab ctrl sequence and init state from traj
     planning_util::trajstruct traj_out;
     traj_out.Fyf = traj.Fyf;
     traj_out.Fx = traj.Fx;
+    planning_util::statestruct initstate;
 
     // if moving, shift u one step fwd before rollout and roll from x_{1|t-1}
-    if(state.vx > 1.0f){
+    if(state.vx < 1.0f){
+        // get state at 0 in traj
+        planning_util::state_at_idx_in_traj(traj, initstate, 0);
+    } else {
         // get state at 1 in traj
-        planning_util::state_at_idx_in_traj(traj, state, 1);
+        planning_util::state_at_idx_in_traj(traj, initstate, 1);
         // shift ctrl sequence
         for (uint k = 0; k < N-1; ++k){
             traj_out.Fyf.at(k) = traj_out.Fyf.at(k+1);
@@ -291,7 +295,7 @@ planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_u
         }
     }
 
-    RtisqpWrapper::rolloutSingleTraj(traj_out,state,pathlocal,sp);
+    RtisqpWrapper::rolloutSingleTraj(traj_out,initstate,pathlocal,sp);
     return traj_out;
 }
 
@@ -326,7 +330,7 @@ planning_util::trajstruct RtisqpWrapper::getTrajectory(){
     return traj_out;
 }
 
-// usage: set control sequence of traj ahead of time, the function will roll dynamics fwd according to those controls
+// usage: set (ONLY) control sequence of traj ahead of time, the function will roll dynamics fwd according to those controls
 void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
                                       planning_util::statestruct &initstate,
                                       planning_util::pathstruct  &pathlocal,
@@ -334,6 +338,12 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
 
     if (traj.s.size() != 0){
         throw std::invalid_argument("Error in rolloutSingleTraj, state sequence is nonzero at entry");
+    }
+    if (traj.mu.size() != 0){
+        throw std::invalid_argument("Error in rolloutSingleTraj, mu sequence is nonzero at entry");
+    }
+    if (traj.kappac.size() != 0){
+        throw std::invalid_argument("Error in rolloutSingleTraj, kappac sequence is nonzero at entry");
     }
     if (traj.Fyf.size() != N){
         throw std::invalid_argument("Error in rolloutSingleTraj, control sequence has not been set or is wrong");
