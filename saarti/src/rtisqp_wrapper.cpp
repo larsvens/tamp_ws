@@ -84,6 +84,15 @@ void RtisqpWrapper::setInitialGuess(planning_util::trajstruct traj){
         acadoVariables.x[k * NX + 6] = 0.0;                   // dummy
     }
 
+    // set control sequence guess
+    if(traj.Fyf.size() != N){
+        throw std::invalid_argument("faulty control sequence in setInitialGuess");
+    }
+    for (uint k = 0; k < N; ++k){
+        acadoVariables.u[k * NU + 0] = traj.Fyf.at(k);
+        acadoVariables.u[k * NU + 1] = traj.Fx.at(k);
+    }
+
     // set kappac
     if(traj.kappac.size() != N+1){
         throw std::invalid_argument("faulty kappa_c in setInitialGuess");
