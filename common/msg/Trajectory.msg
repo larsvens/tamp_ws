@@ -17,7 +17,6 @@ float32[] Fyf
 float32[] Fxf
 float32[] Fyr
 float32[] Fxr
-float32[] Fx
 float32[] alphaf
 float32[] alphar
 float32[] Crtilde

@@ -73,7 +73,7 @@ private:
     vector<planning_util::trajstruct> trajset_;
     planning_util::obstastruct obst_;
     planning_util::refstruct refs_;
-    planning_util::inputconstrstruct Ukt_;
+    //planning_util::inputconstrstruct Ukt_;
     planning_util::staticparamstruct sp_;
     RtisqpWrapper rtisqp_wrapper_;
 

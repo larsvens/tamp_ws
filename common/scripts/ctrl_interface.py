@@ -77,7 +77,7 @@ class CtrlInterface:
             #
             # LONGITUDINAL CTRL
             #
-            Fx_request = self.trajstar.Fx[0]
+            Fx_request = self.trajstar.Fxf[0] + self.trajstar.Fxr[0]
             # todo: const double Fx = dc * param_.driveTrain.cm1 - aero_.getFdrag(x) - param_.driveTrain.cr0;
 
             # compute velocity error

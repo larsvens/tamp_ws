@@ -50,12 +50,12 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         auto t1_loop = std::chrono::high_resolution_clock::now();
 
         // update estimate
-        for (uint k=0;k<N;k++) {
-            Ukt_.Fyf_lb.push_back(-500);
-            Ukt_.Fyf_ub.push_back(500);
-            Ukt_.Fx_lb.push_back(-1000);
-            Ukt_.Fx_ub.push_back(1000);
-        }
+//        for (uint k=0;k<N;k++) {
+//            Ukt_.Fyf_lb.push_back(-500);
+//            Ukt_.Fyf_ub.push_back(500);
+//            Ukt_.Fx_lb.push_back(-1000);
+//            Ukt_.Fx_ub.push_back(1000);
+//        }
 
         /*
          * GENERATE FEASIBLE INITIAL GUESS
@@ -76,7 +76,8 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                 ROS_INFO_STREAM("generating init traj for RTISQP");
                 for (uint i=0;i<N;i++) {
                     trajprime.Fyf.push_back(0);
-                    trajprime.Fx.push_back(500); // todo get from mu
+                    trajprime.Fxf.push_back(300); // todo get from mu
+                    trajprime.Fxr.push_back(300);
                 }
                 rtisqp_wrapper_.rolloutSingleTraj(trajprime,state_,pathlocal_,sp_);
                 trajset_.push_back(trajprime);
@@ -86,7 +87,6 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                 trajset_.push_back(trajprime);
             }
             trajhat = trajprime;
-            traj2cart(trajhat);
         }
 
         // SAARTI
@@ -103,6 +103,21 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             }
 
         }
+
+        // sanity check on trajhat
+        bool hasnans = false;
+        for(uint k=0; k<N;k++){
+            if(std::isnan(trajhat.s.at(k))){
+                hasnans = true;
+            }
+        }
+        if(hasnans){
+            ROS_ERROR("Initial guess selection failed, breaking loop: trajhat has nans");
+            break;
+        }
+
+        // get cartesian coords
+        traj2cart(trajhat);
 
         // only for visualization, comment out to save time
         trajset2cart();
@@ -194,8 +209,6 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         traj2cart(trajstar);
         nav_msgs::Path p_trajstar = traj2navpath(trajstar);
 
-        // recompute kappac for trajstar?
-
         // check trajstar w.r.t zerodivision
         bool publish_trajs = true;
         for (uint k=0; k<trajstar.s.size(); k++){
@@ -205,7 +218,6 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                 break;
             }
         }
-
 
         /*
          * PUBLISH
@@ -314,9 +326,6 @@ void SAARTI::traj2cart(planning_util::trajstruct &traj){
         angle_to_interval(psic); // bring traj.psic back to [-pi pi]
 
         for (uint j=0; j<traj.s.size();j++) {
-            if(std::isnan(traj.s.at(j))){
-                ROS_ERROR("trajectory has nans");
-            }
             // X = Xc - d*sin(psic);
             // Y = Yc + d*cos(psic);
             // psi = deltapsi + psic;
@@ -468,7 +477,8 @@ common::Trajectory SAARTI::traj2msg(planning_util::trajstruct traj){
     trajmsg.vy = traj.vy;
     // ctrl
     trajmsg.Fyf = traj.Fyf;
-    trajmsg.Fx = traj.Fx;
+    trajmsg.Fxf = traj.Fxf;
+    trajmsg.Fxr = traj.Fxr;
     // cart pose
     trajmsg.X = traj.X;
     trajmsg.Y = traj.Y;

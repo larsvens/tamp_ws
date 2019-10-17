@@ -21,7 +21,8 @@ struct trajstruct{
     std::vector<float> vy;
     // ctrl
     std::vector<float> Fyf;
-    std::vector<float> Fx;
+    std::vector<float> Fxf;
+    std::vector<float> Fxr;
     // od
     std::vector<float> kappac;
     // cartesian pose
@@ -49,7 +50,8 @@ struct statestruct{
 // ctrl vector representation
 struct ctrlstruct{
     float Fyf;
-    float Fx;
+    float Fxf;
+    float Fxr;
 };
 
 // pathlocal representation
@@ -77,7 +79,7 @@ struct obstastruct{
     std::vector<float> Y;
 };
 
-// input constraint container
+// input constraint container TODO REMOVE???
 struct inputconstrstruct{
     std::vector<float> Fyf_lb;
     std::vector<float> Fyf_ub;
