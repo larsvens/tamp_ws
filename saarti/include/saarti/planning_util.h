@@ -31,6 +31,10 @@ struct trajstruct{
     std::vector<float> psi;
     // frictionestimate
     std::vector<float> mu;
+    std::vector<float> Fzf;
+    std::vector<float> Fzr;
+    // misc
+    std::vector<float> ax;
     // eval
     float cost;
     bool colliding;
@@ -79,14 +83,6 @@ struct obstastruct{
     std::vector<float> Y;
 };
 
-// input constraint container TODO REMOVE???
-struct inputconstrstruct{
-    std::vector<float> Fyf_lb;
-    std::vector<float> Fyf_ub;
-    std::vector<float> Fx_lb;
-    std::vector<float> Fx_ub;
-};
-
 // position constraint container
 struct posconstrstruct{
     std::vector<float> slb;
@@ -107,6 +103,7 @@ struct staticparamstruct{
     float g;
     float lf;
     float lr;
+    float h_cg;
 };
 
 /*

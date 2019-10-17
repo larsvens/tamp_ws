@@ -49,14 +49,6 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         ROS_INFO_STREAM("main_ loop_");
         auto t1_loop = std::chrono::high_resolution_clock::now();
 
-        // update estimate
-//        for (uint k=0;k<N;k++) {
-//            Ukt_.Fyf_lb.push_back(-500);
-//            Ukt_.Fyf_ub.push_back(500);
-//            Ukt_.Fx_lb.push_back(-1000);
-//            Ukt_.Fx_ub.push_back(1000);
-//        }
-
         /*
          * GENERATE FEASIBLE INITIAL GUESS
          */
@@ -76,7 +68,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                 ROS_INFO_STREAM("generating init traj for RTISQP");
                 for (uint i=0;i<N;i++) {
                     trajprime.Fyf.push_back(0);
-                    trajprime.Fxf.push_back(300); // todo get from mu
+                    trajprime.Fxf.push_back(300); // todo get from ax desired
                     trajprime.Fxr.push_back(300);
                 }
                 rtisqp_wrapper_.rolloutSingleTraj(trajprime,state_,pathlocal_,sp_);
@@ -137,14 +129,14 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             ROS_ERROR_STREAM("pathlocal_.s.back() = " << pathlocal_.s.back());
         }
 
-        // debug pathlocal and trajhat
+        // debug 2d variables
         jsk_recognition_msgs::PlotData pd;
 //        pd.xs = trajhat.s;
 //        pd.ys = trajhat.kappac;
 //        pd.label = "trajhat.kappac";
         pd.xs = cpp_utils::linspace(0.0f,1.0f,N);
-        pd.ys = trajhat.s;
-        pd.label = "trajhat.s";
+        pd.ys = trajhat.Fzr;
+        pd.label = " ";
         pd.type = jsk_recognition_msgs::PlotData::SCATTER;
         vectordebug_pub_.publish(pd);
 
@@ -641,6 +633,8 @@ void SAARTI::get_rosparams(){
     sp_.g =  float(nh_.param("/car/inertia/g",9.81));
     sp_.lf = float(nh_.param("/car/kinematics/b_F",2.0));
     sp_.lr = float(nh_.param("/car/kinematics/b_R",2.0));
+    sp_.h_cg = float(nh_.param("/car/kinematics/h_cg",0.5));
+
 }
 
 // run opt

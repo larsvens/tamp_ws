@@ -371,7 +371,6 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
     planning_util::statestruct rollingstate = initstate;
 
     // initialize vector same size as ACADOvariables.state (see acado_solver.c, acado_initializeNodesByForwardSimulation)
-
     real_t acadoWSstate[93];
     // get kappac at initstate
     vector<float> kappac_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.kappa_c,false);
@@ -380,10 +379,17 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
     vector<float> mu_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.mu,false);
     float mu = mu_vec.at(0);
 
+    // set approximate ax for Fz computation (todo compute kinematic ax in loop to increase accuracy)
+    for (uint k=0;k<N;k++) {
+        traj.ax.push_back( (traj.Fxf.at(k)+traj.Fyf.at(k))/sp.m );
+    }
+    traj.ax.push_back(traj.ax.back()); // ax of lenght N+1
+
     // set initial state in traj
     planning_util::traj_push_back_state(traj,rollingstate);
     traj.kappac.push_back(kappac);
     traj.mu.push_back(mu);
+
     // set initial state in integrator (indices from acado_solver.c, acado_initializeNodesByForwardSimulation)
     acadoWSstate[0] = rollingstate.s;
     acadoWSstate[1] = rollingstate.d;
@@ -397,6 +403,15 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
     // roll loop
     bool integrator_initiated = false;
     for (size_t k=0;k<N;k++) {
+
+        // compute normal forces front and back
+        float theta = 0; // grade angle todo get from pathlocal via traj
+        float Fzf = (1.0f/(sp.lf+sp.lr))*( sp.m*traj.ax.at(k)*sp.h_cg - sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lr*std::cos(theta));
+        float Fzr = (1.0f/(sp.lf+sp.lr))*(-sp.m*traj.ax.at(k)*sp.h_cg + sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lf*std::cos(theta));
+        traj.Fzf.push_back(Fzf);
+        traj.Fzr.push_back(Fzr);
+
+        // grab and adjust control inputs
         float Fyf = traj.Fyf.at(k);
         float Fxf  = traj.Fxf.at(k);
         float Fxr = traj.Fxr.at(k);
