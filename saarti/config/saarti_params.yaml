@@ -19,7 +19,7 @@ algo_mode: 0
 # 0: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics
 # 1: static mu estimate from param and static tire force constraints
 adaptive_mode: 1 
-mu_static: 1.0
+mu_static: 0.9
 
 # rollout config
 Ntrajs_rollout: 24 # default 24

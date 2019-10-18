@@ -1,0 +1,21 @@
+<!-- starts nodes that interfaces saarti with fssim -->
+
+<launch>
+
+     <!-- fssim simulator and rviz -->
+     <include file="$(find fssim)/launch/auto_fssim_saarti.launch"> </include>
+     <rosparam file="$(find fssim_description)/cars/gotthard/config/car.yaml" />
+
+     <!-- saarti input interface -->
+     <node pkg="perception" type="fssim_track_iface.py" name="fssim_track_iface" > </node>
+     <node pkg="perception" type="stateestimation.py" name="stateestimation" > </node>
+     <node pkg="perception" type="perception.py" name="perception" > </node> 
+     <!--<node pkg="perception" type="object_detection.py" name="object_detection"> </node> -->
+
+     <!-- saarti node -->
+     <include file="$(find saarti)/launch/saarti_node.launch"> </include>
+
+     <!-- saarti output interface -->
+     <node pkg="common" type="ctrl_interface.py" name="ctrl_interface"> </node>
+
+</launch>
