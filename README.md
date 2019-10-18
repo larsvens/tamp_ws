@@ -1,36 +1,23 @@
-## TAMP: Workspace for developing traction adaptive motion planning using sampling augmented adaptive RTI
+## TAMP: Traction Adaptive Motion Planning using sampling augmented adaptive RTI
 
 <p align="center"> 
 <img src="doc/tamp_demo.gif" width="600" />
 </p>
 
-### Setup instructions  
+### Basic setup instructions  
 
 System configuration: ubuntu 16.04 LTS & ROS Kinetic   
 https://www.ubuntu.com/download/alternative-downloads   
 http://wiki.ros.org/kinetic/Installation   
 
-install dependencies:
-apt-get install ros-kinetic-jsk-rviz-plugins
+dependencies:   
+`apt-get install ros-kinetic-jsk-rviz-plugins`   
 
-clone the repo
+clone this repo and fork of fssim to a new catkin workspace   
+`git clone git@github.com:larsvens/tamp_ws.git`   
+`git clone https://github.com/larsvens/fssim`   
 
-clone https://github.com/larsvens/acado_fork
+build with `catkin build`   
 
-checkout stable branch `git checkout --track origin/stable`
-
-follow the instructions to deploy rti-sqp code to [...]tamp_ws/src/planning/
-
-clone catkin simple into src https://github.com/catkin/catkin_simple.git
-
-compile by running `catkin_make` from root of this repo
-
-
-### Run instructions
-cd to root of the repo
-
-`source devel/setup.bash`
-
-`roslaunch single_experiment.launch`
-
+source the workspace with `source devel/setup.bash` and run demo with `roslaunch common demo.launch`   
 
