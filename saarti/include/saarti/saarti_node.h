@@ -44,9 +44,10 @@ public:
 private:
     // modes
     int ref_mode_;
-    int algo_setting_;
-    //int adaptive_;
-    //float mu_static; // used for nonadaptive case
+    int algo_mode_;
+    int adaptive_mode_;
+    float mu_static_; // only used for nonadaptive case
+
     int Ntrajs_rollout_;
 
     // weights

@@ -54,7 +54,7 @@ public:
     void setInitialGuess(planning_util::trajstruct);
     void setInitialState(planning_util::statestruct);
     void setOptReference(planning_util::trajstruct, planning_util::refstruct refs);
-    void setInputConstraints(float mu, float Fzf);
+    void setInputConstraints(planning_util::trajstruct traj);
     planning_util::posconstrstruct setStateConstraints(planning_util::trajstruct &traj,
                                                        planning_util::obstastruct obs,
                                                        vector<float> lld,
@@ -65,7 +65,9 @@ public:
     planning_util::trajstruct shiftTrajectoryByIntegration(planning_util::trajstruct traj,
                                                            planning_util::statestruct state,
                                                            planning_util::pathstruct &pathlocal,
-                                                           planning_util::staticparamstruct &sp);
+                                                           planning_util::staticparamstruct &sp,
+                                                           int adaptive_mode,
+                                                           float mu_static);
     void doPreparationStep();
     int  doFeedbackStep();
     Eigen::MatrixXd getStateTrajectory();
@@ -78,7 +80,9 @@ public:
     void rolloutSingleTraj(planning_util::trajstruct  &traj,
                            planning_util::statestruct &initstate,
                            planning_util::pathstruct  &pathlocal,
-                           planning_util::staticparamstruct &sp);
+                           planning_util::staticparamstruct &sp,
+                           int adaptive_mode,
+                           float mu_static);
 
     void setIntegratorState(real_t *acadoWSstate,
                             planning_util::statestruct state,
