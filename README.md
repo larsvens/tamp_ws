@@ -15,7 +15,7 @@ dependencies:
 
 clone this repo and fork of fssim to a new catkin workspace   
 `git clone git@github.com:larsvens/tamp_ws.git`   
-`git clone https://github.com/larsvens/fssim`   
+`git clone git@github.com:larsvens/fssim.git`   
 
 build with `catkin build`   
 
