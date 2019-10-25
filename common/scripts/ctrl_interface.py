@@ -32,6 +32,9 @@ class CtrlInterface:
         self.trajstar = Trajectory()
         # ctrl errors
         self.vx_error = Float32()
+        
+        # delay sim variable
+        self.delta_out_FIFO = []
 
         # wait for messages before entering main loop
         while(not self.trajstar.Fyf):
@@ -58,8 +61,23 @@ class CtrlInterface:
             deltaY = (lhpt["Y"]-Y)
             lh_dist = np.sqrt(deltaX**2 + deltaY**2)
             lh_angle = np.arctan2(deltaY,deltaX) - psi 
-            rho = 2*np.sin(lh_angle)/lh_dist
+            rho_pp = 2*np.sin(lh_angle)/lh_dist
+            shift = 1 # compensate for actuator delay
+            rho_menger = self.menger_curvature(self.trajstar.X[0+shift],
+                                               self.trajstar.Y[0+shift],
+                                               self.trajstar.X[1+shift],
+                                               self.trajstar.Y[1+shift],
+                                               self.trajstar.X[2+shift],
+                                               self.trajstar.Y[2+shift])
            
+            print "rho_pp =     ", rho_pp
+            print "rho_menger = ", rho_menger
+            
+            
+
+            
+
+          
             # compute delta corresponding to Fyf request (linear tire, Rajamani) 
             Fyf_request = self.trajstar.Fyf[0]
             alpha_f = Fyf_request/(2*self.Cf)
@@ -71,7 +89,9 @@ class CtrlInterface:
                 theta_Vf = np.arctan2(vy+self.lf*psidot,vx)
 
             # compute control
-            delta_out = rho*(self.lf + self.lr) # kinematic feed fwd
+            #delta_out = rho_pp*(self.lf + self.lr) # kinematic feed fwd
+            delta_out = rho_menger*(self.lf + self.lr) # kinematic feed fwd menger
+
 
 
             #
@@ -90,6 +110,15 @@ class CtrlInterface:
             
             # old
             #dc_out = 0.00010*self.trajstar.Fx[0]
+  
+
+            # simulate actuatiuon delays (0.2-0.3s)
+#            Ndelay = 20 
+#            self.delta_out_FIFO.append(delta_out)
+#            if len(self.delta_out_FIFO) >= Ndelay:
+#                delta_out = self.delta_out_FIFO.pop(0)
+                
+                
             
             
             # prints 
@@ -133,6 +162,14 @@ class CtrlInterface:
             m.color.b = 1.0;
             self.lhptpub.publish(m)
             self.rate.sleep()
+
+    def menger_curvature(self,x0,y0,x1,y1,x2,y2):
+        signedarea = (x0*(y1-y2) + x1*(y2-y0) + x2*(y0-y1))/2.0
+        d0 = np.sqrt((x0-x1)**2 + (y0-y1)**2)
+        d1 = np.sqrt((x1-x2)**2 + (y1-y2)**2)
+        d2 = np.sqrt((x2-x0)**2 + (y2-y0)**2)
+        rho = 4.0*signedarea/(d0*d1*d2)
+        return rho
 
     def trajstar_callback(self, msg):
         self.trajstar = msg

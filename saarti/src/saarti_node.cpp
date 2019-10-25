@@ -126,8 +126,6 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                 ROS_ERROR_STREAM("trajhat.s is not monotonically increasing");
                 break;
                 // todo dump pathlocal here to see if it has errors
-                // todo 2 debug integrator
-
             }
             if (trajhat.s.at(k+1)-trajhat.s.at(k) >= float(dt_)*vmax ) {
                 ROS_ERROR_STREAM("trajhat.s increases by more than vmax*dt, at index: " << k << ", value: " << trajhat.s.at(k+1)-trajhat.s.at(k));
