@@ -514,8 +514,11 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
  * references is constructed as [dlb ... dub dlb ... dub], where the first half of the trajset has
  * positive Fx and the second half has negative */
 void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
-                                   planning_util::statestruct &state,
+                                   planning_util::statestruct &initstate,
                                    planning_util::pathstruct &pathlocal,
+                                   planning_util::staticparamstruct & sp,
+                                   int adaptive_mode,
+                                   int ref_mode,
                                    uint Ntrajs){
     if(Ntrajs % 2 !=0){
         throw "Error in computeTrajset, Ntrajs must be even";
@@ -546,45 +549,19 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
     // generate trajs
     for (uint i=0;i<Ntrajs;i++) { // loop over trajectory set
         real_t acadoWSstate[93];
-        planning_util::statestruct rollingstate = state;
+        planning_util::statestruct rollingstate = initstate;
         planning_util::ctrlstruct ctrl;
 
-        // integrator loop
+        // roll loop
         auto t1_single = std::chrono::high_resolution_clock::now();
         planning_util::trajstruct traj;
         bool is_initstate = true;
         bool integrator_initiated = false;
         float kappac;
         float mu;
-
         double t_intgr_tot = 0;
         double t_interp_tot = 0;
-        for (size_t j=0;j<N+1;j++) { // loop over single trajectory
-            // compute control input
-            float derror = dref.at(i) - rollingstate.d;
-            ctrl.Fyf = 500*derror - 1500*rollingstate.deltapsi;
-            // saturate at Fyfmax
-            if(ctrl.Fyf >= Fyfmax){
-                ctrl.Fyf = Fyfmax;
-            }
-            if(ctrl.Fyf<=-Fyfmax){
-                ctrl.Fyf = -Fyfmax;
-            }
-            // Fxf from standard parametric function of ellipse
-            float t = std::asin(ctrl.Fyf/Fyfmax);
-            ctrl.Fxf = Fxfmax*std::cos(t);
-
-            // TODO: IMPROVE ROLLOUT CONTROLLER
-            // TODO: acadohelper to clean this and singlerollout
-
-            // if in second half of dref, use the negative value of Fx
-//            if (i >= Ntrajs/2){
-//                ctrl.Fx = -ctrl.Fx;
-//            }
-            acadoWSstate[84] = ctrl.Fyf;
-            acadoWSstate[85] = ctrl.Fxf;
-            acadoWSstate[86] = ctrl.Fxr;
-            acadoWSstate[87] = 0; // dummyforslack
+        for (size_t k=0;k<N+1;k++) {
 
             // interp to get kappac at rollingstate.s
             auto t1_interp = std::chrono::high_resolution_clock::now();
@@ -598,6 +575,82 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             auto t2_interp = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::milli> t_interp = t2_interp - t1_interp;
             t_interp_tot += t_interp.count();
+
+            // compute normal forces front and back
+            float Fzf;
+            float Fzr;
+            if(adaptive_mode == 0){
+                float theta = 0; // grade angle todo get from pathlocal via traj
+                Fzf = (1.0f/(sp.lf+sp.lr))*( sp.m*traj.ax.at(k)*sp.h_cg - sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lr*std::cos(theta));
+                Fzr = (1.0f/(sp.lf+sp.lr))*(-sp.m*traj.ax.at(k)*sp.h_cg + sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lf*std::cos(theta));
+            } else if (adaptive_mode == 1) {
+                Fzf = (1.0f/(sp.lf+sp.lr))*(sp.m*sp.g*sp.lr);
+                Fzr = (1.0f/(sp.lf+sp.lr))*(sp.m*sp.g*sp.lf);
+            } else {
+                Fzf = 0;
+                Fzr = 0;
+            }
+
+            // select Fyf
+            float derror = dref.at(i) - rollingstate.d;
+            ctrl.Fyf = 100*derror - 1500*rollingstate.deltapsi;
+            // saturate at Fyfmax
+            if(ctrl.Fyf >= Fyfmax){
+                ctrl.Fyf = Fyfmax;
+            }
+            if(ctrl.Fyf<=-Fyfmax){
+                ctrl.Fyf = -Fyfmax;
+            }
+
+            // select Fxf
+            if (ref_mode == 0){ // minimize s
+                // Fxf from standard parametric function of ellipse
+                float t = std::asin(ctrl.Fyf/Fyfmax);
+                if (rollingstate.vx > 0.5f){
+                    ctrl.Fxf = -Fxfmax*std::cos(t);
+                }
+                else {
+                    ctrl.Fxf = 0;
+                }
+            } else if (ref_mode == 1){ // maximize s
+                ctrl.Fxf = 0; // rear wheel drive
+            }
+
+            // select Fxr
+            float Fxrmax = mu*Fzr;
+            if (ref_mode == 0){ // minimize s
+                ctrl.Fxr = -Fxrmax;
+            } else if (ref_mode == 1){ // maximize s
+                float vrefmax = 30;
+                uint range = 40; // how far ahead in pathlocal to look for kappamax
+                float kappamax = *std::max_element(pathlocal.kappa_c.begin(),pathlocal.kappa_c.begin()+range);
+                //cout << "kappamax = " << kappamax << endl;
+                float vxref = std::min(std::sqrt(sp.g*mu/kappamax),vrefmax);
+                //cout << "vref = " << vref << endl;
+                ctrl.Fxr = 50*(vxref-rollingstate.vx);
+                if(ctrl.Fxr >= Fxrmax){
+                    ctrl.Fxr = Fxrmax;
+                }
+                if(ctrl.Fxr<=-Fxrmax){
+                    ctrl.Fxr = -Fxrmax;
+                }
+            }
+
+
+
+
+            // TODO: acadohelper to clean this and singlerollout
+
+            // if in second half of dref, use the negative value of Fx
+//            if (i >= Ntrajs/2){
+//                ctrl.Fx = -ctrl.Fx;
+//            }
+            acadoWSstate[84] = ctrl.Fyf;
+            acadoWSstate[85] = ctrl.Fxf;
+            acadoWSstate[86] = ctrl.Fxr;
+            acadoWSstate[87] = 0; // dummyforslack
+
+
 
             if (is_initstate){
                 // set init state in integrator
@@ -631,7 +684,10 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             traj.vx.push_back(acadoWSstate[4]);
             traj.vy.push_back(acadoWSstate[5]);
 
-            if(j<N){ // N+1 states and N ctrls
+            // tire forces
+            traj.Fzf.push_back(Fzf);
+            traj.Fzr.push_back(Fzr);
+            if(k<N){ // N+1 states and N ctrls
                 traj.Fyf.push_back(acadoWSstate[84]);
                 traj.Fxf.push_back(acadoWSstate[85]);
                 traj.Fxr.push_back(acadoWSstate[86]);

@@ -13,7 +13,7 @@ ref_mode: 1
 # Algorithm mode, 
 # 0: RTI
 # 1: SAA-RTI 
-algo_mode: 0
+algo_mode: 1
 
 # Adaptation mode,
 # 0: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics

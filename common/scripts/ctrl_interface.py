@@ -75,9 +75,6 @@ class CtrlInterface:
             
             
 
-            
-
-          
             # compute delta corresponding to Fyf request (linear tire, Rajamani) 
             Fyf_request = self.trajstar.Fyf[0]
             alpha_f = Fyf_request/(2*self.Cf)
@@ -89,8 +86,8 @@ class CtrlInterface:
                 theta_Vf = np.arctan2(vy+self.lf*psidot,vx)
 
             # compute control
-            #delta_out = rho_pp*(self.lf + self.lr) # kinematic feed fwd
-            delta_out = rho_menger*(self.lf + self.lr) # kinematic feed fwd menger
+            delta_out = rho_pp*(self.lf + self.lr) # kinematic feed fwd
+            #delta_out = rho_menger*(self.lf + self.lr) # kinematic feed fwd menger
 
 
 

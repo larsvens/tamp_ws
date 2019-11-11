@@ -84,7 +84,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         // SAARTI
         if(algo_mode_ == 1){
             ROS_INFO_STREAM("generating trajectory set");
-            rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,uint(Ntrajs_rollout_));
+            rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,sp_,adaptive_mode_,ref_mode_,uint(Ntrajs_rollout_));
 
             // cost eval and select
             int trajhat_idx = trajset_eval_cost(); // error if negative
@@ -162,6 +162,9 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         //        planning_util::state_at_idx_in_traj(trajhat,plannedstate,1);
         //        state_.deltapsi = plannedstate.deltapsi;
         rtisqp_wrapper_.setInitialState(state_);
+
+
+        cout << "debug trajhat.Fzf.size() = " << trajhat.Fzf.size();
 
         // set initial guess
         ROS_INFO_STREAM("setting initial guess..");

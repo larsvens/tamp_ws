@@ -74,8 +74,11 @@ public:
     Eigen::MatrixXd getControlTrajectory();
     planning_util::trajstruct getTrajectory();
     void computeTrajset(vector<planning_util::trajstruct> &trajset,
-                        planning_util::statestruct &state,
+                        planning_util::statestruct &initstate,
                         planning_util::pathstruct &pathlocal,
+                        planning_util::staticparamstruct & sp,
+                        int adaptive_mode,
+                        int ref_mode,
                         uint Ntrajs);
     void rolloutSingleTraj(planning_util::trajstruct  &traj,
                            planning_util::statestruct &initstate,
