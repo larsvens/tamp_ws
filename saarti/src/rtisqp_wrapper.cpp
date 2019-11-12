@@ -524,11 +524,6 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
         throw "Error in computeTrajset, Ntrajs must be even";
     }
 
-    // todo input Fh_MAX
-    float Fyfmax = 1000;
-    float Fxfmax = 1000;
-    float Fxrmax = 1000;
-
     // generate reference vectors
     vector<float> dref;
     // use dlb and dub @ 0 + some margin for dref interval
@@ -536,9 +531,10 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
     float dlb = pathlocal.dlb.at(0)-mgn;
     float dub = pathlocal.dub.at(0)+mgn;
     // build dref vector
-    dref = cpp_utils::linspace(dlb, dub, Ntrajs/2);
-    vector<float> dref_copy = dref;
-    dref.insert(dref.end(), dref_copy.begin(), dref_copy.end());
+    dref = cpp_utils::linspace(dlb, dub, Ntrajs);
+//    dref = cpp_utils::linspace(dlb, dub, Ntrajs/2);
+//    vector<float> dref_copy = dref;
+//    dref.insert(dref.end(), dref_copy.begin(), dref_copy.end());
 
 //    cout << "dref: ";
 //    for (uint i=0;i<dref.size();i++) {
@@ -591,23 +587,34 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                 Fzr = 0;
             }
 
+            // compute max horizontal forces front and back
+            float Ffmax = mu*Fzf;
+            float Frmax = mu*Fzr;
+
             // select Fyf
+            float feedfwd = 0.5f*sp.m*rollingstate.vx*rollingstate.vx*kappac;
             float derror = dref.at(i) - rollingstate.d;
-            ctrl.Fyf = 100*derror - 1500*rollingstate.deltapsi;
-            // saturate at Fyfmax
-            if(ctrl.Fyf >= Fyfmax){
-                ctrl.Fyf = Fyfmax;
+            float feedback = 200*derror - 1500*rollingstate.deltapsi;
+            ctrl.Fyf = feedfwd + feedback;
+            cout << "feedfwd = " << feedfwd << endl;
+            cout << "feedback = " << feedback << endl;
+
+            // saturate at Ffmax
+            if(ctrl.Fyf >= Ffmax){
+                cout << "Fyf saturating! FyfRequest = " << ctrl.Fyf << "Ffmax = " << Ffmax << endl;
+                ctrl.Fyf = Ffmax;
             }
-            if(ctrl.Fyf<=-Fyfmax){
-                ctrl.Fyf = -Fyfmax;
+            if(ctrl.Fyf<=-Ffmax){
+                cout << "Fyf saturating! FyfRequest = " << ctrl.Fyf << "Ffmax = " << Ffmax << endl;
+                ctrl.Fyf = -Ffmax;
             }
 
             // select Fxf
             if (ref_mode == 0){ // minimize s
                 // Fxf from standard parametric function of ellipse
-                float t = std::asin(ctrl.Fyf/Fyfmax);
+                float t = std::asin(ctrl.Fyf/Ffmax);
                 if (rollingstate.vx > 0.5f){
-                    ctrl.Fxf = -Fxfmax*std::cos(t);
+                    ctrl.Fxf = -Ffmax*std::cos(t);
                 }
                 else {
                     ctrl.Fxf = 0;
@@ -622,22 +629,27 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                 ctrl.Fxr = -Fxrmax;
             } else if (ref_mode == 1){ // maximize s
                 float vrefmax = 30;
-                uint range = 40; // how far ahead in pathlocal to look for kappamax
-                float kappamax = *std::max_element(pathlocal.kappa_c.begin(),pathlocal.kappa_c.begin()+range);
-                //cout << "kappamax = " << kappamax << endl;
-                float vxref = std::min(std::sqrt(sp.g*mu/kappamax),vrefmax);
-                //cout << "vref = " << vref << endl;
-                ctrl.Fxr = 50*(vxref-rollingstate.vx);
-                if(ctrl.Fxr >= Fxrmax){
-                    ctrl.Fxr = Fxrmax;
+                uint range = 100; // how far ahead in pathlocal to look for kappamax
+                float kappamaxabs = 0.000001f;
+                for (uint i=0;i<range;i++){
+                    if(std::abs(pathlocal.kappa_c.at(i))>kappamaxabs){
+                        kappamaxabs = std::abs(pathlocal.kappa_c.at(i));
+                    }
                 }
-                if(ctrl.Fxr<=-Fxrmax){
-                    ctrl.Fxr = -Fxrmax;
+                //float kappamax = *std::max_element(pathlocal.kappa_c.begin(),pathlocal.kappa_c.begin()+range);
+                cout << "kappamax = " << kappamaxabs << endl;
+                float vxref = std::min(std::sqrt(sp.g*mu/kappamaxabs),vrefmax);
+                //float vxref = 3;
+                cout << "vxref = " << vxref << endl;
+                float vxerror = vxref-rollingstate.vx;
+                ctrl.Fxr = 1000*vxerror;
+                if(ctrl.Fxr >= Frmax){
+                    ctrl.Fxr = Frmax;
+                }
+                if(ctrl.Fxr<=-Frmax){
+                    ctrl.Fxr = -Frmax;
                 }
             }
-
-
-
 
             // TODO: acadohelper to clean this and singlerollout
 
@@ -649,8 +661,6 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             acadoWSstate[85] = ctrl.Fxf;
             acadoWSstate[86] = ctrl.Fxr;
             acadoWSstate[87] = 0; // dummyforslack
-
-
 
             if (is_initstate){
                 // set init state in integrator
@@ -671,10 +681,11 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                 t_intgr_tot += t_intgr.count();
             }
 
-            // set s and d of the state that rolls fwd
+            // set rollingstate for computing control errors
             rollingstate.s = acadoWSstate[0];
             rollingstate.d = acadoWSstate[1];
             rollingstate.deltapsi = acadoWSstate[2];
+            rollingstate.vx = acadoWSstate[4];
 
             // extract variables from integrator
             traj.s.push_back(acadoWSstate[0]);
