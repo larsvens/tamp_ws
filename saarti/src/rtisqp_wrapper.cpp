@@ -524,7 +524,7 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
         throw "Error in computeTrajset, Ntrajs must be even";
     }
 
-    // generate reference vectors
+    // set dref
     vector<float> dref;
     // use dlb and dub @ 0 + some margin for dref interval
     float mgn = 1.0; // todo - select in terms of vehicle width
@@ -532,15 +532,25 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
     float dub = pathlocal.dub.at(0)+mgn;
     // build dref vector
     dref = cpp_utils::linspace(dlb, dub, Ntrajs);
-//    dref = cpp_utils::linspace(dlb, dub, Ntrajs/2);
-//    vector<float> dref_copy = dref;
-//    dref.insert(dref.end(), dref_copy.begin(), dref_copy.end());
 
-//    cout << "dref: ";
-//    for (uint i=0;i<dref.size();i++) {
-//        cout << dref.at(i) << "; " << endl;
+    // set vxref
+    vector<float> vxref_path(pathlocal.s.size(), 30); // initialize to max speed
+    for (uint i=0;i<vxref_path.size();i++){
+        if(vxref_path.at(i) > sp.g*pathlocal.mu.at(i)/std::max(std::abs(pathlocal.kappa_c.at(i)),0.0001f) ){
+            vxref_path.at(i) = sp.g*pathlocal.mu.at(i)/std::abs(pathlocal.kappa_c.at(i));
+        }
+    }
+    // fwd pass
+//    for (uint i=0;i<vxref_path.size()-1;i++){
+//        float vxstep = sp.g*pathlocal.mu.at(i)/vxref_path.at(i);
+//        if(vxref_path.at(i+1) - vxref_path.at(i) > vxstep){
+//            vxref_path.at(i+1) = vxref_path.at(i) + vxstep;
+//        }
 //    }
-    //cout << endl;
+    // bwd pass
+
+
+
 
     // generate trajs
     for (uint i=0;i<Ntrajs;i++) { // loop over trajectory set
@@ -592,20 +602,19 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             float Frmax = mu*Fzr;
 
             // select Fyf
-            float feedfwd = 0.5f*sp.m*rollingstate.vx*rollingstate.vx*kappac;
+            float feedfwd = 0.5f*sp.m*rollingstate.vx*rollingstate.vx*kappac*std::cos(rollingstate.deltapsi) ;
             float derror = dref.at(i) - rollingstate.d;
             float feedback = 200*derror - 1500*rollingstate.deltapsi;
             ctrl.Fyf = feedfwd + feedback;
             cout << "feedfwd = " << feedfwd << endl;
             cout << "feedback = " << feedback << endl;
-
             // saturate at Ffmax
             if(ctrl.Fyf >= Ffmax){
-                cout << "Fyf saturating! FyfRequest = " << ctrl.Fyf << "Ffmax = " << Ffmax << endl;
+                //cout << "Fyf saturating! FyfRequest = " << ctrl.Fyf << "Ffmax = " << Ffmax << endl;
                 ctrl.Fyf = Ffmax;
             }
             if(ctrl.Fyf<=-Ffmax){
-                cout << "Fyf saturating! FyfRequest = " << ctrl.Fyf << "Ffmax = " << Ffmax << endl;
+                //cout << "Fyf saturating! FyfRequest = " << ctrl.Fyf << "Ffmax = " << Ffmax << endl;
                 ctrl.Fyf = -Ffmax;
             }
 
@@ -628,7 +637,7 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             if (ref_mode == 0){ // minimize s
                 ctrl.Fxr = -Fxrmax;
             } else if (ref_mode == 1){ // maximize s
-                float vrefmax = 30;
+
                 uint range = 100; // how far ahead in pathlocal to look for kappamax
                 float kappamaxabs = 0.000001f;
                 for (uint i=0;i<range;i++){
@@ -638,9 +647,12 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                 }
                 //float kappamax = *std::max_element(pathlocal.kappa_c.begin(),pathlocal.kappa_c.begin()+range);
                 cout << "kappamax = " << kappamaxabs << endl;
-                float vxref = std::min(std::sqrt(sp.g*mu/kappamaxabs),vrefmax);
+                //float vxref = std::min(std::sqrt(sp.g*mu/kappamaxabs),vxrefmax);
+                vector<float> vxref_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,vxref_path,false);
+                float vxref = vxref_vec.at(0);
+
                 //float vxref = 3;
-                cout << "vxref = " << vxref << endl;
+                cout << "vxref_ = " << vxref << endl;
                 float vxerror = vxref-rollingstate.vx;
                 ctrl.Fxr = 1000*vxerror;
                 if(ctrl.Fxr >= Frmax){
