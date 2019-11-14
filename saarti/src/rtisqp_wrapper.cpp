@@ -536,20 +536,34 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
     // set vxref
     vector<float> vxref_path(pathlocal.s.size(), 30); // initialize to max speed
     for (uint i=0;i<vxref_path.size();i++){
-        if(vxref_path.at(i) > sp.g*pathlocal.mu.at(i)/std::max(std::abs(pathlocal.kappa_c.at(i)),0.0001f) ){
-            vxref_path.at(i) = sp.g*pathlocal.mu.at(i)/std::abs(pathlocal.kappa_c.at(i));
+        if(vxref_path.at(i) > std::sqrt(sp.g*pathlocal.mu.at(i)/std::max(std::abs(pathlocal.kappa_c.at(i)),0.0001f)) ){
+            vxref_path.at(i) = std::sqrt(sp.g*pathlocal.mu.at(i)/std::abs(pathlocal.kappa_c.at(i)));
+            //cout << "bounding vxref due to curvature" << endl;
         }
     }
-    // fwd pass
-//    for (uint i=0;i<vxref_path.size()-1;i++){
-//        float vxstep = sp.g*pathlocal.mu.at(i)/vxref_path.at(i);
-//        if(vxref_path.at(i+1) - vxref_path.at(i) > vxstep){
-//            vxref_path.at(i+1) = vxref_path.at(i) + vxstep;
-//        }
+
+    // limit acc fwd pass
+    for (uint i=0;i<vxref_path.size()-1;i++){
+        float vxstep = sp.g*pathlocal.mu.at(i)/vxref_path.at(i);
+        if(vxref_path.at(i+1) - vxref_path.at(i) > vxstep){
+            vxref_path.at(i+1) = vxref_path.at(i) + vxstep;
+        }
+    }
+
+    // limit acc bwd pass
+    for (size_t i = vxref_path.size()-1; i>0; i--) {
+        float vxstep = sp.g*pathlocal.mu.at(i)/vxref_path.at(i);
+        if(vxref_path.at(i-1) - vxref_path.at(i) > vxstep){
+            vxref_path.at(i-1) = vxref_path.at(i) + vxstep;
+        }
+    }
+
+    // print pass
+//    cout << "vxref begin" << endl;
+//    for (uint i=0;i<vxref_path.size();i++){
+//        cout << vxref_path.at(i) << ",";
 //    }
-    // bwd pass
-
-
+//    cout << endl << "vxref end" << endl;
 
 
     // generate trajs
@@ -601,13 +615,18 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             float Ffmax = mu*Fzf;
             float Frmax = mu*Fzr;
 
+            // get local vxref and vxerror
+            vector<float> vxref_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,vxref_path,false);
+            float vxref = vxref_vec.at(0)*0.8f; // tmp!
+            float vxerror = vxref-rollingstate.vx;
+
             // select Fyf
             float feedfwd = 0.5f*sp.m*rollingstate.vx*rollingstate.vx*kappac*std::cos(rollingstate.deltapsi) ;
             float derror = dref.at(i) - rollingstate.d;
             float feedback = 200*derror - 1500*rollingstate.deltapsi;
             ctrl.Fyf = feedfwd + feedback;
-            cout << "feedfwd = " << feedfwd << endl;
-            cout << "feedback = " << feedback << endl;
+            //cout << "feedfwd = " << feedfwd << endl;
+            //cout << "feedback = " << feedback << endl;
             // saturate at Ffmax
             if(ctrl.Fyf >= Ffmax){
                 //cout << "Fyf saturating! FyfRequest = " << ctrl.Fyf << "Ffmax = " << Ffmax << endl;
@@ -619,17 +638,19 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             }
 
             // select Fxf
+            float Fxfmax = std::sqrt(Ffmax*Ffmax-ctrl.Fyf*ctrl.Fyf);
             if (ref_mode == 0){ // minimize s
-                // Fxf from standard parametric function of ellipse
-                float t = std::asin(ctrl.Fyf/Ffmax);
-                if (rollingstate.vx > 0.5f){
-                    ctrl.Fxf = -Ffmax*std::cos(t);
-                }
-                else {
-                    ctrl.Fxf = 0;
-                }
+                // select max negative Fxf until stop
+                ctrl.Fxf = -Fxfmax;
             } else if (ref_mode == 1){ // maximize s
-                ctrl.Fxf = 0; // rear wheel drive
+                if(vxerror > 0){ // accelerating
+                    ctrl.Fxf = 0; // rear wheel drive - no drive on front wheel
+                } else { // braking
+                    ctrl.Fxf = 1000*vxerror;
+                    if(ctrl.Fxf<=-Fxfmax){
+                        ctrl.Fxf = -Fxfmax;
+                    }
+                }
             }
 
             // select Fxr
@@ -645,15 +666,7 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                         kappamaxabs = std::abs(pathlocal.kappa_c.at(i));
                     }
                 }
-                //float kappamax = *std::max_element(pathlocal.kappa_c.begin(),pathlocal.kappa_c.begin()+range);
-                cout << "kappamax = " << kappamaxabs << endl;
-                //float vxref = std::min(std::sqrt(sp.g*mu/kappamaxabs),vxrefmax);
-                vector<float> vxref_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,vxref_path,false);
-                float vxref = vxref_vec.at(0);
 
-                //float vxref = 3;
-                cout << "vxref_ = " << vxref << endl;
-                float vxerror = vxref-rollingstate.vx;
                 ctrl.Fxr = 1000*vxerror;
                 if(ctrl.Fxr >= Frmax){
                     ctrl.Fxr = Frmax;
@@ -663,12 +676,13 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                 }
             }
 
-            // TODO: acadohelper to clean this and singlerollout
+            // avoid singularity in dynamics at vx = 0
+            if (rollingstate.vx < 0.5f){
+                ctrl.Fxf = 0;
+                ctrl.Fxr = 0;
+            }
 
-            // if in second half of dref, use the negative value of Fx
-//            if (i >= Ntrajs/2){
-//                ctrl.Fx = -ctrl.Fx;
-//            }
+            // set controls
             acadoWSstate[84] = ctrl.Fyf;
             acadoWSstate[85] = ctrl.Fxf;
             acadoWSstate[86] = ctrl.Fxr;
