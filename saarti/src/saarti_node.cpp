@@ -4,12 +4,12 @@ namespace saarti_node{
 
 SAARTI::SAARTI(ros::NodeHandle nh){
     nh_ = nh;
-    // node rate
-    dt_ = nh_.param("/dt", 0.1);
-    ros::Rate loop_rate(1/dt_);
 
     // load rosparams
     get_rosparams();
+
+    // node rate
+    ros::Rate loop_rate(1/double(dt_));
 
     // pubs & subs
     trajhat_pub_ = nh.advertise<common::Trajectory>("trajhat",1);
@@ -49,238 +49,253 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     planning_util::trajstruct trajstar_last;
 
     // main loop
+    planner_activated_ = true;
     while (ros::ok())
     {
         ROS_INFO_STREAM(" ");
         ROS_INFO_STREAM("main_ loop_");
         auto t1_loop = std::chrono::high_resolution_clock::now();
 
+        // check deactivate conditions
+        vector<float> dubv = cpp_utils::interp({state_.s},pathlocal_.s,pathlocal_.dub,false);
+        float dub = dubv.at(0);
+        vector<float> dlbv = cpp_utils::interp({state_.s},pathlocal_.s,pathlocal_.dlb,false);
+        float dlb = dlbv.at(0);
+        if(state_.d > dub || state_.d < dlb){
+            planner_activated_ = false; // && ref == track_speed
+        }
+
+        if(planner_activated_){
+
         /*
          * GENERATE FEASIBLE INITIAL GUESS
          */
 
-        // set refs
-        refs_ = setRefs(ref_mode_); // 0: min s, 1: max s,
+            // set refs
+            refs_ = setRefs(ref_mode_,traction_adaptive_,mu_nominal_,sp_,pathlocal_); // 0: min s, 1: max s,
 
-        ROS_INFO_STREAM("selecting initial guess");
-        trajset_.clear();
-        planning_util::trajstruct trajhat;
-        auto t1_rollout = std::chrono::high_resolution_clock::now();
+            ROS_INFO_STREAM("selecting initial guess");
+            trajset_.clear();
+            planning_util::trajstruct trajhat;
+            auto t1_rollout = std::chrono::high_resolution_clock::now();
 
-        // initialize initial guess
-        planning_util::trajstruct trajprime;
+            // initialize initial guess
+            planning_util::trajstruct trajprime;
 
-        // regular RTI
-        if (sampling_augmentation_== 0) {
+            // regular RTI
+            if (sampling_augmentation_== 0) {
 
-            // initialize with single rollout at startup
-            if (trajstar_last.s.size()==0){
-                ROS_INFO_STREAM("generating init traj for RTISQP");
-                for (uint i=0;i<N;i++) {
-                    trajprime.Fyf.push_back(0);
-                    trajprime.Fxf.push_back(300); // todo get from ax desired
-                    trajprime.Fxr.push_back(300);
+                // initialize with single rollout at startup
+                if (trajstar_last.s.size()==0){
+                    ROS_INFO_STREAM("generating init traj for RTISQP");
+                    for (uint i=0;i<N;i++) {
+                        trajprime.Fyf.push_back(0);
+                        trajprime.Fxf.push_back(300); // todo get from ax desired
+                        trajprime.Fxr.push_back(300);
+                    }
+                    rtisqp_wrapper_.rolloutSingleTraj(trajprime,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_);
+                    trajset_.push_back(trajprime);
+                } else{
+                    // set trajprime as initial guess
+                    trajprime = rtisqp_wrapper_.shiftTrajectoryByIntegration(trajstar_last,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_);
+                    trajset_.push_back(trajprime);
                 }
-                rtisqp_wrapper_.rolloutSingleTraj(trajprime,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_);
-                trajset_.push_back(trajprime);
-            } else{
-                // set trajprime as initial guess
-                trajprime = rtisqp_wrapper_.shiftTrajectoryByIntegration(trajstar_last,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_);
-                trajset_.push_back(trajprime);
-            }
-            trajhat = trajprime;
-        }
-
-        // SAARTI
-        if(sampling_augmentation_ == 1){
-            ROS_INFO_STREAM("generating trajectory set");
-            rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_,ref_mode_,uint(Ntrajs_rollout_));
-
-            // append trajprime
-            if (trajstar_last.s.size()!=0){
-                trajprime = rtisqp_wrapper_.shiftTrajectoryByIntegration(trajstar_last,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_);
-                trajset_.push_back(trajprime);
+                trajhat = trajprime;
             }
 
-            // cost eval and select
-            int trajhat_idx = trajset_eval_cost(); // error if negative
-            if(trajhat_idx >= 0){
-                trajhat = trajset_.at(uint(trajhat_idx));
-            } else {
-                ROS_ERROR_STREAM("saarti traj select; no traj selected, idx negative");
+            // SAARTI
+            if(sampling_augmentation_ == 1){
+                ROS_INFO_STREAM("generating trajectory set");
+                rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_,refs_,uint(Ntrajs_rollout_));
+
+                // append trajprime
+                if (trajstar_last.s.size()!=0){
+                    trajprime = rtisqp_wrapper_.shiftTrajectoryByIntegration(trajstar_last,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_);
+                    trajset_.push_back(trajprime);
+                }
+
+                // cost eval and select
+                int trajhat_idx = trajset_eval_cost(); // error if negative
+                if(trajhat_idx >= 0){
+                    trajhat = trajset_.at(uint(trajhat_idx));
+                } else {
+                    ROS_ERROR_STREAM("saarti traj select; no traj selected, idx negative");
+                }
             }
-        }
 
-        // sanity check
-        bool hasnans = false;
-        for(uint k=0; k<N;k++){
-            if(std::isnan(trajhat.s.at(k))){
-                hasnans = true;
+            // sanity check
+            bool hasnans = false;
+            for(uint k=0; k<N;k++){
+                if(std::isnan(trajhat.s.at(k))){
+                    hasnans = true;
+                }
             }
-        }
-        if(hasnans){
-            ROS_ERROR("Initial guess selection failed, breaking loop: trajhat has nans");
-            break;
-        }
-
-        // get cartesian coords
-        traj2cart(trajhat);
-
-        // only for visualization, comment out to save time
-        trajset2cart();
-        visualization_msgs::Marker trajset_cubelist = trajset2cubelist();
-
-        // timing
-        auto t2_rollout = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> t_rollout = t2_rollout - t1_rollout;
-
-        // checks on trajhat
-        float vmax = 30; // m/s todo get from param
-        for (uint k=0; k<trajhat.s.size()-1;k++) {
-            if (trajhat.s.at(k+1)-trajhat.s.at(k) <= 0 ) {
-                ROS_ERROR_STREAM("trajhat.s is not monotonically increasing");
+            if(hasnans){
+                ROS_ERROR("Initial guess selection failed, breaking loop: trajhat has nans");
                 break;
-                // todo dump pathlocal here to see if it has errors
             }
-            if (trajhat.s.at(k+1)-trajhat.s.at(k) >= float(dt_)*vmax ) {
-                ROS_ERROR_STREAM("trajhat.s increases by more than vmax*dt, at index: " << k << ", value: " << trajhat.s.at(k+1)-trajhat.s.at(k));
-            }
-        }
 
-        //ROS_INFO_STREAM("trajhat.cost = " << trajhat.cost);
-        nav_msgs::Path p_trajhat = traj2navpath(trajhat);
+            // get cartesian coords
+            traj2cart(trajhat);
 
-        if(trajhat.s.back() > 0.95f*pathlocal_.s.back()){
-            ROS_ERROR_STREAM("Running out of path!");
-            ROS_ERROR_STREAM("trajhat.s.back() = " << trajhat.s.back());
-            ROS_ERROR_STREAM("pathlocal_.s.back() = " << pathlocal_.s.back());
-        }
-        for (uint k=0; k<trajhat.s.size(); k++){
-            if (std::abs(1.0f - trajhat.d.at(k)*trajhat.kappac.at(k)) < 0.1f){
-                ROS_ERROR_STREAM("DIVISION BY ZERO IN TRAJHAT DYNAMICS: 1-d*kappac =" << 1.0f - trajhat.d.at(k)*trajhat.kappac.at(k) );
+            // only for visualization, comment out to save time
+            trajset2cart();
+            visualization_msgs::Marker trajset_cubelist = trajset2cubelist();
+
+            // timing
+            auto t2_rollout = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> t_rollout = t2_rollout - t1_rollout;
+
+            // checks on trajhat
+            float vmax = 30; // m/s todo get from param
+            for (uint k=0; k<trajhat.s.size()-1;k++) {
+                if (trajhat.s.at(k+1)-trajhat.s.at(k) <= 0 ) {
+                    ROS_ERROR_STREAM("trajhat.s is not monotonically increasing");
+                    break;
+                    // todo dump pathlocal here to see if it has errors
+                }
+                if (trajhat.s.at(k+1)-trajhat.s.at(k) >= dt_*vmax ) {
+                    ROS_ERROR_STREAM("trajhat.s increases by more than vmax*dt, at index: " << k << ", value: " << trajhat.s.at(k+1)-trajhat.s.at(k));
+                }
             }
-        }
+
+            //ROS_INFO_STREAM("trajhat.cost = " << trajhat.cost);
+            nav_msgs::Path p_trajhat = traj2navpath(trajhat);
+
+            if(trajhat.s.back() > 0.95f*pathlocal_.s.back()){
+                ROS_ERROR_STREAM("Running out of path!");
+                ROS_ERROR_STREAM("trajhat.s.back() = " << trajhat.s.back());
+                ROS_ERROR_STREAM("pathlocal_.s.back() = " << pathlocal_.s.back());
+            }
+            for (uint k=0; k<trajhat.s.size(); k++){
+                if (std::abs(1.0f - trajhat.d.at(k)*trajhat.kappac.at(k)) < 0.1f){
+                    ROS_ERROR_STREAM("DIVISION BY ZERO IN TRAJHAT DYNAMICS: 1-d*kappac =" << 1.0f - trajhat.d.at(k)*trajhat.kappac.at(k) );
+                }
+            }
 
 
         /*
          * OPTIMIZATION
          */
 
-        // set reference values
-        ROS_INFO_STREAM("setting reference..");
-        rtisqp_wrapper_.setOptReference(trajhat,refs_);
+            // set reference values
+            ROS_INFO_STREAM("setting reference..");
+            rtisqp_wrapper_.setOptReference(trajhat,refs_);
 
-        // set state
-        ROS_INFO_STREAM("setting state..");
-        // debug - assuming correct deltapsi
-        //        planning_util::statestruct plannedstate;
-        //        planning_util::state_at_idx_in_traj(trajhat,plannedstate,1);
-        //        state_.deltapsi = plannedstate.deltapsi;
-        rtisqp_wrapper_.setInitialState(state_);
+            // set state
+            ROS_INFO_STREAM("setting state..");
+            // debug - assuming correct deltapsi
+            //        planning_util::statestruct plannedstate;
+            //        planning_util::state_at_idx_in_traj(trajhat,plannedstate,1);
+            //        state_.deltapsi = plannedstate.deltapsi;
+            rtisqp_wrapper_.setInitialState(state_);
 
-        // set initial guess
-        ROS_INFO_STREAM("setting initial guess..");
-        rtisqp_wrapper_.setInitialGuess(trajhat);
+            // set initial guess
+            ROS_INFO_STREAM("setting initial guess..");
+            rtisqp_wrapper_.setInitialGuess(trajhat);
 
-        // set input constraints
-        rtisqp_wrapper_.setInputConstraints(trajhat); // todo input static params etc
+            // set input constraints
+            rtisqp_wrapper_.setInputConstraints(trajhat); // todo input static params etc
 
-        // set state constraint
-        ROS_INFO_STREAM("setting state constraints..");
-        vector<float> lld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dub,false);
-        vector<float> rld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dlb,false);
-        float w = 1.75; // TODO get from param
-        planning_util::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obst_,lld,rld,w);
-        jsk_recognition_msgs::PolygonArray polarr = stateconstr2polarr(posconstr); // visualize state constraint
+            // set state constraint
+            ROS_INFO_STREAM("setting state constraints..");
+            vector<float> lld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dub,false);
+            vector<float> rld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dlb,false);
+            float w = 1.75; // TODO get from param
+            planning_util::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obst_,lld,rld,w);
+            jsk_recognition_msgs::PolygonArray polarr = stateconstr2polarr(posconstr); // visualize state constraint
 
-        // run optimization (separate thread for timeout option)
-        auto t1_opt = std::chrono::high_resolution_clock::now();
-        std::thread t (&SAARTI::run_optimization,this);
-        t.join();
-        // terminate the thread.
-        int dtms = int(dt_*1000);
-        auto future = std::async(std::launch::async, &std::thread::join, &t);
-        if (future.wait_for(std::chrono::milliseconds(dtms)) == std::future_status::timeout) {
-            ROS_ERROR_STREAM("OPTIMIZATION TIMED OUT");
-            break; // todo, reinitialize instead
-        }
-        auto t2_opt = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> t_opt = t2_opt - t1_opt;
-
-        // extract trajstar from solver
-        planning_util::trajstruct trajstar = rtisqp_wrapper_.getTrajectory();
-        traj2cart(trajstar);
-        nav_msgs::Path p_trajstar = traj2navpath(trajstar);
-
-        // checks on trajstar
-        bool publish_trajs = true;
-        for (uint k=0; k<trajstar.s.size(); k++){
-            if (std::abs(1.0f - trajstar.d.at(k)*trajstar.kappac.at(k)) < 0.1f){
-                ROS_ERROR_STREAM("DIVISION BY ZERO IN TRAJSTAR DYNAMICS, STOP PUBLISHING: 1-d*kappac =" << 1.0f - trajstar.d.at(k)*trajstar.kappac.at(k) );
-                publish_trajs = false;
-                break;
+            // run optimization (separate thread for timeout option)
+            auto t1_opt = std::chrono::high_resolution_clock::now();
+            std::thread t (&SAARTI::run_optimization,this);
+            t.join();
+            // terminate the thread.
+            int dtms = int(dt_*1000);
+            auto future = std::async(std::launch::async, &std::thread::join, &t);
+            if (future.wait_for(std::chrono::milliseconds(dtms)) == std::future_status::timeout) {
+                ROS_ERROR_STREAM("OPTIMIZATION TIMED OUT");
+                break; // todo, reinitialize instead
             }
-        }
+            auto t2_opt = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> t_opt = t2_opt - t1_opt;
 
-        /*
+            // extract trajstar from solver
+            planning_util::trajstruct trajstar = rtisqp_wrapper_.getTrajectory();
+            traj2cart(trajstar);
+            nav_msgs::Path p_trajstar = traj2navpath(trajstar);
+
+            // checks on trajstar
+            bool publish_trajs = true;
+            for (uint k=0; k<trajstar.s.size(); k++){
+                if (std::abs(1.0f - trajstar.d.at(k)*trajstar.kappac.at(k)) < 0.1f){
+                    ROS_ERROR_STREAM("DIVISION BY ZERO IN TRAJSTAR DYNAMICS, STOP PUBLISHING: 1-d*kappac =" << 1.0f - trajstar.d.at(k)*trajstar.kappac.at(k) );
+                    publish_trajs = false;
+                    break;
+                }
+            }
+
+            /*
          * PUBLISH
          */
 
-        // publish trajhat
-        common::Trajectory trajhat_msg = traj2msg(trajhat);
-        trajhat_msg.slb = posconstr.slb;
-        trajhat_msg.sub = posconstr.sub;
-        trajhat_msg.dlb = posconstr.dlb;
-        trajhat_msg.dub = posconstr.dub;
-        trajhat_msg.header.stamp = ros::Time::now();
-        if(publish_trajs){
-            trajhat_pub_.publish(trajhat_msg);
+            // publish trajhat
+            common::Trajectory trajhat_msg = traj2msg(trajhat);
+            trajhat_msg.slb = posconstr.slb;
+            trajhat_msg.sub = posconstr.sub;
+            trajhat_msg.dlb = posconstr.dlb;
+            trajhat_msg.dub = posconstr.dub;
+            trajhat_msg.header.stamp = ros::Time::now();
+            if(publish_trajs){
+                trajhat_pub_.publish(trajhat_msg);
+            }
+
+            // publish trajstar
+            common::Trajectory trajstar_msg = traj2msg(trajstar);
+            trajstar_msg.header.stamp = ros::Time::now();
+            if(publish_trajs){
+                trajstar_pub_.publish(trajstar_msg);
+            }
+
+            // publish visualization msgs
+            if(publish_trajs){
+                trajhat_vis_pub_.publish(p_trajhat);
+                trajstar_vis_pub_.publish(p_trajstar);
+                trajset_vis_pub_.publish(trajset_cubelist);
+                posconstr_vis_pub_.publish(polarr);
+            }
+
+            // store trajstar for next iteration
+            trajstar_last = trajstar;
+
+
+            // debug 2d variables
+            jsk_recognition_msgs::PlotData pd;
+            //        pd.xs = trajhat.s;
+            //        pd.ys = trajhat.kappac;
+            //        pd.label = "trajhat.kappac";
+            pd.xs = cpp_utils::linspace(0.0f,1.0f,N);
+            pd.ys = trajhat.Fzr;
+            pd.label = " ";
+            pd.type = jsk_recognition_msgs::PlotData::SCATTER;
+            vectordebug_pub_.publish(pd);
+
+            // print timings
+            ROS_INFO_STREAM("planning iteration complete, Timings: ");
+            ROS_INFO_STREAM("iteration time budget:       " << dt_*1000 << " ms ");
+
+            auto t2_loop = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> t_loop = t2_loop - t1_loop;
+            if(t_loop.count() > double(dt_)*1000.0 ){
+                ROS_WARN_STREAM("planning time exceeding dt! looptime is " << t_loop.count() << " ms ");
+            } else{
+                ROS_INFO_STREAM("planning time:               " << t_loop.count() << " ms ");
+            }
+            ROS_INFO_STREAM("rollout time                 " << t_rollout.count() << " ms " << "(" << Ntrajs_rollout_ << "trajs)");
+            ROS_INFO_STREAM("optimization time            " << t_opt.count() << " ms ");
+
+        } else {
+            ROS_INFO_STREAM("planner deactivated");
         }
-
-        // publish trajstar
-        common::Trajectory trajstar_msg = traj2msg(trajstar);
-        trajstar_msg.header.stamp = ros::Time::now();
-        if(publish_trajs){
-            trajstar_pub_.publish(trajstar_msg);
-        }
-
-        // publish visualization msgs
-        if(publish_trajs){
-            trajhat_vis_pub_.publish(p_trajhat);
-            trajstar_vis_pub_.publish(p_trajstar);
-            trajset_vis_pub_.publish(trajset_cubelist);
-            posconstr_vis_pub_.publish(polarr);
-        }
-
-        // store trajstar for next iteration
-        trajstar_last = trajstar;
-
-
-        // debug 2d variables
-        jsk_recognition_msgs::PlotData pd;
-//        pd.xs = trajhat.s;
-//        pd.ys = trajhat.kappac;
-//        pd.label = "trajhat.kappac";
-        pd.xs = cpp_utils::linspace(0.0f,1.0f,N);
-        pd.ys = trajhat.Fzr;
-        pd.label = " ";
-        pd.type = jsk_recognition_msgs::PlotData::SCATTER;
-        vectordebug_pub_.publish(pd);
-
-
-        // print timings
-        ROS_INFO_STREAM("planning iteration complete, Timings: ");
-        ROS_INFO_STREAM("iteration time budget:       " << dt_*1000 << " ms ");
-
-        auto t2_loop = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> t_loop = t2_loop - t1_loop;
-        if(t_loop.count() > dt_*1000 ){
-            ROS_WARN_STREAM("planning time exceeding dt! looptime is " << t_loop.count() << " ms ");
-        } else{
-            ROS_INFO_STREAM("planning time:               " << t_loop.count() << " ms ");
-        }
-        ROS_INFO_STREAM("rollout time                 " << t_rollout.count() << " ms " << "(" << Ntrajs_rollout_ << "trajs)");
-        ROS_INFO_STREAM("optimization time            " << t_opt.count() << " ms ");
 
         ros::spinOnce();
         loop_rate.sleep();
@@ -293,17 +308,77 @@ SAARTI::SAARTI(ros::NodeHandle nh){
  */
 
 // sets refs to be used in rollout and optimization
-planning_util::refstruct SAARTI::setRefs(int ctrlmode){
+planning_util::refstruct SAARTI::setRefs(int ref_mode, int traction_adaptive, float mu_nominal, planning_util::staticparamstruct sp, planning_util::pathstruct pathlocal){
     planning_util::refstruct refs;
-    switch (ctrlmode) {
-    case 0:  // minimize vx (emg brake)
+    refs.ref_mode = ref_mode;
+    switch (ref_mode) {
+    case 0:  // minimize s (emg brake)
+    {
         refs.sref.assign(N+1,state_.s);
-        refs.vxref.assign(N+1,0.0);
         break;
+    }
+
     case 1: // maximize s (racing)
-        refs.sref.assign(N+1, state_.s + 300);
-        refs.vxref.assign(N+1, state_.vx + 25);
+    {
+        // set vxref
+        vector<float> vxref_path(pathlocal.s.size(), 30); // initialize to max speed
+        vector<float> mu;
+        if(traction_adaptive){
+            mu = pathlocal.mu;
+        } else {
+            mu.assign(pathlocal.s.size(),mu_nominal);
+        }
+
+        for (uint i=0;i<vxref_path.size();i++){
+            // set max kinematic vx due to curvature and mu
+            if(vxref_path.at(i) > std::sqrt(sp.g*mu.at(i)/std::max(std::abs(pathlocal.kappa_c.at(i)),0.0001f)) ){
+                vxref_path.at(i) = std::sqrt(sp.g*mu.at(i)/std::abs(pathlocal.kappa_c.at(i)));
+                //cout << "bounding vxref due to curvature" << endl;
+            }
+        }
+
+        // limit acc fwd pass
+        for (uint i=0;i<vxref_path.size()-1;i++){
+            float vxstep = sp.g*mu.at(i)/vxref_path.at(i);
+            if(vxref_path.at(i+1) - vxref_path.at(i) > vxstep){
+                vxref_path.at(i+1) = vxref_path.at(i) + vxstep;
+            }
+        }
+
+        // limit acc bwd pass
+        for (size_t i = vxref_path.size()-1; i>0; i--) {
+            float vxstep = sp.g*mu.at(i)/vxref_path.at(i);
+            if(vxref_path.at(i-1) - vxref_path.at(i) > vxstep){
+                vxref_path.at(i-1) = vxref_path.at(i) + vxstep;
+            }
+        }
+        refs.vxref_path = vxref_path;
+
+
+        // set sref from vxref_path
+        float sref_elmt = state_.s;
+        for (uint k=0;k<N+1;k++){
+            vector<float> vxref_vec = cpp_utils::interp({sref_elmt},pathlocal.s,vxref_path,false);
+            float vxref = vxref_vec.at(0);
+            sref_elmt += vxref*dt_integrator_;
+            refs.sref.push_back(sref_elmt);
+        }
+
+        //refs.sref.assign(N+1, state_.s + 300);
+        //refs.vxref.assign(N+1, state_.vx + 25);
         break;
+    }
+//    case 2: // track constant vxref
+//    {
+//        float sref_elmt = state_.s;
+//        float vxref = 10;
+//        for (uint k=0;k<N+1;k++){
+//            sref_elmt += vxref*dt_integrator_;
+//            refs.sref.push_back(sref_elmt);
+//        }
+
+//        break;
+//    }
     }
     return refs;
 }
@@ -424,7 +499,8 @@ int SAARTI::trajset_eval_cost(){
         for (uint j=0; j<traj.s.size();j++){
             float s = traj.s.at(j);
             float d = traj.d.at(j);
-            float vx = traj.vx.at(j);
+            //float vx = traj.vx.at(j);
+
             // check obstacle (in frenet)
             float dist;
             for (uint k=0; k<obst_.s.size();k++){
@@ -439,13 +515,17 @@ int SAARTI::trajset_eval_cost(){
             }
             // running cost
             float sref = float(refs_.sref.at(j));
-            float vxref = float(refs_.vxref.at(j));
+            // float vxref = float(refs_.vxref.at(j));
+
             //cout << "sref before rc add = " << sref << endl;
             //cout << "vxref before rc add = " << vxref << endl;
             //cout << "s before rc add = " << s << endl;
             //cout << "vx before rc add = " << vx << endl;
             //cout << "cost before rc add = " << cost << endl;
-            cost += (sref-s)*float(Wx_.at(0))*(sref-s) + (vxref-vx)*float(Wx_.at(4))*(vxref-vx);
+
+            //cost += (sref-s)*float(Wx_.at(0))*(sref-s) + (vxref-vx)*float(Wx_.at(4))*(vxref-vx);
+            cost += (sref-s)*float(Wx_.at(0))*(sref-s);
+
             //cout << "cost after rc add = " << cost << endl;
         }
         if(colliding){
@@ -614,18 +694,12 @@ void SAARTI::obstacles_callback(const common::Obstacles::ConstPtr& msg){
 // get static params from rosparam
 void SAARTI::get_rosparams(){
 
-    // opt config
-    if(!nh_.getParam("/Wx", Wx_)){
+    // general
+    if(!nh_.getParam("/dt", dt_)){
         ROS_ERROR_STREAM("failed to load param Wx");
     }
-    if(!nh_.getParam("/WNx", WNx_)){
-        ROS_ERROR_STREAM("failed to load param WNx");
-    }
-    if(!nh_.getParam("/Wu", Wu_)){
-        ROS_ERROR_STREAM("failed to load param Wu");
-    }
-    if(!nh_.getParam("/Wslack", Wslack_)){
-        ROS_ERROR_STREAM("failed to load param Wslack");
+    if(!nh_.getParam("/cutoff_speed", cutoff_speed_)){
+        ROS_ERROR_STREAM("failed to load param Wx");
     }
 
     // modes
@@ -644,6 +718,20 @@ void SAARTI::get_rosparams(){
 
     // rollout config
     nh_.getParam("/Ntrajs_rollout", Ntrajs_rollout_);
+
+    // opt config
+    if(!nh_.getParam("/Wx", Wx_)){
+        ROS_ERROR_STREAM("failed to load param Wx");
+    }
+    if(!nh_.getParam("/WNx", WNx_)){
+        ROS_ERROR_STREAM("failed to load param WNx");
+    }
+    if(!nh_.getParam("/Wu", Wu_)){
+        ROS_ERROR_STREAM("failed to load param Wu");
+    }
+    if(!nh_.getParam("/Wslack", Wslack_)){
+        ROS_ERROR_STREAM("failed to load param Wslack");
+    }
 
     // static vehicle model params
     sp_.m =  float(nh_.param("/car/inertia/m",1000.0));

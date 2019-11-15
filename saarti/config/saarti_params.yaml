@@ -14,13 +14,13 @@ ref_mode: 1
 # Algorithm mode, 
 # 0: RTI
 # 1: SAA-RTI 
-sampling_augmentation: 1
+sampling_augmentation: 0
 Ntrajs_rollout: 24 # default 24
 
 # Traction adaptation 
 # 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics)
 # 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics
-traction_adaptive: 1
+traction_adaptive: 0
 mu_nominal: 1.5 # used only when traction_adaptive = 0
 
 # optimization config

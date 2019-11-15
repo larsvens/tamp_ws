@@ -93,8 +93,9 @@ struct posconstrstruct{
 
 // reference container
 struct refstruct{
+    int ref_mode;
     std::vector<float> sref;
-    std::vector<float> vxref;
+    std::vector<float> vxref_path;
 };
 
 // static params container

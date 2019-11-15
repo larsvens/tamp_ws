@@ -42,22 +42,26 @@ public:
     SAARTI(ros::NodeHandle nh);
 
 private:
+    // general
+    float dt_;
+    float dt_integrator_ = 0.1; // todo get from param
+    float cutoff_speed_;
+    bool planner_activated_;
+
     // modes
     int ref_mode_;
     int sampling_augmentation_;
     int traction_adaptive_;
+
+    // params
     float mu_nominal_; // only used for nonadaptive case
-
     int Ntrajs_rollout_;
-
-    // weights
     vector<float> Wx_;
     vector<float> WNx_;
     vector<float> Wu_;
     float Wslack_;
 
-    // variables
-    double dt_;
+    // internal variables
     ros::NodeHandle nh_;
     ros::Subscriber pathlocal_sub_;
     ros::Subscriber obstacles_sub_;
@@ -79,7 +83,7 @@ private:
 
     // functions
     void print_obj(planning_util::trajstruct traj);
-    planning_util::refstruct setRefs(int ctrlmode);
+    planning_util::refstruct setRefs(int ref_mode_, int traction_adaptive_, float mu_nominal_, planning_util::staticparamstruct sp_, planning_util::pathstruct pathlocal_);
     void traj2cart(planning_util::trajstruct &traj);
     void trajset2cart();
     void sd_pts2cart(vector<float> &s, vector<float> &d, vector<float> &Xout, vector<float> &Yout);
