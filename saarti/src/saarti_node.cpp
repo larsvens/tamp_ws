@@ -39,6 +39,12 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         loop_rate.sleep();
     }
 
+    // check that mode selection makes sense
+    if (traction_adaptive_ == 1 && sampling_augmentation_ == 0){
+        ROS_ERROR_STREAM("Can not do traction adaptation without sampling augmentation! Shutting down");
+        exit(EXIT_FAILURE);
+    }
+
     // initialize trajhat last
     planning_util::trajstruct trajstar_last;
 
@@ -61,9 +67,13 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         planning_util::trajstruct trajhat;
         auto t1_rollout = std::chrono::high_resolution_clock::now();
 
-        // regular RTI (initialize with single rollout)
-        if (algo_mode_== 0) {
-            planning_util::trajstruct trajprime;
+        // initialize initial guess
+        planning_util::trajstruct trajprime;
+
+        // regular RTI
+        if (sampling_augmentation_== 0) {
+
+            // initialize with single rollout at startup
             if (trajstar_last.s.size()==0){
                 ROS_INFO_STREAM("generating init traj for RTISQP");
                 for (uint i=0;i<N;i++) {
@@ -71,20 +81,26 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                     trajprime.Fxf.push_back(300); // todo get from ax desired
                     trajprime.Fxr.push_back(300);
                 }
-                rtisqp_wrapper_.rolloutSingleTraj(trajprime,state_,pathlocal_,sp_,adaptive_mode_,mu_static_);
+                rtisqp_wrapper_.rolloutSingleTraj(trajprime,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_);
                 trajset_.push_back(trajprime);
-            } else{ // set trajprime as initial guess
-                //rtisqp_wrapper_.shiftTrajectoryFwdSimple(trajstar_last);
-                trajprime = rtisqp_wrapper_.shiftTrajectoryByIntegration(trajstar_last,state_,pathlocal_,sp_,adaptive_mode_,mu_static_);
+            } else{
+                // set trajprime as initial guess
+                trajprime = rtisqp_wrapper_.shiftTrajectoryByIntegration(trajstar_last,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_);
                 trajset_.push_back(trajprime);
             }
             trajhat = trajprime;
         }
 
         // SAARTI
-        if(algo_mode_ == 1){
+        if(sampling_augmentation_ == 1){
             ROS_INFO_STREAM("generating trajectory set");
-            rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,sp_,adaptive_mode_,ref_mode_,uint(Ntrajs_rollout_));
+            rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_,ref_mode_,uint(Ntrajs_rollout_));
+
+            // append trajprime
+            if (trajstar_last.s.size()!=0){
+                trajprime = rtisqp_wrapper_.shiftTrajectoryByIntegration(trajstar_last,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_);
+                trajset_.push_back(trajprime);
+            }
 
             // cost eval and select
             int trajhat_idx = trajset_eval_cost(); // error if negative
@@ -93,7 +109,6 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             } else {
                 ROS_ERROR_STREAM("saarti traj select; no traj selected, idx negative");
             }
-
         }
 
         // sanity check
@@ -162,9 +177,6 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         //        planning_util::state_at_idx_in_traj(trajhat,plannedstate,1);
         //        state_.deltapsi = plannedstate.deltapsi;
         rtisqp_wrapper_.setInitialState(state_);
-
-
-        cout << "debug trajhat.Fzf.size() = " << trajhat.Fzf.size();
 
         // set initial guess
         ROS_INFO_STREAM("setting initial guess..");
@@ -258,15 +270,17 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
         // print timings
         ROS_INFO_STREAM("planning iteration complete, Timings: ");
+        ROS_INFO_STREAM("iteration time budget:       " << dt_*1000 << " ms ");
+
         auto t2_loop = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> t_loop = t2_loop - t1_loop;
         if(t_loop.count() > dt_*1000 ){
-            ROS_WARN_STREAM("looptime exceeding dt! looptime is " << t_loop.count() << " ms ");
+            ROS_WARN_STREAM("planning time exceeding dt! looptime is " << t_loop.count() << " ms ");
         } else{
-            ROS_INFO_STREAM("looptime is " << t_loop.count() << " ms ");
+            ROS_INFO_STREAM("planning time:               " << t_loop.count() << " ms ");
         }
-        ROS_INFO_STREAM("rollout took                 " << t_rollout.count() << " ms " << "(" << Ntrajs_rollout_ << "trajs)");
-        ROS_INFO_STREAM("optimization took            " << t_opt.count() << " ms ");
+        ROS_INFO_STREAM("rollout time                 " << t_rollout.count() << " ms " << "(" << Ntrajs_rollout_ << "trajs)");
+        ROS_INFO_STREAM("optimization time            " << t_opt.count() << " ms ");
 
         ros::spinOnce();
         loop_rate.sleep();
@@ -616,16 +630,16 @@ void SAARTI::get_rosparams(){
 
     // modes
     if(!nh_.getParam("/ref_mode", ref_mode_)){
-        ROS_ERROR_STREAM("failed to load param /refmode");
+        ROS_ERROR_STREAM("failed to load param /ref_mode");
     }
-    if(!nh_.getParam("/algo_mode", algo_mode_)){
-        ROS_ERROR_STREAM("failed to load param /algo_setting");
+    if(!nh_.getParam("/sampling_augmentation", sampling_augmentation_)){
+        ROS_ERROR_STREAM("failed to load param /sampling_augmentation");
     }
-    if(!nh_.getParam("/adaptive_mode", adaptive_mode_)){
-        ROS_ERROR_STREAM("failed to load param /adaptive");
+    if(!nh_.getParam("/traction_adaptive", traction_adaptive_)){
+        ROS_ERROR_STREAM("failed to load param /traction_adaptive");
     }
-    if(!nh_.getParam("/mu_static", mu_static_)){
-        ROS_ERROR_STREAM("failed to load param /adaptive");
+    if(!nh_.getParam("/mu_nominal", mu_nominal_)){
+        ROS_ERROR_STREAM("failed to load param /mu_nominal");
     }
 
     // rollout config

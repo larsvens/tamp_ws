@@ -2,8 +2,9 @@
 # saarti algorithm configuration
 #
 
-# replanning rate
-dt: 0.1
+# general
+dt: 0.1 # replanning rate
+cutoff_speed: 0.5
 
 # Reference mode, 
 # 0: minimize s
@@ -13,16 +14,14 @@ ref_mode: 1
 # Algorithm mode, 
 # 0: RTI
 # 1: SAA-RTI 
-algo_mode: 1
-
-# Adaptation mode,
-# 0: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics
-# 1: static mu estimate from param and static tire force constraints
-adaptive_mode: 1 
-mu_static: 0.9
-
-# rollout config
+sampling_augmentation: 1
 Ntrajs_rollout: 24 # default 24
+
+# Traction adaptation 
+# 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics)
+# 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics
+traction_adaptive: 1
+mu_nominal: 1.5 # used only when traction_adaptive = 0
 
 # optimization config
 Wx:  [100.0, 1.0, 1.0, 0.1, 0.1, 0.1]

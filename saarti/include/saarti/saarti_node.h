@@ -44,9 +44,9 @@ public:
 private:
     // modes
     int ref_mode_;
-    int algo_mode_;
-    int adaptive_mode_;
-    float mu_static_; // only used for nonadaptive case
+    int sampling_augmentation_;
+    int traction_adaptive_;
+    float mu_nominal_; // only used for nonadaptive case
 
     int Ntrajs_rollout_;
 

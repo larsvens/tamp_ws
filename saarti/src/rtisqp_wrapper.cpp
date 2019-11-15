@@ -307,8 +307,8 @@ planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_u
                                                                       planning_util::statestruct state, // todo rm?
                                                                       planning_util::pathstruct &pathlocal,
                                                                       planning_util::staticparamstruct &sp,
-                                                                      int adaptive_mode,
-                                                                      float mu_static){
+                                                                      int traction_adaptive,
+                                                                      float mu_nominal){
     if(!traj.s.size()){
         throw std::invalid_argument("Error in shiftTrajectoryByIntegration: trying to shift empty trajectory");
     }
@@ -336,7 +336,7 @@ planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_u
         }
     }
 
-    RtisqpWrapper::rolloutSingleTraj(traj_out,initstate,pathlocal,sp,adaptive_mode,mu_static);
+    RtisqpWrapper::rolloutSingleTraj(traj_out,initstate,pathlocal,sp,traction_adaptive,mu_nominal);
     return traj_out;
 }
 
@@ -377,8 +377,8 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
                                       planning_util::statestruct &initstate,
                                       planning_util::pathstruct  &pathlocal,
                                       planning_util::staticparamstruct &sp,
-                                      int adaptive_mode,
-                                      float mu_static){
+                                      int traction_adaptive,
+                                      float mu_nominal){
 
     if (traj.s.size() != 0){
         throw std::invalid_argument("Error in rolloutSingleTraj, state sequence is nonzero at entry");
@@ -403,12 +403,13 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
     float kappac = kappac_vec.at(0);
     // get mu at initstate
     float mu;
-    if(adaptive_mode == 0){
+    if(traction_adaptive == 1){
         vector<float> mu_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.mu,false);
         mu = mu_vec.at(0);
-    } else if (adaptive_mode == 1) {
-        mu = mu_static;
+    } else { // (traction_adaptive == 0)
+        mu = mu_nominal;
     }
+    traj.mu.push_back(mu);
 
     // set approximate ax for Fz computation (todo compute kinematic ax in loop to increase accuracy)
     for (uint k=0;k<N;k++) {
@@ -419,7 +420,6 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
     // set initial state in traj
     planning_util::traj_push_back_state(traj,rollingstate);
     traj.kappac.push_back(kappac);
-    traj.mu.push_back(mu);
 
     // set initial state in integrator (indices from acado_solver.c, acado_initializeNodesByForwardSimulation)
     acadoWSstate[0] = rollingstate.s;
@@ -438,31 +438,39 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
         // compute normal forces front and back
         float Fzf;
         float Fzr;
-        if(adaptive_mode == 0){
+        if(traction_adaptive == 1){
             float theta = 0; // grade angle todo get from pathlocal via traj
             Fzf = (1.0f/(sp.lf+sp.lr))*( sp.m*traj.ax.at(k)*sp.h_cg - sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lr*std::cos(theta));
             Fzr = (1.0f/(sp.lf+sp.lr))*(-sp.m*traj.ax.at(k)*sp.h_cg + sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lf*std::cos(theta));
-        } else if (adaptive_mode == 1) {
+        } else { // (traction_adaptive == 0)
             Fzf = (1.0f/(sp.lf+sp.lr))*(sp.m*sp.g*sp.lr);
             Fzr = (1.0f/(sp.lf+sp.lr))*(sp.m*sp.g*sp.lf);
         }
         traj.Fzf.push_back(Fzf);
         traj.Fzr.push_back(Fzr);
 
-        // grab and adjust control inputs
+        // compute maximum tire forces
+        float Ffmax = Fzf*mu;
+        float Frmax = Fzr*mu;
+
+        // grab and adjust control inputs according to new force limits
         float Fyf = traj.Fyf.at(k);
-        float Fxf  = traj.Fxf.at(k);
+        float Fxf = traj.Fxf.at(k);
         float Fxr = traj.Fxr.at(k);
 
-        // adjust values according to mu UPDATE
-//        float Fzf = 0.5f*sp.m*sp.g; // todo grab from traj
-//        float Fhfmax = Fzf*mu;
-//        float Fhf = std::sqrt(Fyf*Fyf + Fxf*Fxf);
-//        if(Fhf > Fhfmax){
-//            float scalefactor = Fhf/Fhfmax;
-//            Fyf = Fyf/scalefactor;
-//            Fxf = Fxf/scalefactor;
-//        }
+        float Ff = std::sqrt(Fyf*Fyf + Fxf*Fxf);
+        if (Ff > Ffmax){
+            float r = Ffmax/Ff;
+            Fyf *=r;
+            Fxf *=r;
+        }
+        // todo account also for Fyr
+        if (Fxr < -Frmax){
+            Fxr = -Frmax;
+        }
+        if(Fxr > Frmax){
+            Fxr = Frmax;
+        }
 
         acadoWSstate[84] = Fyf;
         acadoWSstate[85] = Fxf;
@@ -492,11 +500,11 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
         acadoWSstate[88] = kappac;
         traj.kappac.push_back(kappac);
         // update mu at rollingstate
-        if(adaptive_mode == 0){
+        if(traction_adaptive == 1){
             vector<float> mu_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.mu,false);
             mu = mu_vec.at(0);
-        } else if (adaptive_mode == 1) {
-            mu = mu_static;
+        } else if (traction_adaptive == 0) {
+            mu = mu_nominal;
         }
         traj.mu.push_back(mu);
     }
@@ -517,7 +525,8 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                                    planning_util::statestruct &initstate,
                                    planning_util::pathstruct &pathlocal,
                                    planning_util::staticparamstruct & sp,
-                                   int adaptive_mode,
+                                   int traction_adaptive,
+                                   float mu_nominal,
                                    int ref_mode,
                                    uint Ntrajs){
     if(Ntrajs % 2 !=0){
@@ -578,7 +587,7 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
         bool is_initstate = true;
         bool integrator_initiated = false;
         float kappac;
-        float mu;
+
         double t_intgr_tot = 0;
         double t_interp_tot = 0;
         for (size_t k=0;k<N+1;k++) {
@@ -588,27 +597,34 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             vector<float> kappac_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.kappa_c,false);
             kappac = kappac_vec.at(0);
             acadoWSstate[88] = kappac;
-            // interp to get mu at rollingstate.s
-            vector<float> mu_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.mu,false);
-            mu = mu_vec.at(0);
+
             // interp timing
             auto t2_interp = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::milli> t_interp = t2_interp - t1_interp;
             t_interp_tot += t_interp.count();
 
+            // set ax for Fz computation from previous cmd
+            if(k==0){
+                traj.ax.push_back(0);
+            } else {
+                traj.ax.push_back( (traj.Fxf.at(k-1)+traj.Fyf.at(k-1))/sp.m );
+            }
+
             // compute normal forces front and back
             float Fzf;
             float Fzr;
-            if(adaptive_mode == 0){
+            float mu;
+            if(traction_adaptive == 1){
                 float theta = 0; // grade angle todo get from pathlocal via traj
                 Fzf = (1.0f/(sp.lf+sp.lr))*( sp.m*traj.ax.at(k)*sp.h_cg - sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lr*std::cos(theta));
                 Fzr = (1.0f/(sp.lf+sp.lr))*(-sp.m*traj.ax.at(k)*sp.h_cg + sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lf*std::cos(theta));
-            } else if (adaptive_mode == 1) {
+                // interp to get mu from pathlocal at rollingstate.s
+                vector<float> mu_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.mu,false);
+                mu = mu_vec.at(0);
+            } else { // (traction_adaptive == 0)
                 Fzf = (1.0f/(sp.lf+sp.lr))*(sp.m*sp.g*sp.lr);
                 Fzr = (1.0f/(sp.lf+sp.lr))*(sp.m*sp.g*sp.lf);
-            } else {
-                Fzf = 0;
-                Fzr = 0;
+                mu = mu_nominal;
             }
 
             // compute max horizontal forces front and back
@@ -677,8 +693,10 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             }
 
             // avoid singularity in dynamics at vx = 0
-            if (rollingstate.vx < 0.5f){
+            if (rollingstate.vx < 0.5f && ctrl.Fxf < 0){
                 ctrl.Fxf = 0;
+            }
+            if (rollingstate.vx < 0.5f && ctrl.Fxr < 0){
                 ctrl.Fxr = 0;
             }
 

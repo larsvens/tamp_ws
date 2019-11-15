@@ -263,10 +263,10 @@ class TrackInterface:
         self.pathglobal.theta_c = np.zeros(N) # grade/bank implement later
         
         mu_nominal = 1.5# todo read from config file
-        mu_slipery = 1.5
-        self.pathglobal.mu = (mu_nominal)*np.ones(N) 
-        for i in range(100): ## TMP test
-            self.pathglobal.mu[i] = mu_slipery
+        mu_slipery = 1.0
+        self.pathglobal.mu = (mu_slipery)*np.ones(N) 
+        for i in range(80): ## TMP test
+            self.pathglobal.mu[i] = mu_nominal
         self.pathglobal.dub = dub
         self.pathglobal.dlb = dlb
         
