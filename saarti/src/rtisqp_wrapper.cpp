@@ -188,14 +188,11 @@ planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util:
     {
         // "funnel" - larger deviation allowed farther ahead
         float s_diff_default = 2+(k*0.1f);
-        float d_diff_default = 2+(k*0.04f);
 
         float slb = traj.s.at(k)-s_diff_default;
         float sub = traj.s.at(k)+s_diff_default;
 
-        //float dlb = traj.d.at(k)-d_diff_default;
-        //float dub = traj.d.at(k)+d_diff_default;
-
+        // initialize at lane boundaries
         float dlb = rld.at(k)+0.5f*w;
         float dub = lld.at(k)-0.5f*w;
 
@@ -215,25 +212,6 @@ planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util:
                 }
             }
         }
-
-        // adjust for lane boundaries (including vehicle width)
-
-//        if(dub > lld.at(k) - 0.5f*w){ // left lane boundary
-//            dub = lld.at(k) - 0.5f*w;
-
-
-////            if(dub-dlb < d_diff_default){
-////                dlb = dub-d_diff_default;
-////            }
-//        }
-//        if(dlb < rld.at(k) + 0.5f*w){ // right lane boundary
-//            dlb = rld.at(k) + 0.5f*w;
-
-
-////            if(dub-dlb < d_diff_default){
-////                dub = dlb + d_diff_default;
-////            }
-//        }
 
         // make sure constraint area does not diminish on narrow tracks
         float d_rangemin = 0.5;

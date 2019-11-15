@@ -1,0 +1,9 @@
+<!-- starts ctrl_interface node with params -->
+
+<launch>
+     <!-- load params -->
+     <rosparam command="load" file="$(find common)/config/ctrl_interface_params.yaml" /> 
+
+     <!-- start node node -->
+     <node pkg="common" type="ctrl_interface.py" name="ctrl_interface" output="screen"> </node>
+</launch>
