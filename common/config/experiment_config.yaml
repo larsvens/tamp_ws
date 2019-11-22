@@ -1,0 +1,14 @@
+# Experiment configuration
+
+t_final:             500.0
+
+# track config 
+track_name: "default_track"
+N_mu_segments: 2
+s_begin_mu_segments:  [0.0, 100.0]
+mu_segment_values:  [1.0, 0.5]
+
+# pop-up obstacle config
+s_ego_at_popup: 100
+s_diff_at_popup: 15
+

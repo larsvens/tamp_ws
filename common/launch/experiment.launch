@@ -1,0 +1,15 @@
+<!-- Runs single experiment. Experiment configuration in: single_experiment_config.yaml-->
+
+<launch>
+     <!-- todo simtime here 
+     <param name="use_sim_time" value="true" />
+     -->
+     <rosparam command="load" file="$(find common)/config/experiment_config.yaml" />
+
+     <!-- experiment manager -->
+     <node pkg="common" type="experiment_manager.py" name="experiment_manager" output="screen" required="true"> </node>
+
+     <!-- vehicle, localization, object detect -->
+     <!-- planner and control interface node -->
+
+</launch>
