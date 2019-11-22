@@ -14,6 +14,10 @@ from std_msgs.msg import Float32
 
 class CtrlInterface:
     def __init__(self):
+        
+        # params
+        self.robot_name = rospy.get_param('/robot_name')
+        
         # init node subs pubs
         rospy.init_node('ctrl_interface', anonymous=True)
         self.trajstarsub = rospy.Subscriber("trajstar", Trajectory, self.trajstar_callback)
@@ -40,6 +44,12 @@ class CtrlInterface:
         while(not self.trajstar.Fyf):
             print("waiting for trajstar")
             self.rate.sleep()
+
+        # check if we are to bypass drivetrain dynamics
+        if(self.robot_name == "snowfox"):
+            self.bypass_drivetrain_dynamics = True
+        else:
+            self.bypass_drivetrain_dynamics = False
 
         # main loop
         while not rospy.is_shutdown(): 
@@ -100,24 +110,25 @@ class CtrlInterface:
             # compute velocity error
             self.vx_error = self.trajstar.vx[1]-vx
             
-            # feedfwd 
-            Cr0 = 180
-            Cm1 = 5000          
-            dc_out = (Fx_request+Cr0)/Cm1 # not including aero
+            
+            if(self.bypass_drivetrain_dynamics):
+                dc_out = Fx_request
+            else:
+                # feedfwd 
+                Cr0 = 180
+                Cm1 = 5000          
+                dc_out = (Fx_request+Cr0)/Cm1 # not including aero
+            
             
             # old
             #dc_out = 0.00010*self.trajstar.Fx[0]
   
-
             # simulate actuatiuon delays (0.2-0.3s)
 #            Ndelay = 20 
 #            self.delta_out_FIFO.append(delta_out)
 #            if len(self.delta_out_FIFO) >= Ndelay:
 #                delta_out = self.delta_out_FIFO.pop(0)
                 
-                
-            
-            
             # prints 
             print ""
             print "params"
