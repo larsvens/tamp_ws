@@ -29,13 +29,35 @@ E = 0.97
 y = D * np.sin(C*np.arctan(B*alpha - E*(B*alpha - np.arctan(B * alpha))));
 plt.plot(alpha,y)
 
-# gottard params
-B = 12.56
-C = -1.38
-D = 1.60
-E = -0.58
+B = 12.0
+C = 2.3
+D = -0.82
+E = 1.0
 y = D * np.sin(C*np.arctan(B*alpha - E*(B*alpha - np.arctan(B * alpha))));
 plt.plot(alpha,y)
+
+B = 5.0
+C = 2.0
+D = -0.3
+E = 1.0
+y = D * np.sin(C*np.arctan(B*alpha - E*(B*alpha - np.arctan(B * alpha))));
+plt.plot(alpha,y)
+
+B = 4.0
+C = 2.0
+D = -0.1
+E = 1.0
+y = D * np.sin(C*np.arctan(B*alpha - E*(B*alpha - np.arctan(B * alpha))));
+plt.plot(alpha,y)
+
+
+# gottard params
+#B = 12.56
+#C = -1.38
+#D = 1.60
+#E = -0.58
+#y = D * np.sin(C*np.arctan(B*alpha - E*(B*alpha - np.arctan(B * alpha))));
+#plt.plot(alpha,y)
 
 plt.show()
 

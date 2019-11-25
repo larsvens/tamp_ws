@@ -29,6 +29,7 @@ class ExperimentManager:
         self.N_mu_segments = rospy.get_param('/N_mu_segments')
         self.s_begin_mu_segments = rospy.get_param('/s_begin_mu_segments')
         self.mu_segment_values = rospy.get_param('/mu_segment_values')
+        self.mu_segment_idx = 0
         
         # obstacle params
         self.s_ego_at_popup = rospy.get_param('/s_ego_at_popup')
@@ -58,23 +59,29 @@ class ExperimentManager:
         self.t = 0 
         while (not rospy.is_shutdown()) and self.t<self.t_final :
             
-            print 'simtime t =', self.t
+            #print 'simtime t =', self.t
             
             # if position w.r.t global path (params use also in track iface )
             # pass friction values
-            if self.state.s > 20.0: 
-                self.tireparams.tire_coefficient = 1.0 
-                self.tireparams.B = 10
-                self.tireparams.C = 1.9
-                self.tireparams.D = -0.3 # only vary D for now
-                self.tireparams.E = 1.0
-            else:
-                self.tireparams.tire_coefficient = 1.0 
-                self.tireparams.B = 10
-                self.tireparams.C = 1.9
-                self.tireparams.D = -1.5
-                self.tireparams.E = 1.0              
-                # todo function setting these from mu (from param)
+            
+            # determine which mu segment we are at
+            self.mu_segment_idx = 0
+            while not (self.state.s >= self.s_begin_mu_segments[self.mu_segment_idx] and \
+                       self.state.s < self.s_begin_mu_segments[self.mu_segment_idx + 1]):               
+                self.mu_segment_idx += 1
+                if(self.mu_segment_idx >= self.N_mu_segments):
+                    break
+            
+            print "s_ego =              ", self.state.s 
+            print "mu_segment_idx =     ", self.mu_segment_idx
+            print "mu in this section = ", self.mu_segment_values[self.mu_segment_idx] 
+            
+            # only vary D for now
+            self.tireparams.tire_coefficient = 1.0 
+            self.tireparams.B = 10
+            self.tireparams.C = 1.9
+            self.tireparams.D = -self.mu_segment_values[self.mu_segment_idx] 
+            self.tireparams.E = 1.0            
             self.tireparams.header.stamp = rospy.Time.now()
             self.tireparampub.publish(self.tireparams)
             

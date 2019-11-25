@@ -4,9 +4,9 @@ t_final:             500.0
 
 # track config 
 track_name: "default_track"
-N_mu_segments: 2
-s_begin_mu_segments:  [0.0, 100.0]
-mu_segment_values:  [1.0, 0.5]
+N_mu_segments: 3
+s_begin_mu_segments:  [0.0, 20.0 100.0]
+mu_segment_values:  [1.0, 0.5, 0.7]
 
 # pop-up obstacle config
 s_ego_at_popup: 100
