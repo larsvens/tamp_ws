@@ -2,13 +2,24 @@
 
 t_final:             500.0
 
-# track config 
-track_name: "default_track"
-N_mu_segments: 3
-s_begin_mu_segments:  [0.0, 20.0 100.0]
-mu_segment_values:  [1.0, 0.5, 0.7]
+scenario_id: 1 # 1: pop-up, 2: reduced mu turn
 
-# pop-up obstacle config
-s_ego_at_popup: 100
+# track config 
+track_name: "asta"
+N_mu_segments: 1
+s_begin_mu_segments:  [0.0]
+mu_segment_values:  [1.0]     # dry
+# mu_segment_values:  [0.7]   # wet
+
+# pop-up scenario config
+s_ego_at_popup:  50
 s_diff_at_popup: 15
+vx_ego_at_popup: 15
+d_ego_at_popup: -1.75
+
+# track config 
+#track_name: "asta"
+#N_mu_segments: 3
+#s_begin_mu_segments:  [0.0, 20.0 100.0]
+#mu_segment_values:  [1.0, 0.5, 0.7]
 

@@ -7,11 +7,14 @@
 import numpy as np
 import rospy
 from common.msg import Trajectory
+from common.msg import Path
+from common.msg import State
 from fssim_common.msg import Cmd
 from fssim_common.msg import State as fssimState
 from visualization_msgs.msg import Marker
 from std_msgs.msg import Float32
-
+from coordinate_transforms import ptsCartesianToFrenet
+from coordinate_transforms import ptsFrenetToCartesian
 class CtrlInterface:
     def __init__(self):
         
@@ -21,6 +24,7 @@ class CtrlInterface:
         # init node subs pubs
         rospy.init_node('ctrl_interface', anonymous=True)
         self.trajstarsub = rospy.Subscriber("trajstar", Trajectory, self.trajstar_callback)
+        self.pathlocalsub = rospy.Subscriber("pathlocal", Path, self.pathlocal_callback)
         self.vehicle_out_sub = rospy.Subscriber("/fssim/base_pose_ground_truth", fssimState, self.vehicle_out_callback)
         self.vehicleinpub = rospy.Publisher('/fssim/cmd', Cmd, queue_size=10)
         self.lhptpub = rospy.Publisher('/lhpt_vis', Marker, queue_size=1)
@@ -31,24 +35,34 @@ class CtrlInterface:
         self.setStaticParams()
 
         # init msgs
+        self.state = State()
         self.vehicle_in = Cmd()
-        self.vehicle_out = fssimState()
         self.trajstar = Trajectory()
+        self.pathlocal = Path()
+        self.trajstar_received = False
+        self.pathlocal_received = False
+        self.state_received = False
+        
         # ctrl errors
         self.vx_error = Float32()
 
-        # mode in state machine
+        # TODO GET FROM MESSAGE
+        # mode in state machine 
         # 0: stop
         # 1: cruise_ctrl
         # 2: tamp 
-        self.ctrl_mode = 0 
+        self.ctrl_mode = 1
+        
+        # TODO GET FROM PARAM
+        self.cc_vxref = 15
+        self.cc_dref = -1.75        
         
         # delay sim variable
         self.delta_out_FIFO = []
 
         # wait for messages before entering main loop
-        while(not self.trajstar.Fyf):
-            print("waiting for trajstar")
+        while(not self.state_received):
+            print("waiting for state")
             self.rate.sleep()
 
         # check if we are to bypass drivetrain dynamics
@@ -61,11 +75,41 @@ class CtrlInterface:
         while not rospy.is_shutdown(): 
 
             if(self.ctrl_mode == 0):     # STOP
+                print "stopped state, zero ctrl input"
                 delta_out = 0
                 dc_out = 0
             elif(self.ctrl_mode == 1):   # CRUISE CTRL
                 print "cruise control"
-            elif(self.ctrl_mode == 2):   # TAMP            
+                
+                while(not self.pathlocal_received):
+                    print("waiting for pathlocal")
+                    self.rate.sleep()
+                
+                # get lhpt
+                lhdist = 7
+                s_lh = self.state.s + lhdist
+                d_lh = self.cc_dref
+                
+                Xlh, Ylh = ptsFrenetToCartesian(np.array(s_lh), \
+                                                np.array(d_lh), \
+                                                np.array(self.pathlocal.X), \
+                                                np.array(self.pathlocal.Y), \
+                                                np.array(self.pathlocal.psi_c), \
+                                                np.array(self.pathlocal.s))
+                
+                rho_pp = self.pp_curvature(self.state.X,self.state.Y,self.state.psi,Xlh,Ylh)
+                delta_out = rho_pp*(self.lf + self.lr) # kinematic feed fwd
+                
+                k = 1000
+                dc_out = k*(self.cc_vxref - self.state.vx)
+                
+                
+            elif(self.ctrl_mode == 2):   # TAMP   
+                # wait for messages before entering main loop
+                while(not self.trajstar_received):
+                    print("waiting for trajstar")
+                    self.rate.sleep()
+                # get lhpt
                 lhpt_idx = 5;
                 lhpt = {"X": self.trajstar.X[lhpt_idx], "Y": self.trajstar.Y[lhpt_idx]}            
                 delta_out, dc_out = self.compute_tamp_ctrl(lhpt)
@@ -80,20 +124,12 @@ class CtrlInterface:
             # publish tuning info
             self.vx_errorpub.publish(self.vx_error)
             if (self.ctrl_mode in [1,2]):
-                m = self.getlhptmarker(lhpt)
+                m = self.getlhptmarker(Xlh,Ylh)
                 self.lhptpub.publish(m)
-            
 
             self.rate.sleep()
 
     def compute_tamp_ctrl(self,lhpt):
-          
-        #X = self.vehicle_out.x
-        #Y = self.vehicle_out.y
-        #psi = self.vehicle_out.yaw
-        #psidot = self.vehicle_out.r
-        vx = self.vehicle_out.vx
-        #vy = self.vehicle_out.vy
         
         # LATERAL CTRL
         # feedfwd
@@ -121,17 +157,24 @@ class CtrlInterface:
             dc_out = (Fx_request+Cr0)/Cm1 # not including aero
         
         # feedback (todo)
-        self.vx_error = self.trajstar.vx[1]-vx
+        self.vx_error = self.trajstar.vx[1]-self.state.vx
         
         return delta_out, dc_out
 
+#    def pp_curvature(self,lhpt,ego):
+#        deltaX = (lhpt["X"]-self.trajstar.X[0])
+#        deltaY = (lhpt["Y"]-self.trajstar.Y[0])
+#        lh_dist = np.sqrt(deltaX**2 + deltaY**2)
+#        lh_angle = np.arctan2(deltaY,deltaX) - self.trajstar.psi[0]
+#        rho_pp = 2*np.sin(lh_angle)/lh_dist     
+#        return rho_pp
 
-
-    def pp_curvature(self,lhpt):
-        deltaX = (lhpt["X"]-self.trajstar.X[0])
-        deltaY = (lhpt["Y"]-self.trajstar.Y[0])
+    def pp_curvature(self,Xego,Yego,psiego,Xlh,Ylh):
+        deltaX = (Xlh-Xego)
+        deltaY = (Ylh-Yego)
         lh_dist = np.sqrt(deltaX**2 + deltaY**2)
-        lh_angle = np.arctan2(deltaY,deltaX) - self.trajstar.psi[0]
+        lh_angle = np.arctan2(deltaY,deltaX) - psiego
+        #print "lh_angle = ", lh_angle
         rho_pp = 2*np.sin(lh_angle)/lh_dist     
         return rho_pp
 
@@ -152,12 +195,12 @@ class CtrlInterface:
 #                                       self.trajstar.Y[2+shift])
 
 
-    def getlhptmarker(lhpt):
+    def getlhptmarker(self,Xlh,Ylh):
         m = Marker()
         m.header.stamp = rospy.Time.now()
         m.header.frame_id = "map"
-        m.pose.position.x = lhpt["X"];
-        m.pose.position.y = lhpt["Y"];
+        m.pose.position.x = Xlh;
+        m.pose.position.y = Ylh;
         m.pose.position.z = 0.1;
         m.type = m.SPHERE;
         m.scale.x = 0.6;
@@ -171,12 +214,33 @@ class CtrlInterface:
 
     def trajstar_callback(self, msg):
         self.trajstar = msg
+        self.trajstar_received = True
+  
+    def pathlocal_callback(self, msg):
+        self.pathlocal = msg
+        self.pathlocal_received = True
     
     def vehicle_out_callback(self, msg):
-        self.vehicle_out = msg
+        self.state.X = msg.x
+        self.state.Y = msg.y
+        self.state.psi = msg.yaw
+        self.state.psidot = msg.r
+        self.state.vx = msg.vx
+        self.state.vy = msg.vy
+        
+        while(not self.pathlocal_received):
+            print("waiting for pathlocal")
+            self.rate.sleep()
+        self.state.s,self.state.d = ptsCartesianToFrenet(np.array(self.state.X), \
+                                                         np.array(self.state.Y), \
+                                                         np.array(self.pathlocal.X), \
+                                                         np.array(self.pathlocal.Y), \
+                                                         np.array(self.pathlocal.psi_c), \
+                                                         np.array(self.pathlocal.s))
+        
+        self.state_received = True
 
     def setStaticParams(self):
-        self.Cf = 1000000  # Todo compute from magic formula
         self.lf = rospy.get_param('/car/kinematics/b_F')
         self.lr = rospy.get_param('/car/kinematics/b_R')
 

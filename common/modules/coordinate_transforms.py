@@ -1,11 +1,15 @@
 import numpy as np
+from util import angleToContinous
+from util import angleToInterval
 
 def ptsFrenetToCartesian(s,d,Xpath,Ypath,psipath,spath): 
     # inputs and outputs are np arrays
     
     Xc = np.interp(s,spath,Xpath) # if needed, investigate spline interp to improve precision
     Yc = np.interp(s,spath,Ypath)
-    psic = np.interp(s,spath,psipath) 
+    psipath_cont = angleToContinous(psipath)
+    psic_cont = np.interp(s,spath,psipath_cont)
+    psic = angleToInterval(psic_cont)
     
     X = Xc - d*np.sin(psic);
     Y = Yc + d*np.cos(psic);

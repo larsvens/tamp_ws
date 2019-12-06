@@ -24,8 +24,8 @@ plt.rcParams['figure.figsize'] = 15, 5
 # params
 la = 200 # back of L shape
 lc = 50  # base of L shape
-Rb  = 7  # radius of curve at experiment turn
-R = 12   # radius at other turns 
+Rb  = 9  # radius of curve at experiment turn
+R = 15   # radius at other turns 
 lanewidth = 3.5
 
 # additional track info
