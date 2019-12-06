@@ -65,12 +65,6 @@ class CtrlInterface:
             print("waiting for state")
             self.rate.sleep()
 
-        # check if we are to bypass drivetrain dynamics
-        if(self.robot_name == "snowfox"):
-            self.bypass_drivetrain_dynamics = True
-        else:
-            self.bypass_drivetrain_dynamics = False
-
         # main loop
         while not rospy.is_shutdown(): 
 
@@ -78,41 +72,17 @@ class CtrlInterface:
                 print "stopped state, zero ctrl input"
                 delta_out = 0
                 dc_out = 0
-            elif(self.ctrl_mode == 1):   # CRUISE CTRL
-                print "cruise control"
-                
+            elif(self.ctrl_mode == 1):   # CRUISE CTRL             
                 while(not self.pathlocal_received):
                     print("waiting for pathlocal")
                     self.rate.sleep()
-                
-                # get lhpt
-                lhdist = 7
-                s_lh = self.state.s + lhdist
-                d_lh = self.cc_dref
-                
-                Xlh, Ylh = ptsFrenetToCartesian(np.array(s_lh), \
-                                                np.array(d_lh), \
-                                                np.array(self.pathlocal.X), \
-                                                np.array(self.pathlocal.Y), \
-                                                np.array(self.pathlocal.psi_c), \
-                                                np.array(self.pathlocal.s))
-                
-                rho_pp = self.pp_curvature(self.state.X,self.state.Y,self.state.psi,Xlh,Ylh)
-                delta_out = rho_pp*(self.lf + self.lr) # kinematic feed fwd
-                
-                k = 1000
-                dc_out = k*(self.cc_vxref - self.state.vx)
-                
-                
+                delta_out, dc_out, Xlh,Ylh = self.cc_ctrl()           
+                           
             elif(self.ctrl_mode == 2):   # TAMP   
-                # wait for messages before entering main loop
                 while(not self.trajstar_received):
                     print("waiting for trajstar")
-                    self.rate.sleep()
-                # get lhpt
-                lhpt_idx = 5;
-                lhpt = {"X": self.trajstar.X[lhpt_idx], "Y": self.trajstar.Y[lhpt_idx]}            
-                delta_out, dc_out = self.compute_tamp_ctrl(lhpt)
+                    self.rate.sleep()         
+                delta_out, dc_out, Xlh, Ylh = self.tamp_ctrl()
             else:
                 print "invalid ctrl_mode! ctrl_mode = ", self.ctrl_mode
     
@@ -126,48 +96,69 @@ class CtrlInterface:
             if (self.ctrl_mode in [1,2]):
                 m = self.getlhptmarker(Xlh,Ylh)
                 self.lhptpub.publish(m)
-
             self.rate.sleep()
-
-    def compute_tamp_ctrl(self,lhpt):
+    
+    def cc_ctrl(self):
+        # get lhpt
+        lhdist = 7 # todo determine from velocity
+        s_lh = self.state.s + lhdist
+        d_lh = self.cc_dref
+        
+        Xlh, Ylh = ptsFrenetToCartesian(np.array(s_lh), \
+                                        np.array(d_lh), \
+                                        np.array(self.pathlocal.X), \
+                                        np.array(self.pathlocal.Y), \
+                                        np.array(self.pathlocal.psi_c), \
+                                        np.array(self.pathlocal.s))
+        
+        rho_pp = self.pp_curvature(self.state.X,self.state.Y,self.state.psi,Xlh,Ylh)
+        delta_out = rho_pp*(self.lf + self.lr) # kinematic feed fwd
+        
+        self.vx_error = self.cc_vxref - self.state.vx
+        if(self.robot_name == "gotthard"):
+            k = 500
+        else: 
+            k = 1 # todo tune for rhino
+        dc_out = k*self.vx_error
+        return delta_out, dc_out, Xlh,Ylh
+        
+        
+    def tamp_ctrl(self):
         
         # LATERAL CTRL
-        # feedfwd
-        
+        # feedfwd        
         # compute local curvature of trajhat (rho)
-        rho_pp = self.pp_curvature(lhpt)
-        print "rho_pp =     ", rho_pp
-        
-        # compute control
-        delta_out = rho_pp*(self.lf + self.lr) # kinematic feed fwd
+        lhpt_idx = 5;
+        Xlh = self.trajstar.X[lhpt_idx]
+        Ylh = self.trajstar.Y[lhpt_idx]
+        rho_pp = self.pp_curvature(self.trajstar.X[0],
+                                   self.trajstar.Y[0],
+                                   self.trajstar.psi[0],
+                                   Xlh,
+                                   Ylh)
         
         # feedback
         # todo add feedback from yawrate
 
+        # compute control
+        delta_out = rho_pp*(self.lf + self.lr) # kinematic feed fwd
 
         # LONGITUDINAL CTRL
         # feedfwd
         Fx_request = self.trajstar.Fxf[0] + self.trajstar.Fxr[0]
-        if(self.bypass_drivetrain_dynamics):
-            dc_out = Fx_request
-        else:
+            
+        if(self.robot_name == "gotthard"):
             # feedfwd 
             Cr0 = 180
             Cm1 = 5000          
             dc_out = (Fx_request+Cr0)/Cm1 # not including aero
+        else:
+            dc_out = Fx_request
         
         # feedback (todo)
         self.vx_error = self.trajstar.vx[1]-self.state.vx
         
-        return delta_out, dc_out
-
-#    def pp_curvature(self,lhpt,ego):
-#        deltaX = (lhpt["X"]-self.trajstar.X[0])
-#        deltaY = (lhpt["Y"]-self.trajstar.Y[0])
-#        lh_dist = np.sqrt(deltaX**2 + deltaY**2)
-#        lh_angle = np.arctan2(deltaY,deltaX) - self.trajstar.psi[0]
-#        rho_pp = 2*np.sin(lh_angle)/lh_dist     
-#        return rho_pp
+        return delta_out, dc_out, Xlh, Ylh
 
     def pp_curvature(self,Xego,Yego,psiego,Xlh,Ylh):
         deltaX = (Xlh-Xego)
