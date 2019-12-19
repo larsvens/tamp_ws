@@ -116,7 +116,7 @@ void RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_uti
     for (uint k = 0; k < N; ++k)
     {
         //acadoVariables.y[k * NY + 0] = traj.s.at(k)+10;      // s (old)
-        acadoVariables.y[k * NY + 0] =  refs.sref.at(k) + 10;  // s
+        acadoVariables.y[k * NY + 0] =  refs.sref.at(k);  // s
         acadoVariables.y[k * NY + 1] = 0;                      // d
         //acadoVariables.y[k * NY + 2] = traj.deltapsi.at(k);  // deltapsi
         acadoVariables.y[k * NY + 2] = 0; // deltapsi test
@@ -131,7 +131,7 @@ void RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_uti
     }
     // set ref for final state
     //acadoVariables.yN[ 0 ] = traj.s.at(N)+10;                  // s (old)
-    acadoVariables.yN[ 0 ] = refs.sref.at(N)+10;               // s
+    acadoVariables.yN[ 0 ] = refs.sref.at(N);               // s
     acadoVariables.yN[ 1 ] = 0;                                // d
     acadoVariables.yN[ 2 ] = 0;                                // deltapsi
     acadoVariables.yN[ 3 ] = traj.psidot.at(N);                // psidot
@@ -302,6 +302,13 @@ planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_u
     if(state.vx < 1.0f){
         // get state at 0 in traj
         planning_util::state_at_idx_in_traj(traj, initstate, 0);
+        // adjust ctrl sequence
+//        float factor = 0.95f;
+//        for (uint k = 0; k < N; ++k){
+//            traj_out.Fyf.at(k) = factor*traj_out.Fyf.at(k);
+//            traj_out.Fxf.at(k) = factor*traj_out.Fxf.at(k);
+//            traj_out.Fxr.at(k) = factor*traj_out.Fxr.at(k);
+//        }
     } else {
         // get state at 1 in traj
         planning_util::state_at_idx_in_traj(traj, initstate, 1);

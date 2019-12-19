@@ -1,0 +1,48 @@
+# Experiment configuration
+
+t_activate: 1.0
+t_final: 500.0
+scenario_id: 2 # 1: pop-up, 2: reduced mu turn, 3: racing
+
+# pop-up obstacle config
+s_ego_at_popup:  50
+s_obs_at_popup: 70
+d_obs_at_popup: -1.75 
+
+### track config 
+track_name: "asta_zero" # todo pipe through at "simulation.cfg"
+#s_begin_mu_segments:  [0.0]
+#mu_segment_values:  [1.0]     # dry
+#mu_segment_values:  [0.6]   # wet
+
+s_begin_mu_segments:  [0.0, 200.0]
+mu_segment_values:  [1.0, 0.7]
+
+# cc config
+cc_vxref: 15
+cc_dref: -1.75
+
+### saarti algorithm config		
+
+# Reference mode, 
+# 0: minimize s
+# 1: maximize s
+ref_mode: 1 
+
+# Algorithm mode, 
+# 0: RTI
+# 1: SAA-RTI 
+sampling_augmentation: 0
+Ntrajs_rollout: 24 # default 24
+
+# Traction adaptation 
+# 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics)
+# 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics
+traction_adaptive: 0
+mu_nominal: 1.0 # used only when traction_adaptive = 0
+
+# optimization config
+Wx:  [100.0, 1.0, 1.0, 0.1, 0.1, 0.1]
+WNx: [100.0, 1.0, 1.0, 0.1, 0.1, 0.1]
+Wu: [0.1, 0.1, 0.1]
+Wslack: 100000000

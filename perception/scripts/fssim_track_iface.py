@@ -39,6 +39,10 @@ class TrackInterface:
         plot_track = False
         plot_orientation = False
         plot_dlbdub = False
+        plot_mu = False
+        self.s_begin_mu_segments = rospy.get_param('/s_begin_mu_segments')
+        self.mu_segment_values = rospy.get_param('/mu_segment_values')
+        self.N_mu_segments = len(self.s_begin_mu_segments)
         
         # wait for track
         while(not self.received_track):
@@ -217,7 +221,17 @@ class TrackInterface:
         dub = np.array(dub)
         dlb = np.array(dlb)      
         
-  
+        # set mu 
+        mu = []
+        for i in range(N): 
+            mu_ele = self.mu_segment_values[-1]
+            for j in range(self.N_mu_segments-1):
+                if(self.s_begin_mu_segments[j]-0.01 <= s[i] <= self.s_begin_mu_segments[j+1]):
+                    mu_ele = self.mu_segment_values[j]
+                    break                    
+            mu.append(mu_ele)
+        mu = np.array(mu)
+        
         # plot to see what we're doing  
         if plot_orientation:   
             fig, axs = plt.subplots(3,1)
@@ -253,6 +267,11 @@ class TrackInterface:
             #axs[2]([np.min(dlb),np.max(dub)])
             plt.show()
         
+        if plot_mu:
+            fig, ax = plt.subplots()
+            ax.plot(s,mu,'.b')
+            plt.show()        
+
         # put all in message and publish
         self.pathglobal.X = fcl_X
         self.pathglobal.Y = fcl_Y
@@ -261,12 +280,7 @@ class TrackInterface:
         self.pathglobal.kappa_c = kappac_out
         self.pathglobal.kappaprime_c = kappacprime_out
         self.pathglobal.theta_c = np.zeros(N) # grade/bank implement later
-        
-        mu_nominal = 1.5# todo read from config file
-        mu_slipery = 1.0
-        self.pathglobal.mu = (mu_slipery)*np.ones(N) 
-        for i in range(80): ## TMP test
-            self.pathglobal.mu[i] = mu_nominal
+        self.pathglobal.mu = mu
         self.pathglobal.dub = dub
         self.pathglobal.dlb = dlb
         

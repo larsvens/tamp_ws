@@ -147,7 +147,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             std::chrono::duration<double, std::milli> t_rollout = t2_rollout - t1_rollout;
 
             // checks on trajhat
-            float vmax = 30; // m/s todo get from param
+            float vmax = 50; // m/s todo get from param
             for (uint k=0; k<trajhat.s.size()-1;k++) {
                 if (trajhat.s.at(k+1)-trajhat.s.at(k) <= 0 ) {
                     ROS_ERROR_STREAM("trajhat.s is not monotonically increasing");

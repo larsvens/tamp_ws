@@ -15,6 +15,8 @@ from visualization_msgs.msg import Marker
 from std_msgs.msg import Float32
 from coordinate_transforms import ptsCartesianToFrenet
 from coordinate_transforms import ptsFrenetToCartesian
+from std_msgs.msg import Int16
+
 class CtrlInterface:
     def __init__(self):
         
@@ -26,6 +28,7 @@ class CtrlInterface:
         self.trajstarsub = rospy.Subscriber("trajstar", Trajectory, self.trajstar_callback)
         self.pathlocalsub = rospy.Subscriber("pathlocal", Path, self.pathlocal_callback)
         self.vehicle_out_sub = rospy.Subscriber("/fssim/base_pose_ground_truth", fssimState, self.vehicle_out_callback)
+        self.ctrlmodesub = rospy.Subscriber("ctrl_mode", Int16, self.ctrl_mode_callback)
         self.vehicleinpub = rospy.Publisher('/fssim/cmd', Cmd, queue_size=10)
         self.lhptpub = rospy.Publisher('/lhpt_vis', Marker, queue_size=1)
         self.vx_errorpub = rospy.Publisher('/vx_error_vis', Float32, queue_size=1)
@@ -39,23 +42,17 @@ class CtrlInterface:
         self.vehicle_in = Cmd()
         self.trajstar = Trajectory()
         self.pathlocal = Path()
+        self.ctrl_mode = 0 # 0: stop, 1: cruise_ctrl, 2: tamp 
         self.trajstar_received = False
         self.pathlocal_received = False
         self.state_received = False
         
         # ctrl errors
         self.vx_error = Float32()
-
-        # TODO GET FROM MESSAGE
-        # mode in state machine 
-        # 0: stop
-        # 1: cruise_ctrl
-        # 2: tamp 
-        self.ctrl_mode = 1
         
-        # TODO GET FROM PARAM
-        self.cc_vxref = 15
-        self.cc_dref = -1.75        
+        # get cc setpoint
+        self.cc_vxref = rospy.get_param('/cc_vxref')
+        self.cc_dref = rospy.get_param('/cc_dref')
         
         # delay sim variable
         self.delta_out_FIFO = []
@@ -80,7 +77,9 @@ class CtrlInterface:
                            
             elif(self.ctrl_mode == 2):   # TAMP   
                 while(not self.trajstar_received):
-                    print("waiting for trajstar")
+                    print("waiting for trajstar, stopping")
+                    delta_out = 0
+                    dc_out = 0
                     self.rate.sleep()         
                 delta_out, dc_out, Xlh, Ylh = self.tamp_ctrl()
             else:
@@ -218,7 +217,7 @@ class CtrlInterface:
         self.state.psidot = msg.r
         self.state.vx = msg.vx
         self.state.vy = msg.vy
-        
+      
         while(not self.pathlocal_received):
             print("waiting for pathlocal")
             self.rate.sleep()
@@ -230,6 +229,9 @@ class CtrlInterface:
                                                          np.array(self.pathlocal.s))
         
         self.state_received = True
+
+    def ctrl_mode_callback(self, msg):
+        self.ctrl_mode = msg.data
 
     def setStaticParams(self):
         self.lf = rospy.get_param('/car/kinematics/b_F')

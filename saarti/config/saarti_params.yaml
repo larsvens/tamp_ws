@@ -6,27 +6,4 @@
 dt: 0.1 # replanning rate
 cutoff_speed: 0.5
 
-# Reference mode, 
-# 0: minimize s
-# 1: maximize s
-ref_mode: 1 
-
-# Algorithm mode, 
-# 0: RTI
-# 1: SAA-RTI 
-sampling_augmentation: 1
-Ntrajs_rollout: 24 # default 24
-
-# Traction adaptation 
-# 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics)
-# 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics
-traction_adaptive: 0
-mu_nominal: 1.0 # used only when traction_adaptive = 0
-
-# optimization config
-Wx:  [100.0, 1.0, 1.0, 0.1, 0.1, 0.1]
-WNx: [100.0, 1.0, 1.0, 0.1, 0.1, 0.1]
-Wu: [0.1, 0.1, 0.1]
-Wslack: 100000000
-
 

@@ -23,9 +23,9 @@ plt.rcParams['figure.figsize'] = 15, 5
 
 # params
 la = 200 # back of L shape
-lc = 50  # base of L shape
-Rb  = 9  # radius of curve at experiment turn
-R = 15   # radius at other turns 
+lc = 70  # base of L shape
+Rb  = 22  # radius of curve at experiment turn
+R = 30   # radius at other turns 
 lanewidth = 3.5
 
 # additional track info
@@ -35,7 +35,7 @@ cones_orange_big_X = np.array([4.7, 4.7, 7.3, 7.3])
 cones_orange_big_Y = np.array([4.0, -4.0, 4.0, -4.0])
 tk_device_X = np.array([6.0, 6.0])
 tk_device_Y = np.array([4.5, -4.5])
-starting_pose_front_wing = np.array([0.0, 0.0, 0.0])
+starting_pose_front_wing = np.array([0.01, 0.0, 0.0]) # small adjust to avoid negative s
 
 # section a 
 Na = la # default 1 node per meter
