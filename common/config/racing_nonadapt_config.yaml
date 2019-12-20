@@ -2,18 +2,18 @@
 
 t_activate: 1.0
 t_final: 500.0
-scenario_id: 2 # 1: pop-up, 2: reduced mu turn, 3: racing
+scenario_id: 3 # 1: pop-up, 2: reduced mu turn, 3: racing
 
 # pop-up obstacle config
 s_ego_at_popup:  50
 s_obs_at_popup: 75
-d_obs_at_popup: -1.75 
+d_obs_at_popup: -2.25 #-1.75 
 
 ### track config 
 track_name: "asta_zero" # todo pipe through at "simulation.cfg"
-s_begin_mu_segments:  [0.0, 200.0]
-mu_segment_values:  [1.0, 0.7]
-
+s_begin_mu_segments:  [0.0]
+mu_segment_values:  [1.0]     # dry
+#mu_segment_values:  [0.6]   # wet
 
 # cc config
 cc_vxref: 15
@@ -24,7 +24,7 @@ cc_dref: -1.75
 # Reference mode, 
 # 0: minimize s
 # 1: maximize s
-ref_mode: 1 
+ref_mode: 1
 
 # Algorithm mode, 
 # 0: RTI

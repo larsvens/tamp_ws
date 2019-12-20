@@ -50,7 +50,8 @@ class ExperimentManager:
         self.obsvispub = rospy.Publisher('/obs_vis', Marker, queue_size=1)
         self.tireparampub = rospy.Publisher('/tire_params', TireParams, queue_size=1)
         self.ctrl_mode_pub = rospy.Publisher('/ctrl_mode', Int16, queue_size=1)
-                     
+        self.statetextmarkerpub = rospy.Publisher('/state_text_marker', Marker, queue_size=1)        
+        
         # init internal variables
         self.pathglobal = Path()
         self.received_pathglobal = False
@@ -59,7 +60,7 @@ class ExperimentManager:
 
         while(not self.received_pathglobal):
             print("waiting for pathglobal")
-            time.sleep(self.dt)
+            time.sleep(self.dt*100)
 
         # init experiment variables
         self.scenario_id = rospy.get_param('/scenario_id')
@@ -95,18 +96,19 @@ class ExperimentManager:
                         break
                 if(s_ego >= self.s_begin_mu_segments[-1]):
                     self.mu_segment_idx = self.N_mu_segments-1
-                      
-                print "s_ego =              ", s_ego
+                mu = self.mu_segment_values[self.mu_segment_idx] 
+
+                #print "s_ego =              ", s_ego
                 #print "state.s =            ", self.state.s
                 #print "self.N_mu_segments = ", self.N_mu_segments
-                print "mu_segment_idx =     ", self.mu_segment_idx
-                print "mu in this section = ", self.mu_segment_values[self.mu_segment_idx] 
+                #print "mu_segment_idx =     ", self.mu_segment_idx
+                #print "mu in this section = ", self.mu_segment_values[self.mu_segment_idx] 
                 
                 # only vary D for now
                 self.tireparams.tire_coefficient = 1.0 
                 self.tireparams.B = 10
                 self.tireparams.C = 1.9
-                self.tireparams.D = -self.mu_segment_values[self.mu_segment_idx] 
+                self.tireparams.D = -mu
                 self.tireparams.E = 1.0            
                 self.tireparams.header.stamp = rospy.Time.now()
                 self.tireparampub.publish(self.tireparams)
@@ -114,13 +116,13 @@ class ExperimentManager:
                 # POPUP SCENARIO
                 if (self.scenario_id == 1):
                     self.ctrl_mode = 1 # cruise control
-                    m = self.getobstaclemarker(Xobs,Yobs,self.obs.R[0])
-                    m.color.a = 0.3 # transparent before detect
+                    m_obs = self.getobstaclemarker(Xobs,Yobs,self.obs.R[0])
+                    m_obs.color.a = 0.3 # transparent before detect
                     if (self.state.s >= self.s_ego_at_popup):
                         self.obspub.publish(self.obs)
-                        m.color.a = 1.0 # non-transparent after detect
+                        m_obs.color.a = 1.0 # non-transparent after detect
                         self.ctrl_mode = 2 # tamp
-                    self.obsvispub.publish(m)
+                    self.obsvispub.publish(m_obs)
                 
                 # REDUCED MU TURN
                 elif(self.scenario_id == 2):
@@ -129,10 +131,12 @@ class ExperimentManager:
                 # RACING
                 else:
                     self.ctrl_mode = 2 # tamp
-                    
-
-            # publish 
-            self.ctrl_mode_pub.publish(self.ctrl_mode)
+                self.ctrl_mode_pub.publish(self.ctrl_mode)
+                
+                # publish text marker (state info)
+                state_text = "vx: " + "%.3f" % self.state.vx + "\n"  \
+                             "mu: " + "%.3f" % mu            
+                self.statetextmarkerpub.publish(self.gettextmarker(state_text))
             
             # handle simtime
             self.t += self.dt
@@ -165,6 +169,24 @@ class ExperimentManager:
         m.scale.z = height;
         m.color.a = 1.0; 
         m.color.r = 1.0;
+        m.color.g = 0.0;
+        m.color.b = 0.0;
+        return m
+
+    def gettextmarker(self,text):
+        m = Marker()
+        m.header.stamp = rospy.Time.now()
+        m.header.frame_id = "fssim/vehicle/base_link"
+        m.pose.position.x = 0;
+        m.pose.position.y = 0;
+        m.pose.position.z = 5.0;
+        m.type = m.TEXT_VIEW_FACING;
+        m.text = text
+        m.scale.x = 0.5;
+        m.scale.y = 0.5;
+        m.scale.z = 0.5;
+        m.color.a = 1.0; 
+        m.color.r = 0.0;
         m.color.g = 0.0;
         m.color.b = 0.0;
         return m

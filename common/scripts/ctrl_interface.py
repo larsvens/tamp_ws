@@ -116,8 +116,11 @@ class CtrlInterface:
         self.vx_error = self.cc_vxref - self.state.vx
         if(self.robot_name == "gotthard"):
             k = 500
+        elif(self.robot_name == "rhino"):
+            k = 1500
         else: 
-            k = 1 # todo tune for rhino
+            k = 0
+            print "ERROR: incorrect /robot_name"
         dc_out = k*self.vx_error
         return delta_out, dc_out, Xlh,Ylh
         
@@ -151,8 +154,11 @@ class CtrlInterface:
             Cr0 = 180
             Cm1 = 5000          
             dc_out = (Fx_request+Cr0)/Cm1 # not including aero
+        elif(self.robot_name == "rhino"):
+            dc_out = Fx_request
         else:
             dc_out = Fx_request
+            print "ERROR: incorrect /robot_name"
         
         # feedback (todo)
         self.vx_error = self.trajstar.vx[1]-self.state.vx
