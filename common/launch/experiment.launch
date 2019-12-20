@@ -1,10 +1,9 @@
 <!-- Runs single experiment. Experiment configuration in: single_experiment_config.yaml-->
 
 <launch>
-     <!-- todo simtime here 
-     <param name="use_sim_time" value="true" />
-     -->
-     <rosparam command="load" file="$(find common)/config/popup_nonadapt_config.yaml" />
+     <!-- take experiment config file as argument --> 
+     <arg name="exp_config" default="popup_nonadapt_config.yaml"/>
+     <rosparam command="load" file="$(find common)/config/$(arg exp_config)" />
 
      <!-- experiment manager -->
      <node pkg="common" type="experiment_manager.py" name="experiment_manager"  required="true" output="screen"> </node>
@@ -13,7 +12,6 @@
      <node pkg="perception" type="fssim_track_iface.py" name="fssim_track_iface" > </node>
      <node pkg="perception" type="stateestimation.py" name="stateestimation"> </node>
      <node pkg="perception" type="perception.py" name="perception"> </node>
-     <!--<node pkg="perception" type="object_detection.py" name="object_detection"> </node> -->
 
      <!-- outputs from saarti -->     
      <!-- <node pkg="common" type="ctrl_interface.py" name="ctrl_interface"> </node> -->

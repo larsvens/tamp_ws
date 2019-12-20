@@ -126,7 +126,6 @@ class ExperimentManager:
                 elif(self.scenario_id == 2):
                     self.ctrl_mode = 1 # cruise control
                     
-                    
                 # RACING
                 else:
                     self.ctrl_mode = 2 # tamp

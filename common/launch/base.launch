@@ -1,6 +1,0 @@
-<launch>
-     <node pkg="common" type="dummy_trajhat_publisher.py" name="dummy_trajhat_publisher"> </node>
-     <node pkg="perception" type="localization_and_state_est.py" name="localization_and_state_est"> </node>
-     <node pkg="perception" type="object_detection.py" name="object_detection"> </node>
-     <node pkg="vehicle_models" type="simple_vehicle.py" name="simple_vehicle"> </node>
-</launch>
