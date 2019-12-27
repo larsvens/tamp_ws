@@ -79,6 +79,7 @@ public:
                         planning_util::staticparamstruct & sp,
                         int adaptive_mode,
                         float mu_nominal,
+                        float vxref_nominal,
                         planning_util::refstruct ref_mode,
                         uint Ntrajs);
     void rolloutSingleTraj(planning_util::trajstruct  &traj,

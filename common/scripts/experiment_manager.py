@@ -126,7 +126,10 @@ class ExperimentManager:
                 
                 # REDUCED MU TURN
                 elif(self.scenario_id == 2):
-                    self.ctrl_mode = 1 # cruise control
+                    self.ctrl_mode = 1 # pp cruise control from standstill
+                    if(self.state.vx > 5):
+                        self.ctrl_mode = 2 # tamp cruise control when we get up to speed
+                    
                     
                 # RACING
                 else:

@@ -96,6 +96,8 @@ struct refstruct{
     int ref_mode;
     std::vector<float> sref;
     std::vector<float> vxref_path;
+    float vxref_cc;
+    float dref_cc;
 };
 
 // static params container

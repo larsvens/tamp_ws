@@ -55,6 +55,7 @@ private:
 
     // params
     float mu_nominal_; // only used for nonadaptive case
+    float vxref_cc_; // only used for velocity keeping (refmode 1)
     int Ntrajs_rollout_;
     vector<float> Wx_;
     vector<float> WNx_;
@@ -83,7 +84,7 @@ private:
 
     // functions
     void print_obj(planning_util::trajstruct traj);
-    planning_util::refstruct setRefs(int ref_mode_, int traction_adaptive_, float mu_nominal_, planning_util::staticparamstruct sp_, planning_util::pathstruct pathlocal_);
+    planning_util::refstruct setRefs(int ref_mode_, int traction_adaptive_, float mu_nominal_, float vx_ref_nominal, planning_util::staticparamstruct sp_, planning_util::pathstruct pathlocal_);
     void traj2cart(planning_util::trajstruct &traj);
     void trajset2cart();
     void sd_pts2cart(vector<float> &s, vector<float> &d, vector<float> &Xout, vector<float> &Yout);

@@ -155,7 +155,7 @@ class CtrlInterface:
             Cm1 = 5000          
             dc_out = (Fx_request+Cr0)/Cm1 # not including aero
         elif(self.robot_name == "rhino"):
-            dc_out = Fx_request
+            dc_out = 10*Fx_request
         else:
             dc_out = Fx_request
             print "ERROR: incorrect /robot_name"

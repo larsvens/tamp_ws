@@ -110,7 +110,7 @@ void RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_uti
     vector<float> sref = refs.sref;
     //vector<float> vxref = refs.vxref;
 
-    // TODO: rm vx-ref
+
 
     // set ref for intermediate states and controls
     for (uint k = 0; k < N; ++k)
@@ -120,13 +120,13 @@ void RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_uti
         acadoVariables.y[k * NY + 1] = 0;                      // d
         //acadoVariables.y[k * NY + 2] = traj.deltapsi.at(k);  // deltapsi
         acadoVariables.y[k * NY + 2] = 0; // deltapsi test
-        acadoVariables.y[k * NY + 3] = traj.psidot.at(k);      // psidot
-        acadoVariables.y[k * NY + 4] = traj.vx.at(k);          // vx
-        acadoVariables.y[k * NY + 5] = traj.vy.at(k);          // vy
+        acadoVariables.y[k * NY + 3] = 0;      // psidot
+        acadoVariables.y[k * NY + 4] = 15.0; //traj.vx.at(k);          // vx
+        acadoVariables.y[k * NY + 5] = 0;          // vy
         acadoVariables.y[k * NY + 6] = 0.0;                    // dummy
-        acadoVariables.y[k * NY + 7] = traj.Fyf.at(k);         // Fyf
-        acadoVariables.y[k * NY + 8] = traj.Fxf.at(k);         // Fxf
-        acadoVariables.y[k * NY + 9] = traj.Fxr.at(k);         // Fxf
+        acadoVariables.y[k * NY + 7] = 0;         // Fyf
+        acadoVariables.y[k * NY + 8] = 0;         // Fxf
+        acadoVariables.y[k * NY + 9] = 0;         // Fxf
         acadoVariables.y[k * NY + 10] = 0.0;                   // slack
     }
     // set ref for final state
@@ -134,9 +134,9 @@ void RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_uti
     acadoVariables.yN[ 0 ] = refs.sref.at(N);               // s
     acadoVariables.yN[ 1 ] = 0;                                // d
     acadoVariables.yN[ 2 ] = 0;                                // deltapsi
-    acadoVariables.yN[ 3 ] = traj.psidot.at(N);                // psidot
-    acadoVariables.yN[ 4 ] = traj.vx.at(N);                    // vx
-    acadoVariables.yN[ 5 ] = traj.vy.at(N);                    // vy
+    acadoVariables.yN[ 3 ] = 0;                // psidot
+    acadoVariables.yN[ 4 ] = 15.0; //traj.vx.at(N);                    // vx
+    acadoVariables.yN[ 5 ] = 0;                    // vy
     acadoVariables.yN[ 6 ] = 0;                                // dummy
 }
 
@@ -237,8 +237,10 @@ void RtisqpWrapper::setInitialState(planning_util::statestruct state){
     acadoVariables.x0[0] = state.s;
     acadoVariables.x0[1] = state.d;
     acadoVariables.x0[2] = state.deltapsi;
+    //acadoVariables.x0[3] = 0.0;//state.psidot;
     acadoVariables.x0[3] = state.psidot;
     acadoVariables.x0[4] = state.vx;
+    //acadoVariables.x0[5] = 0.0;
     acadoVariables.x0[5] = state.vy;
     acadoVariables.x0[6] = 0.0; // dummy
 }
@@ -511,6 +513,7 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                                    planning_util::staticparamstruct & sp,
                                    int traction_adaptive,
                                    float mu_nominal,
+                                   float vxref_nominal,
                                    planning_util::refstruct refs,
                                    uint Ntrajs){
     if(Ntrajs % 2 !=0){
@@ -572,10 +575,12 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                 // interp to get mu from pathlocal at rollingstate.s
                 vector<float> mu_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.mu,false);
                 mu = mu_vec.at(0);
+                //cout << "selecting mu from pathlocal" << endl;
             } else { // (traction_adaptive == 0)
                 Fzf = (1.0f/(sp.lf+sp.lr))*(sp.m*sp.g*sp.lr);
                 Fzr = (1.0f/(sp.lf+sp.lr))*(sp.m*sp.g*sp.lf);
                 mu = mu_nominal;
+                //cout << "selecting mu nominal" << endl;
             }
 
             // compute max horizontal forces front and back
@@ -583,8 +588,15 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             float Frmax = mu*Fzr;
 
             // get local vxref and vxerror
-            vector<float> vxrefv = cpp_utils::interp({rollingstate.s},pathlocal.s,refs.vxref_path,false);
-            float vxref = vxrefv.at(0)*0.8f; // tmp!
+            float vxref;
+            if(refs.ref_mode == 1){ // cc
+                vxref = vxref_nominal;
+            } else if(refs.ref_mode == 2) { // max s
+                vector<float> vxrefv = cpp_utils::interp({rollingstate.s},pathlocal.s,refs.vxref_path,false);
+                vxref = vxrefv.at(0)*0.8f; // tmp!
+            } else {
+                vxref = 0; // minimize s (refmode 0)
+            }
             float vxerror = vxref-rollingstate.vx;
 
             // select Fyf
@@ -609,7 +621,7 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             if (refs.ref_mode == 0){ // minimize s
                 // select max negative Fxf until stop
                 ctrl.Fxf = -Fxfmax;
-            } else if (refs.ref_mode == 1){ // maximize s
+            } else if (refs.ref_mode == 1 || refs.ref_mode == 2){ // maximize s or cc
                 if(vxerror > 0){ // accelerating
                     ctrl.Fxf = 0; // rear wheel drive - no drive on front wheel
                 } else { // braking
@@ -619,22 +631,22 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                     }
                 }
             }
-
             // select Fxr
             float Fxrmax = mu*Fzr;
             if (refs.ref_mode == 0){ // minimize s
                 ctrl.Fxr = -Fxrmax;
-            } else if (refs.ref_mode == 1){ // maximize s
+            } else if (refs.ref_mode == 1 || refs.ref_mode == 2){ // maximize s or cc
 
-                uint range = 100; // how far ahead in pathlocal to look for kappamax
-                float kappamaxabs = 0.000001f;
-                for (uint i=0;i<range;i++){
-                    if(std::abs(pathlocal.kappa_c.at(i))>kappamaxabs){
-                        kappamaxabs = std::abs(pathlocal.kappa_c.at(i));
-                    }
-                }
+//                uint range = 100; // how far ahead in pathlocal to look for kappamax
+//                float kappamaxabs = 0.000001f;
+//                for (uint i=0;i<range;i++){
+//                    if(std::abs(pathlocal.kappa_c.at(i))>kappamaxabs){
+//                        kappamaxabs = std::abs(pathlocal.kappa_c.at(i));
+//                    }
+//                }
 
                 ctrl.Fxr = 1000*vxerror;
+                // saturate
                 if(ctrl.Fxr >= Frmax){
                     ctrl.Fxr = Frmax;
                 }
@@ -650,6 +662,7 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             if (rollingstate.vx < 0.5f && ctrl.Fxr < 0){
                 ctrl.Fxr = 0;
             }
+            cout << "rollingstate.vx = " << rollingstate.vx << endl;
 
             // set controls
             acadoWSstate[84] = ctrl.Fyf;
