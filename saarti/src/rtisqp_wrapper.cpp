@@ -109,34 +109,31 @@ void RtisqpWrapper::setInitialGuess(planning_util::trajstruct traj){
 void RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_util::refstruct refs){
     vector<float> sref = refs.sref;
     //vector<float> vxref = refs.vxref;
-
+    // todo rm traj
 
 
     // set ref for intermediate states and controls
     for (uint k = 0; k < N; ++k)
     {
-        //acadoVariables.y[k * NY + 0] = traj.s.at(k)+10;      // s (old)
-        acadoVariables.y[k * NY + 0] =  refs.sref.at(k);  // s
-        acadoVariables.y[k * NY + 1] = 0;                      // d
-        //acadoVariables.y[k * NY + 2] = traj.deltapsi.at(k);  // deltapsi
-        acadoVariables.y[k * NY + 2] = 0; // deltapsi test
-        acadoVariables.y[k * NY + 3] = 0;      // psidot
-        acadoVariables.y[k * NY + 4] = 15.0; //traj.vx.at(k);          // vx
-        acadoVariables.y[k * NY + 5] = 0;          // vy
+        acadoVariables.y[k * NY + 0] = refs.sref.at(k);        // s
+        acadoVariables.y[k * NY + 1] = refs.dref_cc;           // d
+        acadoVariables.y[k * NY + 2] = 0;                      // deltapsi test
+        acadoVariables.y[k * NY + 3] = 0;                      // psidot
+        acadoVariables.y[k * NY + 4] = refs.vxref_cc;          // vx
+        acadoVariables.y[k * NY + 5] = 0;                      // vy
         acadoVariables.y[k * NY + 6] = 0.0;                    // dummy
-        acadoVariables.y[k * NY + 7] = 0;         // Fyf
-        acadoVariables.y[k * NY + 8] = 0;         // Fxf
-        acadoVariables.y[k * NY + 9] = 0;         // Fxf
+        acadoVariables.y[k * NY + 7] = 0;                      // Fyf
+        acadoVariables.y[k * NY + 8] = 0;                      // Fxf
+        acadoVariables.y[k * NY + 9] = 0;                      // Fxf
         acadoVariables.y[k * NY + 10] = 0.0;                   // slack
     }
     // set ref for final state
-    //acadoVariables.yN[ 0 ] = traj.s.at(N)+10;                  // s (old)
-    acadoVariables.yN[ 0 ] = refs.sref.at(N);               // s
-    acadoVariables.yN[ 1 ] = 0;                                // d
+    acadoVariables.yN[ 0 ] = refs.sref.at(N);                  // s
+    acadoVariables.yN[ 1 ] = refs.dref_cc;                     // d
     acadoVariables.yN[ 2 ] = 0;                                // deltapsi
-    acadoVariables.yN[ 3 ] = 0;                // psidot
-    acadoVariables.yN[ 4 ] = 15.0; //traj.vx.at(N);                    // vx
-    acadoVariables.yN[ 5 ] = 0;                    // vy
+    acadoVariables.yN[ 3 ] = 0;                                // psidot
+    acadoVariables.yN[ 4 ] = refs.vxref_cc;                    // vx
+    acadoVariables.yN[ 5 ] = 0;                                // vy
     acadoVariables.yN[ 6 ] = 0;                                // dummy
 }
 

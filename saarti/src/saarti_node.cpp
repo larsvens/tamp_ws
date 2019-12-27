@@ -72,7 +72,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
          */
 
             // set refs
-            refs_ = setRefs(ref_mode_,traction_adaptive_,mu_nominal_,vxref_cc_,sp_,pathlocal_); // 0: min s, 1: max s,
+            refs_ = setRefs(ref_mode_,traction_adaptive_,mu_nominal_,vxref_cc_,dref_cc_,sp_,pathlocal_); // 0: min s, 1: max s,
 
             ROS_INFO_STREAM("selecting initial guess");
             trajset_.clear();
@@ -311,7 +311,8 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 planning_util::refstruct SAARTI::setRefs(int ref_mode,
                                          int traction_adaptive,
                                          float mu_nominal,
-                                         float vx_ref_nominal,
+                                         float vxref_cc,
+                                         float dref_cc,
                                          planning_util::staticparamstruct sp,
                                          planning_util::pathstruct pathlocal){
     planning_util::refstruct refs;
@@ -326,9 +327,11 @@ planning_util::refstruct SAARTI::setRefs(int ref_mode,
     {
         float sref_elmt = state_.s;
         for (uint k=0;k<N+1;k++){
-            sref_elmt += vx_ref_nominal*dt_integrator_;
+            sref_elmt += vxref_cc*dt_integrator_;
             refs.sref.push_back(sref_elmt);
         }
+        refs.vxref_cc = vxref_cc;
+        refs.dref_cc = dref_cc;
         break;
     }
     case 2: // maximize s (racing)
@@ -730,6 +733,9 @@ void SAARTI::get_rosparams(){
     }
     if(!nh_.getParam("/cc_vxref", vxref_cc_)){
         ROS_ERROR_STREAM("failed to load param /cc_vxref");
+    }
+    if(!nh_.getParam("/cc_dref", dref_cc_)){
+        ROS_ERROR_STREAM("failed to load param /cc_dref");
     }
     // rollout config
     nh_.getParam("/Ntrajs_rollout", Ntrajs_rollout_);
