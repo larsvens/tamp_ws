@@ -597,9 +597,10 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             float vxerror = vxref-rollingstate.vx;
 
             // select Fyf
+            // todo: params for tuning separate platforms
             float feedfwd = 0.5f*sp.m*rollingstate.vx*rollingstate.vx*kappac*std::cos(rollingstate.deltapsi) ;
             float derror = dref.at(i) - rollingstate.d;
-            float feedback = 200*derror - 1500*rollingstate.deltapsi;
+            float feedback = 5000*derror - 500*rollingstate.deltapsi;
             ctrl.Fyf = feedfwd + feedback;
             //cout << "feedfwd = " << feedfwd << endl;
             //cout << "feedback = " << feedback << endl;
@@ -634,14 +635,6 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                 ctrl.Fxr = -Fxrmax;
             } else if (refs.ref_mode == 1 || refs.ref_mode == 2){ // maximize s or cc
 
-//                uint range = 100; // how far ahead in pathlocal to look for kappamax
-//                float kappamaxabs = 0.000001f;
-//                for (uint i=0;i<range;i++){
-//                    if(std::abs(pathlocal.kappa_c.at(i))>kappamaxabs){
-//                        kappamaxabs = std::abs(pathlocal.kappa_c.at(i));
-//                    }
-//                }
-
                 ctrl.Fxr = 1000*vxerror;
                 // saturate
                 if(ctrl.Fxr >= Frmax){
@@ -659,7 +652,6 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             if (rollingstate.vx < 0.5f && ctrl.Fxr < 0){
                 ctrl.Fxr = 0;
             }
-            cout << "rollingstate.vx = " << rollingstate.vx << endl;
 
             // set controls
             acadoWSstate[84] = ctrl.Fyf;
@@ -669,22 +661,36 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
 
             if (is_initstate){
                 // set init state in integrator
-                RtisqpWrapper::setIntegratorState(acadoWSstate,rollingstate,ctrl,kappac);
+
+                // state
+                acadoWSstate[0] = rollingstate.s;
+                acadoWSstate[1] = rollingstate.d;
+                acadoWSstate[2] = rollingstate.deltapsi;
+                acadoWSstate[3] = rollingstate.psidot;
+                acadoWSstate[4] = rollingstate.vx;
+                acadoWSstate[5] = rollingstate.vy;
+                acadoWSstate[6] = 0.0; // dummy state
+                // ctrl
+                acadoWSstate[84] = ctrl.Fyf;
+                acadoWSstate[85] = ctrl.Fxf;
+                acadoWSstate[86] = ctrl.Fxr;
+                acadoWSstate[87] = 0.0; // slack
+                // onlinedata
+                acadoWSstate[88] = kappac;
                 is_initstate = false;
             }
-            else {
-                // integrate fwd
-                auto t1_intgr = std::chrono::high_resolution_clock::now();
-                if(!integrator_initiated){
-                    acado_integrate(acadoWSstate,1);
-                    integrator_initiated = true;
-                } else {
-                    acado_integrate(acadoWSstate,0);
-                }
-                auto t2_intgr = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double, std::milli> t_intgr = t2_intgr - t1_intgr;
-                t_intgr_tot += t_intgr.count();
+
+            // integrate fwd
+            auto t1_intgr = std::chrono::high_resolution_clock::now();
+            if(!integrator_initiated){
+                acado_integrate(acadoWSstate,1);
+                integrator_initiated = true;
+            } else {
+                acado_integrate(acadoWSstate,0);
             }
+            auto t2_intgr = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> t_intgr = t2_intgr - t1_intgr;
+            t_intgr_tot += t_intgr.count();
 
             // set rollingstate for computing control errors
             rollingstate.s = acadoWSstate[0];
@@ -725,29 +731,4 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
     }
 }
 
-// TODO move to acado helper
-void RtisqpWrapper::setIntegratorState(real_t *acadoWSstate,
-                                       planning_util::statestruct state,
-                                       planning_util::ctrlstruct ctrl,
-                                       float kappac){
-    // state
-    acadoWSstate[0] = state.s;
-    acadoWSstate[1] = state.d;
-    acadoWSstate[2] = state.deltapsi;
-    acadoWSstate[3] = state.psidot;
-    acadoWSstate[4] = state.vx;
-    acadoWSstate[5] = state.vy;
-    acadoWSstate[6] = 0.0; // dummy state
-    // ctrl
-    acadoWSstate[84] = ctrl.Fyf;
-    acadoWSstate[85] = ctrl.Fxf;
-    acadoWSstate[86] = ctrl.Fxr;
-    acadoWSstate[87] = 0.0; // slack
-    // onlinedata
-    acadoWSstate[88] = kappac;
-//    acadoWSstate[82] = 0.0; // slb
-//    acadoWSstate[83] = 0.0; // sub
-//    acadoWSstate[84] = 0.0; // dlb
-//    acadoWSstate[85] = 0.0; // dub
-}
 

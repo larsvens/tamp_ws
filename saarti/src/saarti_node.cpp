@@ -712,10 +712,10 @@ void SAARTI::get_rosparams(){
 
     // general
     if(!nh_.getParam("/dt", dt_)){
-        ROS_ERROR_STREAM("failed to load param Wx");
+        ROS_ERROR_STREAM("failed to load param /dt");
     }
     if(!nh_.getParam("/cutoff_speed", cutoff_speed_)){
-        ROS_ERROR_STREAM("failed to load param Wx");
+        ROS_ERROR_STREAM("failed to load param /cutoff_speed");
     }
 
     // modes
