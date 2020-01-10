@@ -3,7 +3,8 @@
 #
 
 # general
-dt: 0.1 # replanning rate
+dt: 0.1 # timestep and replanning rate
+N: 30   # horizon
 cutoff_speed: 0.5
 
 

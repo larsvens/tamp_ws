@@ -600,7 +600,7 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             // todo: params for tuning separate platforms
             float feedfwd = 0.5f*sp.m*rollingstate.vx*rollingstate.vx*kappac*std::cos(rollingstate.deltapsi) ;
             float derror = dref.at(i) - rollingstate.d;
-            float feedback = 5000*derror - 500*rollingstate.deltapsi;
+            float feedback = 3000*derror - 500*rollingstate.deltapsi;
             ctrl.Fyf = feedfwd + feedback;
             //cout << "feedfwd = " << feedfwd << endl;
             //cout << "feedback = " << feedback << endl;
