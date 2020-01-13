@@ -36,19 +36,35 @@ trajcl = log["trajcl"]
 trajcl["t"] = trajcl["t"]-trajcl["t"][0]
 
 ## plot
-
-
 f0 = plt.figure(constrained_layout=True)
-gs = gridspec.GridSpec(ncols=2, nrows=3, figure=f0)
-#gs = f0.add_gridspec(3, 2)
-f0_ax0 = f0.add_subplot(gs[:, 0])
+gs = gridspec.GridSpec(ncols=3, nrows=5, figure=f0)
+# top view
+f0_ax0 = f0.add_subplot(gs[0:2, 0])
 f0_ax0.set_title("top view")
+
+# states
 f0_ax1 = f0.add_subplot(gs[0, 1])
 f0_ax1.set_title("psi")
 f0_ax2 = f0.add_subplot(gs[1, 1])
-f0_ax2.set_title("vx")
+f0_ax2.set_title("psidot")
 f0_ax3 = f0.add_subplot(gs[2, 1])
-f0_ax3.set_title("ax")
+f0_ax3.set_title("vx")
+f0_ax4 = f0.add_subplot(gs[3, 1])
+f0_ax4.set_title("vy")
+f0_ax5 = f0.add_subplot(gs[4, 1])
+f0_ax5.set_title("ax")
+
+# ctrls
+f0_ax6 = f0.add_subplot(gs[0, 2])
+f0_ax6.set_title("Fyf (u1)")
+f0_ax7 = f0.add_subplot(gs[1, 2])
+f0_ax7.set_title("Fxf (u2)")
+f0_ax8 = f0.add_subplot(gs[2, 2])
+f0_ax8.set_title("Fxr (u3)")
+f0_ax9 = f0.add_subplot(gs[3, 2])
+f0_ax9.set_title("Ff")
+f0_ax10 = f0.add_subplot(gs[4, 2])
+f0_ax10.set_title("Fr")
 
 #
 # OVERHEAD VIEW
@@ -88,29 +104,52 @@ f0_ax0.set_xlabel("X")
 f0_ax0.set_ylabel("Y")
 
 #
-# PSI
+# states
 #
+
+# psi
 f0_ax1.plot(trajstar["t"],trajstar["psi"],'m--')
 f0_ax1.plot(trajcl["t"],trajcl["psi"],'k')
 f0_ax1.legend(["planned","actual"])
 
-#
 # vx
-#
-f0_ax2.plot(trajstar["t"],trajstar["vx"],'m--')
-f0_ax2.plot(trajcl["t"],trajcl["vx"],'k')
+f0_ax2.plot(trajstar["t"],trajstar["psidot"],'m--')
+f0_ax2.plot(trajcl["t"],trajcl["psidot"],'k')
 f0_ax2.legend(["planned","actual"])
 
-#
+# vx
+f0_ax3.plot(trajstar["t"],trajstar["vx"],'m--')
+f0_ax3.plot(trajcl["t"],trajcl["vx"],'k')
+f0_ax3.legend(["planned","actual"])
+
+# vy
+f0_ax4.plot(trajstar["t"],trajstar["vy"],'m--')
+f0_ax4.plot(trajcl["t"],trajcl["vy"],'k')
+f0_ax4.legend(["planned","actual"])
+
 # ax
-#
 dt = 0.1
 ax_star = np.diff(trajstar["vx"])/dt
 ax_cl = np.diff(trajcl["vx"])/dt
-f0_ax3.plot(trajstar["t"][0:-1],ax_star,'m--')
-f0_ax3.plot(trajcl["t"][0:-1],ax_cl,'k')
-f0_ax3.legend(["planned","actual"])
+f0_ax5.plot(trajstar["t"][0:-1],ax_star,'m--')
+f0_ax5.plot(trajcl["t"][0:-1],ax_cl,'k')
+f0_ax5.legend(["planned","actual"])
 
+# 
+# ctrls
+#
+f0_ax6.plot(trajstar["t"][0:-1],trajstar["Fyf"],'m.')
+f0_ax6.legend(["planned"])
+
+f0_ax7.plot(trajstar["t"][0:-1],trajstar["Fxf"],'m.')
+f0_ax7.legend(["planned"])
+
+f0_ax8.plot(trajstar["t"][0:-1],trajstar["Fxr"],'m.')
+f0_ax8.legend(["planned"])
+
+Fy = np.sqrt(trajstar["Fxf"]**2+trajstar["Fyf"]**2)
+f0_ax9.plot(trajstar["t"][0:-1],Fy,'m.')
+f0_ax9.legend(["planned"])
 
 plt.show()
 

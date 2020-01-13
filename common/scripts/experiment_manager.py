@@ -45,7 +45,7 @@ class ExperimentManager:
         self.mu_segment_idx = 0
         
         # algo params (from acado)
-        N = 30 
+        N = 40 
         dt_algo = 0.1
         
         # init node subs pubs
@@ -150,6 +150,12 @@ class ExperimentManager:
                 # RACING
                 else:
                     self.ctrl_mode = 2 # tamp
+                
+                # SEND STOP IF EXIT TRACK
+                dlb = np.interp(self.state.s,self.pathglobal.s,self.pathglobal.dlb)
+                dub = np.interp(self.state.s,self.pathglobal.s,self.pathglobal.dub)
+                if (self.state.d < dlb or self.state.d > dub):
+                    self.ctrl_mode = 0 # stop
                 self.ctrl_mode_pub.publish(self.ctrl_mode)
                 
                 # publish text marker (state info)
@@ -159,7 +165,7 @@ class ExperimentManager:
             
                 # save data for plot
                 filename = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/explog_latest.npy" # todo get from param
-                self.s_begin_log = 190 # 190 todo get from param
+                self.s_begin_log = 195 # 190 todo get from param
                 if (self.state.s >= self.s_begin_log and not self.explog_activated):
                     print "STARTED EXPLOG"
                     t_start_explog = copy.deepcopy(self.exptime) 
@@ -177,6 +183,9 @@ class ExperimentManager:
                       "vy": np.array(self.trajstar.vy),
                       "ax": np.array(self.trajstar.ax),
                       "ay": np.array(self.trajstar.ay),
+                      "Fyf": np.array(self.trajstar.Fyf),
+                      "Fxf": np.array(self.trajstar.Fxf),
+                      "Fxr": np.array(self.trajstar.Fxr),
                       "t": np.arange(0,(N+1)*dt_algo,dt_algo),
                     }
                     self.stored_trajstar = True

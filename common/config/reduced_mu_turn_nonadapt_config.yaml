@@ -12,7 +12,7 @@ d_obs_at_popup: -1.75
 ### track config 
 track_name: "asta_zero" # todo pipe through at "simulation.cfg"
 s_begin_mu_segments:  [0.0, 200.0]
-mu_segment_values:  [1.0, 1.0]
+mu_segment_values:  [1.0, 0.5]
 
 # cc config
 cc_vxref: 15
@@ -30,7 +30,7 @@ ref_mode: 1
 # 0: RTI
 # 1: SAA-RTI 
 sampling_augmentation: 1
-Ntrajs_rollout: 24 # default 24
+Ntrajs_rollout: 12 # default 24 @ 3s
 
 # Traction adaptation 
 # 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics)
@@ -39,7 +39,7 @@ traction_adaptive: 1
 mu_nominal: 1.0 # used only when traction_adaptive = 0
 
 # optimization config
-Wx:  [1000.0, 10000000.0, 1.0, 0.1, 10000000.0, 0.1]
-WNx: [1000.0, 1000.0, 1.0, 0.1, 0.1, 0.1]
+Wx:  [1000.0, 10000000.0, 1.0, 0.1, 1000000.0, 0.1]
+WNx: [1000.0, 10000000.0, 1.0, 0.1, 1000000.0, 0.1]
 Wu: [0.001, 0.1, 0.1]
 Wslack: 100000000

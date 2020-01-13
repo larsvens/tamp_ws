@@ -57,6 +57,10 @@ class CtrlInterface:
         # delay sim variable
         self.delta_out_FIFO = []
 
+        # misc vars
+        self.delta_out_last = 0
+        self.dc_out_last = 0
+
         # wait for messages before entering main loop
         while(not self.state_received):
             print("waiting for state")
@@ -64,11 +68,16 @@ class CtrlInterface:
 
         # main loop
         while not rospy.is_shutdown(): 
-
-            if(self.ctrl_mode == 0):     # STOP
-                print "stopped state, zero ctrl input"
-                delta_out = 0
-                dc_out = 0
+            
+            if(self.ctrl_mode == 0):     # STOP (set by exp manager if outside of track)
+                print "vx = ", self.state.vx
+                if (self.state.vx > 0.05):
+                    print "stopping"
+                    delta_out = self.delta_out_last
+                    dc_out = -200000 #self.dc_out_last
+                else:
+                    delta_out = 0
+                    dc_out = 0
             elif(self.ctrl_mode == 1):   # CRUISE CTRL             
                 while(not self.pathlocal_received):
                     print("waiting for pathlocal")
@@ -87,6 +96,7 @@ class CtrlInterface:
     
             # publish ctrl cmd            
             self.vehicle_in.delta = delta_out
+            #print "dc_out published = ", dc_out
             self.vehicle_in.dc = dc_out
             self.vehicleinpub.publish(self.vehicle_in)
 
@@ -95,6 +105,11 @@ class CtrlInterface:
             if (self.ctrl_mode in [1,2]):
                 m = self.getlhptmarker(Xlh,Ylh)
                 self.lhptpub.publish(m)
+
+            # store latest controls
+            self.delta_out_last = delta_out
+            self.dc_out_last = dc_out
+
             self.rate.sleep()
     
     def cc_ctrl(self):
@@ -148,14 +163,16 @@ class CtrlInterface:
         # LONGITUDINAL CTRL
         # feedfwd
         Fx_request = self.trajstar.Fxf[0] + self.trajstar.Fxr[0]
-            
+        delta_comp_Fx = self.trajstar.Fyf[0]*np.tan(delta_out)
+        #print "delta_comp_Fx = ", delta_comp_Fx
+        
         if(self.robot_name == "gotthard"):
             # feedfwd 
             Cr0 = 180
             Cm1 = 5000          
             dc_out = (Fx_request+Cr0)/Cm1 # not including aero
         elif(self.robot_name == "rhino"):
-            dc_out = 1*Fx_request
+            dc_out = 1*Fx_request #+ 0.5*delta_comp_Fx
         else:
             dc_out = Fx_request
             print "ERROR: incorrect /robot_name"

@@ -26,7 +26,7 @@ la = 200 # back of L shape
 lc = 70  # base of L shape
 Rb  = 22  # radius of curve at experiment turn
 R = 30   # radius at other turns 
-lanewidth = 3.5
+lanewidth = 2.3 # 3.5
 
 # additional track info
 cones_orange_X = np.array([])
