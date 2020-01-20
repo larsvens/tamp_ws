@@ -221,7 +221,9 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
             // extract trajstar from solver
             planning_util::trajstruct trajstar = rtisqp_wrapper_.getTrajectory();
+            // compute additional traj variables
             traj2cart(trajstar);
+            trajFz(trajstar,sp_);
             nav_msgs::Path p_trajstar = traj2navpath(trajstar);
 
             // checks on trajstar
@@ -440,6 +442,22 @@ void SAARTI::traj2cart(planning_util::trajstruct &traj){
     }
 }
 
+// computes normal forces of a trajectory
+void SAARTI::trajFz(planning_util::trajstruct &traj, planning_util::staticparamstruct sp){
+    float theta = 0; // grade angle todo get from pathlocal
+    float ax;
+    float Fzf;
+    float Fzr;
+    for (size_t k=0;k<N;k++) {
+        ax = (traj.Fxf.at(k)+traj.Fxr.at(k))/sp.m;
+        Fzf = (1.0f/(sp.lf+sp.lr))*( sp.m*ax*sp.h_cg - sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lr*std::cos(theta));
+        Fzr = (1.0f/(sp.lf+sp.lr))*(-sp.m*ax*sp.h_cg + sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lf*std::cos(theta));
+
+        traj.Fzf.push_back(Fzf);
+        traj.Fzr.push_back(Fzr);
+    }
+}
+
 // computes cartesian coordinates of a trajectory set
 void SAARTI::trajset2cart(){
     for (uint i=0;i<trajset_.size();i++) {
@@ -584,6 +602,9 @@ common::Trajectory SAARTI::traj2msg(planning_util::trajstruct traj){
     trajmsg.X = traj.X;
     trajmsg.Y = traj.Y;
     trajmsg.psi = traj.psi;
+    // normal forces
+    trajmsg.Fzf = traj.Fzf;
+    trajmsg.Fzr = traj.Fzr;
 
     return trajmsg;
 }

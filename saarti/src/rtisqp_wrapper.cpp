@@ -352,6 +352,7 @@ planning_util::trajstruct RtisqpWrapper::getTrajectory(){
         traj_out.Fxf.push_back(acadoVariables.u[k * NU + 1]);
         traj_out.Fxr.push_back(acadoVariables.u[k * NU + 2]);
     }
+
     return traj_out;
 }
 

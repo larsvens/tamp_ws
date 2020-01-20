@@ -147,9 +147,20 @@ f0_ax7.legend(["planned"])
 f0_ax8.plot(trajstar["t"][0:-1],trajstar["Fxr"],'m.')
 f0_ax8.legend(["planned"])
 
-Fy = np.sqrt(trajstar["Fxf"]**2+trajstar["Fyf"]**2)
-f0_ax9.plot(trajstar["t"][0:-1],Fy,'m.')
-f0_ax9.legend(["planned"])
+#
+# total tire forces
+#
+Ff = np.sqrt(trajstar["Fxf"]**2+trajstar["Fyf"]**2)
+f0_ax9.plot(trajstar["t"][0:-1],Ff,'m.')
+mu = np.interp(trajstar["s"],pathglobal["s"],pathglobal["mu"])
+Ffmax = mu[0:-1]*trajstar["Fzf"]
+f0_ax9.plot(trajstar["t"][0:-1],Ffmax,'k--')
+f0_ax9.legend(["planned","boundary"])
+
+Fr = np.sqrt(trajstar["Fxr"]**2+trajstar["Fyr"]**2)
+
+
+
 
 plt.show()
 
