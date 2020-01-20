@@ -33,8 +33,8 @@ sampling_augmentation: 1
 Ntrajs_rollout: 12 # default 24 @ 3s
 
 # Traction adaptation 
-# 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics)
-# 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics
+# 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics), static Cr
+# 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics, Cr from mu and Fz
 traction_adaptive: 1
 mu_nominal: 1.0 # used only when traction_adaptive = 0
 

@@ -45,6 +45,20 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         exit(EXIT_FAILURE);
     }
 
+    // TMP set Cr
+//            float m = 8350.0f;
+//            float g = 9.81f;
+//            float B = 10.0f;
+//            float C = 1.9f;
+//            float D = 1.0f;
+//            float Fztot = m*g;
+//            float w_rear = 0.5; // percentage weigt on rear axle
+//            float Cr = B*C*D*Fztot*w_rear; // Rajamani
+    float Cr = 778178.0f;
+    for (uint k = 0; k < N + 1; ++k){
+        acadoVariables.od[k * NOD + 1] = Cr;
+    }
+
     // initialize trajhat last
     planning_util::trajstruct trajstar_last;
 

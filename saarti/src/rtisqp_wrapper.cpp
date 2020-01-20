@@ -100,8 +100,7 @@ void RtisqpWrapper::setInitialGuess(planning_util::trajstruct traj){
     if(traj.kappac.size() != N+1){
         throw std::invalid_argument("faulty kappa_c in setInitialGuess");
     }
-    for (uint k = 0; k < N + 1; ++k)
-    {
+    for (uint k = 0; k < N + 1; ++k){
         acadoVariables.od[k * NOD + 0] = traj.kappac.at(k);
     }
 }
@@ -222,10 +221,10 @@ planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util:
         posconstr.dub.push_back(dub);
 
         // set acadovariable
-        acadoVariables.od[k * NOD + 1] = slb;
-        acadoVariables.od[k * NOD + 2] = sub;
-        acadoVariables.od[k * NOD + 3] = dlb;
-        acadoVariables.od[k * NOD + 4] = dub;
+        acadoVariables.od[k * NOD + 2] = slb;
+        acadoVariables.od[k * NOD + 3] = sub;
+        acadoVariables.od[k * NOD + 4] = dlb;
+        acadoVariables.od[k * NOD + 5] = dub;
     }
     return posconstr;
 }
@@ -381,7 +380,7 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
     planning_util::statestruct rollingstate = initstate;
 
     // initialize vector same size as ACADOvariables.state (see acado_solver.c, acado_initializeNodesByForwardSimulation)
-    real_t acadoWSstate[93];
+    real_t acadoWSstate[94];
     // get kappac at initstate
     vector<float> kappac_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.kappa_c,false);
     float kappac = kappac_vec.at(0);
@@ -414,6 +413,7 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
     acadoWSstate[5] = rollingstate.vy;
     acadoWSstate[5] = 0; // dummyforslack
     acadoWSstate[88] = kappac;
+    acadoWSstate[89] = 778178.0f; // Cr tmp!
 
     // roll loop
     bool integrator_initiated = false;
@@ -482,6 +482,7 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
         vector<float> kappac_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.kappa_c,false);
         kappac = kappac_vec.at(0);
         acadoWSstate[88] = kappac;
+        acadoWSstate[89] = 778178.0f; // Cr tmp!
         traj.kappac.push_back(kappac);
         // update mu at rollingstate
         if(traction_adaptive == 1){
@@ -529,7 +530,7 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
 
     // generate trajs
     for (uint i=0;i<Ntrajs;i++) { // loop over trajectory set
-        real_t acadoWSstate[93];
+        real_t acadoWSstate[94];
         planning_util::statestruct rollingstate = initstate;
         planning_util::ctrlstruct ctrl;
 
@@ -549,6 +550,7 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             vector<float> kappac_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.kappa_c,false);
             kappac = kappac_vec.at(0);
             acadoWSstate[88] = kappac;
+            acadoWSstate[89] = 778178.0f; // Cr tmp!
 
             // interp timing
             auto t2_interp = std::chrono::high_resolution_clock::now();
@@ -678,6 +680,7 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                 acadoWSstate[87] = 0.0; // slack
                 // onlinedata
                 acadoWSstate[88] = kappac;
+                acadoWSstate[89] = 778178.0f; // Cr tmp!
                 is_initstate = false;
             }
 
