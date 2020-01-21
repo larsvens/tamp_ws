@@ -14,7 +14,7 @@ from fssim_common.msg import Track
 from common.msg import Path
 from coordinate_transforms import ptsFrenetToCartesian
 from util import angleToInterval
-from util import angleToContinous
+#from util import angleToContinous
 
 import matplotlib.pyplot as plt
 # adjust for high dpi screen
@@ -35,7 +35,7 @@ class TrackInterface:
         self.rate = rospy.Rate(1)
         
         # set params
-        ds = 0.5 # step size in s # 0.5 nominal
+        ds = 1.0 # step size in s # 0.5 nominal
         plot_track = False
         plot_orientation = False
         plot_dlbdub = False
