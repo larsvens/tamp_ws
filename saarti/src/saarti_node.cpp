@@ -187,7 +187,6 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                 }
             }
 
-
         /*
          * OPTIMIZATION
          */
@@ -234,10 +233,11 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             std::chrono::duration<double, std::milli> t_opt = t2_opt - t1_opt;
 
             // extract trajstar from solver
+            // todo extract force constraints too?
             planning_util::trajstruct trajstar = rtisqp_wrapper_.getTrajectory();
             // compute additional traj variables
             traj2cart(trajstar);
-            trajFz(trajstar,sp_);
+            compute_additional_forces(trajstar,sp_);
             nav_msgs::Path p_trajstar = traj2navpath(trajstar);
 
             // checks on trajstar
@@ -457,19 +457,24 @@ void SAARTI::traj2cart(planning_util::trajstruct &traj){
 }
 
 // computes normal forces of a trajectory
-void SAARTI::trajFz(planning_util::trajstruct &traj, planning_util::staticparamstruct sp){
+void SAARTI::compute_additional_forces(planning_util::trajstruct &traj, planning_util::staticparamstruct sp){
     float theta = 0; // grade angle todo get from pathlocal
     float ax;
     float Fzf;
     float Fzr;
+    float Fyr;
     for (size_t k=0;k<N;k++) {
+        // normal forces
         ax = (traj.Fxf.at(k)+traj.Fxr.at(k))/sp.m;
         Fzf = (1.0f/(sp.lf+sp.lr))*( sp.m*ax*sp.h_cg - sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lr*std::cos(theta));
         Fzr = (1.0f/(sp.lf+sp.lr))*(-sp.m*ax*sp.h_cg + sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lf*std::cos(theta));
-
         traj.Fzf.push_back(Fzf);
         traj.Fzr.push_back(Fzr);
+        // Fyr
+        Fyr = 2*traj.Cr.at(k)*std::atan(sp.lr*traj.psidot.at(k)-traj.vy.at(k))/traj.vx.at(k); // need atan here?
+        traj.Fyr.push_back(Fyr);
     }
+
 }
 
 // computes cartesian coordinates of a trajectory set
@@ -616,9 +621,13 @@ common::Trajectory SAARTI::traj2msg(planning_util::trajstruct traj){
     trajmsg.X = traj.X;
     trajmsg.Y = traj.Y;
     trajmsg.psi = traj.psi;
-    // normal forces
+    // additional forces
+    trajmsg.Fyr = traj.Fyr;
     trajmsg.Fzf = traj.Fzf;
     trajmsg.Fzr = traj.Fzr;
+    // misc
+    trajmsg.kappac = traj.kappac;
+    trajmsg.Cr = traj.Cr;
 
     return trajmsg;
 }

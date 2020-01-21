@@ -96,12 +96,15 @@ void RtisqpWrapper::setInitialGuess(planning_util::trajstruct traj){
         acadoVariables.u[k * NU + 2] = traj.Fxr.at(k);
     }
 
-    // set kappac
-    if(traj.kappac.size() != N+1){
-        throw std::invalid_argument("faulty kappa_c in setInitialGuess");
+    // set od
+    if(traj.kappac.size() != N+1 || traj.Cr.size() != N+1){
+        cout << "traj.kappac.size() = " << traj.kappac.size() << endl;
+        cout << "traj.Cr.size() =     " << traj.Cr.size() << endl;
+        throw std::invalid_argument("faulty onlinedata in setInitialGuess");
     }
     for (uint k = 0; k < N + 1; ++k){
         acadoVariables.od[k * NOD + 0] = traj.kappac.at(k);
+        acadoVariables.od[k * NOD + 1] = traj.Cr.at(k);
     }
 }
 
@@ -336,14 +339,18 @@ int RtisqpWrapper::doFeedbackStep(){
 
 planning_util::trajstruct RtisqpWrapper::getTrajectory(){
     planning_util::trajstruct traj_out;
-    // state
+
     for (uint k = 0; k < N + 1; ++k){
+        // state
         traj_out.s.push_back(acadoVariables.x[k * NX + 0]);
         traj_out.d.push_back(acadoVariables.x[k * NX + 1]);
         traj_out.deltapsi.push_back(acadoVariables.x[k * NX + 2]);
         traj_out.psidot.push_back(acadoVariables.x[k * NX + 3]);
         traj_out.vx.push_back(acadoVariables.x[k * NX + 4]);
         traj_out.vy.push_back(acadoVariables.x[k * NX + 5]);
+        // od
+        traj_out.kappac.push_back(acadoVariables.od[k * NOD + 0]);
+        traj_out.Cr.push_back(acadoVariables.od[k * NOD + 1]);
     }
     // ctrl
     for (uint k = 0; k < N; ++k){
@@ -413,7 +420,6 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
     acadoWSstate[5] = rollingstate.vy;
     acadoWSstate[5] = 0; // dummyforslack
     acadoWSstate[88] = kappac;
-    acadoWSstate[89] = 778178.0f; // Cr tmp!
 
     // roll loop
     bool integrator_initiated = false;
@@ -432,6 +438,14 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
         }
         traj.Fzf.push_back(Fzf);
         traj.Fzr.push_back(Fzr);
+
+        // compute rear cornering stiffness
+        float Cr = planning_util::get_cornering_stiffness(mu,Fzr);
+        acadoWSstate[89] = Cr;
+
+        // compute Fyr
+        float Fyr = 2*Cr*std::atan(sp.lr*rollingstate.psidot-rollingstate.vy)/rollingstate.vx; // need atan here?
+        traj.Fyr.push_back(Fyr);
 
         // compute maximum tire forces
         float Ffmax = Fzf*mu;
@@ -461,6 +475,7 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
         acadoWSstate[86] = Fxr;
         acadoWSstate[87] = 0; //dummyforslack
 
+
         // integrate fwd
         if(!integrator_initiated){
             acado_integrate(acadoWSstate,1);
@@ -482,8 +497,12 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
         vector<float> kappac_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.kappa_c,false);
         kappac = kappac_vec.at(0);
         acadoWSstate[88] = kappac;
-        acadoWSstate[89] = 778178.0f; // Cr tmp!
+        acadoWSstate[89] = Cr; // Cr tmp!
+
+        // push back od
         traj.kappac.push_back(kappac);
+        traj.Cr.push_back(Cr);
+
         // update mu at rollingstate
         if(traction_adaptive == 1){
             vector<float> mu_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.mu,false);
@@ -493,6 +512,9 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
         }
         traj.mu.push_back(mu);
     }
+    // tmp fix! Todo reverse order!
+    traj.Cr.push_back(traj.Cr.back());
+
     if (traj.s.size() != N+1){
         throw std::invalid_argument("Error in rolloutSingleTraj, state sequence is not equal to N+1 at return");
     }
@@ -550,7 +572,6 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             vector<float> kappac_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.kappa_c,false);
             kappac = kappac_vec.at(0);
             acadoWSstate[88] = kappac;
-            acadoWSstate[89] = 778178.0f; // Cr tmp!
 
             // interp timing
             auto t2_interp = std::chrono::high_resolution_clock::now();
@@ -583,7 +604,15 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                 //cout << "selecting mu nominal" << endl;
             }
 
-            // compute max horizontal forces front and back
+            // compute rear cornering stiffness
+            float Cr = planning_util::get_cornering_stiffness(mu,Fzr);
+            acadoWSstate[89] = Cr;
+
+            // compute Fyr not needed here
+            //float Fyr = 2*Cr*std::atan(sp.lr*rollingstate.psidot-rollingstate.vy)/rollingstate.vx; // need atan here?
+            //traj.Fyr.push_back(Fyr);
+
+            // compute maximum tire forces
             float Ffmax = mu*Fzf;
             float Frmax = mu*Fzr;
 
@@ -679,8 +708,8 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                 acadoWSstate[86] = ctrl.Fxr;
                 acadoWSstate[87] = 0.0; // slack
                 // onlinedata
-                acadoWSstate[88] = kappac;
-                acadoWSstate[89] = 778178.0f; // Cr tmp!
+                acadoWSstate[88] = kappac; // Todo rm - set before?
+                acadoWSstate[89] = Cr;
                 is_initstate = false;
             }
 
@@ -718,9 +747,10 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
                 traj.Fxf.push_back(acadoWSstate[85]);
                 traj.Fxr.push_back(acadoWSstate[86]);
             }
-            // push back interpolated vars
+            // push back additional vars
             traj.kappac.push_back(kappac);
             traj.mu.push_back(mu);
+            traj.Cr.push_back(Cr);
         }
         trajset.push_back(traj);
         auto t2_single = std::chrono::high_resolution_clock::now();

@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <vector>
+#include <iostream>
 
 namespace planning_util {
 
@@ -23,6 +24,10 @@ struct trajstruct{
     std::vector<float> Fyf;
     std::vector<float> Fxf;
     std::vector<float> Fxr;
+    // additional forces
+    std::vector<float> Fyr;
+    std::vector<float> Fzf;
+    std::vector<float> Fzr;
     // od
     std::vector<float> kappac;
     // cartesian pose
@@ -31,8 +36,7 @@ struct trajstruct{
     std::vector<float> psi;
     // frictionestimate
     std::vector<float> mu;
-    std::vector<float> Fzf;
-    std::vector<float> Fzr;
+    std::vector<float> Cr;
     // misc
     std::vector<float> ax;
     // eval
@@ -132,6 +136,36 @@ void state_at_idx_in_traj(trajstruct &traj, statestruct &state, uint idx){
     state.psidot = traj.psidot.at(idx);
     state.vx = traj.vx.at(idx);
     state.vy = traj.vy.at(idx);
+}
+
+float get_cornering_stiffness(float mu, float Fz){
+    float B, C, D; //, E;
+    // todo adjust thresholds
+
+    if(0.0f <= mu && mu <0.3f){ // ice
+        B = 4.0f;
+        C = 2.0f;
+        D = 0.1f;
+        //E = 1.0f;
+    } else if (0.3f <= mu && mu <0.82f) { // snow
+        B = 5.0f;
+        C = 2.0f;
+        D = 0.3f;
+        //E = 1.0f;
+    } else if (0.82f <= mu && mu <1.0f) { // wet
+        B = 12.0f;
+        C = 2.3f;
+        D = 0.82f;
+        //E = 1.0f;
+    } else if (1.0f <= mu && mu <2.5f) { // dry
+        B = 10.0f;
+        C = 1.9f;
+        D = 1.0f;
+        //E = 0.97f;
+    } else {
+        throw std::invalid_argument("faulty mu value in get_cornering_stiffness");
+    }
+    return B*C*D*Fz; // Rajamani
 }
 
 

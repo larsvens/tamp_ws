@@ -87,7 +87,7 @@ private:
     void print_obj(planning_util::trajstruct traj);
     planning_util::refstruct setRefs(int ref_mode_, int traction_adaptive_, float mu_nominal_, float vxref_cc, float dref_cc, planning_util::staticparamstruct sp_, planning_util::pathstruct pathlocal_);
     void traj2cart(planning_util::trajstruct &traj);
-    void trajFz(planning_util::trajstruct &traj, planning_util::staticparamstruct sp);
+    void compute_additional_forces(planning_util::trajstruct &traj, planning_util::staticparamstruct sp);
     void trajset2cart();
     void sd_pts2cart(vector<float> &s, vector<float> &d, vector<float> &Xout, vector<float> &Yout);
     void angle_to_interval(vector<float> &psi);
