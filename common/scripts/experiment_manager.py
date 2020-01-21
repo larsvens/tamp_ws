@@ -185,9 +185,12 @@ class ExperimentManager:
                       "ay": np.array(self.trajstar.ay),
                       "Fyf": np.array(self.trajstar.Fyf),
                       "Fxf": np.array(self.trajstar.Fxf),
+                      "Fyr": np.array(self.trajstar.Fyr),
                       "Fxr": np.array(self.trajstar.Fxr),
                       "Fzf": np.array(self.trajstar.Fzf),
                       "Fzr": np.array(self.trajstar.Fzr),
+                      "kappac": np.array(self.trajstar.kappac),
+                      "Cr": np.array(self.trajstar.Cr),
                       "t": np.arange(0,(N+1)*dt_algo,dt_algo),
                     }
                     self.stored_trajstar = True

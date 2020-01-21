@@ -121,13 +121,11 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             if(sampling_augmentation_ == 1){
                 ROS_INFO_STREAM("generating trajectory set");
                 rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_,vxref_cc_,refs_,uint(Ntrajs_rollout_));
-
                 // append trajprime
                 if (trajstar_last.s.size()!=0){
                     trajprime = rtisqp_wrapper_.shiftTrajectoryByIntegration(trajstar_last,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_);
                     trajset_.push_back(trajprime);
                 }
-
                 // cost eval and select
                 int trajhat_idx = trajset_eval_cost(); // error if negative
                 if(trajhat_idx >= 0){

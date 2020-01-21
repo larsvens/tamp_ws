@@ -244,6 +244,7 @@ void RtisqpWrapper::setInitialState(planning_util::statestruct state){
     acadoVariables.x0[6] = 0.0; // dummy
 }
 
+// not used atm
 void RtisqpWrapper::shiftStateAndControls(){
     acado_shiftStates(2, 0, 0);
     acado_shiftControls( 0 );
@@ -287,10 +288,12 @@ planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_u
                                                                       planning_util::staticparamstruct &sp,
                                                                       int traction_adaptive,
                                                                       float mu_nominal){
-    if(!traj.s.size()){
-        throw std::invalid_argument("Error in shiftTrajectoryByIntegration: trying to shift empty trajectory");
+    if(traj.s.size() != N+1){
+        throw std::invalid_argument("Error in shiftTrajectoryByIntegration: state has wrong size");
     }
-
+    if(traj.Fyf.size() != N){
+        throw std::invalid_argument("Error in shiftTrajectoryByIntegration: ctrl has wrong size");
+    }
     // grab ctrl sequence and init state from traj
     planning_util::trajstruct traj_out;
     traj_out.Fyf = traj.Fyf;
@@ -303,13 +306,6 @@ planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_u
     if(state.vx < 1.0f){
         // get state at 0 in traj
         planning_util::state_at_idx_in_traj(traj, initstate, 0);
-        // adjust ctrl sequence
-//        float factor = 0.95f;
-//        for (uint k = 0; k < N; ++k){
-//            traj_out.Fyf.at(k) = factor*traj_out.Fyf.at(k);
-//            traj_out.Fxf.at(k) = factor*traj_out.Fxf.at(k);
-//            traj_out.Fxr.at(k) = factor*traj_out.Fxr.at(k);
-//        }
     } else {
         // get state at 1 in traj
         planning_util::state_at_idx_in_traj(traj, initstate, 1);
@@ -362,7 +358,8 @@ planning_util::trajstruct RtisqpWrapper::getTrajectory(){
     return traj_out;
 }
 
-// usage: set (ONLY) control sequence of traj ahead of time, the function will roll dynamics fwd according to those controls
+// usage: set (ONLY) control sequence of traj ahead of time,
+// the function will roll dynamics fwd according to those controls
 void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
                                       planning_util::statestruct &initstate,
                                       planning_util::pathstruct  &pathlocal,
@@ -370,6 +367,7 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
                                       int traction_adaptive,
                                       float mu_nominal){
 
+    // input checks
     if (traj.s.size() != 0){
         throw std::invalid_argument("Error in rolloutSingleTraj, state sequence is nonzero at entry");
     }
@@ -383,33 +381,17 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
         throw std::invalid_argument("Error in rolloutSingleTraj, control sequence has not been set or is wrong");
     }
 
-    // initialize variables
+    // initialize rollingstate
     planning_util::statestruct rollingstate = initstate;
-
     // initialize vector same size as ACADOvariables.state (see acado_solver.c, acado_initializeNodesByForwardSimulation)
     real_t acadoWSstate[94];
-    // get kappac at initstate
-    vector<float> kappac_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.kappa_c,false);
-    float kappac = kappac_vec.at(0);
-    // get mu at initstate
-    float mu;
-    if(traction_adaptive == 1){
-        vector<float> mu_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.mu,false);
-        mu = mu_vec.at(0);
-    } else { // (traction_adaptive == 0)
-        mu = mu_nominal;
-    }
-    traj.mu.push_back(mu);
 
-    // set approximate ax for Fz computation (todo compute kinematic ax in loop to increase accuracy)
+    // preset ax for Fz computation
+    std::vector <float> ax;
     for (uint k=0;k<N;k++) {
-        traj.ax.push_back( (traj.Fxf.at(k)+traj.Fyf.at(k))/sp.m );
+        ax.push_back( (traj.Fxf.at(k)+traj.Fyf.at(k))/sp.m );
     }
-    traj.ax.push_back(traj.ax.back()); // ax of lenght N+1
-
-    // set initial state in traj
-    planning_util::traj_push_back_state(traj,rollingstate);
-    traj.kappac.push_back(kappac);
+    ax.push_back(ax.back()); // ax of lenght N+1
 
     // set initial state in integrator (indices from acado_solver.c, acado_initializeNodesByForwardSimulation)
     acadoWSstate[0] = rollingstate.s;
@@ -418,72 +400,86 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
     acadoWSstate[3] = rollingstate.psidot;
     acadoWSstate[4] = rollingstate.vx;
     acadoWSstate[5] = rollingstate.vy;
-    acadoWSstate[5] = 0; // dummyforslack
-    acadoWSstate[88] = kappac;
+    //acadoWSstate[5] = 0; // dummyforslack
 
     // roll loop
     bool integrator_initiated = false;
-    for (size_t k=0;k<N;k++) {
+    for (size_t k=0;k<N+1;k++) {
+
+        // get kappac
+        vector<float> kappac_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.kappa_c,false);
+        float kappac = kappac_vec.at(0);
+        acadoWSstate[88] = kappac;
+
+        // get mu
+        float mu;
+        if(traction_adaptive == 1){
+            vector<float> mu_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.mu,false);
+            mu = mu_vec.at(0);
+        } else { // (traction_adaptive == 0)
+            mu = mu_nominal;
+        }
 
         // compute normal forces front and back
         float Fzf;
         float Fzr;
         if(traction_adaptive == 1){
             float theta = 0; // grade angle todo get from pathlocal via traj
-            Fzf = (1.0f/(sp.lf+sp.lr))*( sp.m*traj.ax.at(k)*sp.h_cg - sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lr*std::cos(theta));
-            Fzr = (1.0f/(sp.lf+sp.lr))*(-sp.m*traj.ax.at(k)*sp.h_cg + sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lf*std::cos(theta));
+            Fzf = (1.0f/(sp.lf+sp.lr))*( sp.m*ax.at(k)*sp.h_cg - sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lr*std::cos(theta));
+            Fzr = (1.0f/(sp.lf+sp.lr))*(-sp.m*ax.at(k)*sp.h_cg + sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lf*std::cos(theta));
         } else { // (traction_adaptive == 0)
             Fzf = (1.0f/(sp.lf+sp.lr))*(sp.m*sp.g*sp.lr);
             Fzr = (1.0f/(sp.lf+sp.lr))*(sp.m*sp.g*sp.lf);
         }
-        traj.Fzf.push_back(Fzf);
-        traj.Fzr.push_back(Fzr);
 
         // compute rear cornering stiffness
         float Cr = planning_util::get_cornering_stiffness(mu,Fzr);
         acadoWSstate[89] = Cr;
 
         // compute Fyr
-        float Fyr = 2*Cr*std::atan(sp.lr*rollingstate.psidot-rollingstate.vy)/rollingstate.vx; // need atan here?
-        traj.Fyr.push_back(Fyr);
+        float Fyr = 2*Cr*std::atan(sp.lr*rollingstate.psidot-rollingstate.vy)/rollingstate.vx;
 
         // compute maximum tire forces
         float Ffmax = Fzf*mu;
         float Frmax = Fzr*mu;
 
-        // grab and adjust control inputs according to new force limits
-        float Fyf = traj.Fyf.at(k);
-        float Fxf = traj.Fxf.at(k);
-        float Fxr = traj.Fxr.at(k);
+        if(k>0){ // do not integrate at k=1, just push back init state
 
-        float Ff = std::sqrt(Fyf*Fyf + Fxf*Fxf);
-        if (Ff > Ffmax){
-            float r = Ffmax/Ff;
-            Fyf *=r;
-            Fxf *=r;
+            // grab and adjust control inputs according to new force limits
+            float Fyf = traj.Fyf.at(k-1);
+            float Fxf = traj.Fxf.at(k-1);
+            float Fxr = traj.Fxr.at(k-1);
+
+            float Ff = std::sqrt(Fyf*Fyf + Fxf*Fxf);
+            if (Ff > Ffmax){
+                float r = Ffmax/Ff;
+                Fyf *=r;
+                Fxf *=r;
+            }
+
+            // saturate Fxr, accounting for Fyr
+            float Fxrmax = std::sqrt(Frmax*Frmax-Fyr*Fyr);
+            if (Fxr < -Fxrmax){
+                Fxr = -Fxrmax;
+            }
+            if(Fxr > Fxrmax){
+                Fxr = Fxrmax;
+            }
+
+            // set ctrls in acadoWSstate
+            acadoWSstate[84] = Fyf;
+            acadoWSstate[85] = Fxf;
+            acadoWSstate[86] = Fxr;
+            acadoWSstate[87] = 0; //dummyforslack
+
+            // integrate fwd
+            if(!integrator_initiated){
+                acado_integrate(acadoWSstate,1);
+                integrator_initiated = true;
+            } else {
+                acado_integrate(acadoWSstate,0);
+            }
         }
-        // todo account also for Fyr
-        if (Fxr < -Frmax){
-            Fxr = -Frmax;
-        }
-        if(Fxr > Frmax){
-            Fxr = Frmax;
-        }
-
-        acadoWSstate[84] = Fyf;
-        acadoWSstate[85] = Fxf;
-        acadoWSstate[86] = Fxr;
-        acadoWSstate[87] = 0; //dummyforslack
-
-
-        // integrate fwd
-        if(!integrator_initiated){
-            acado_integrate(acadoWSstate,1);
-            integrator_initiated = true;
-        } else {
-            acado_integrate(acadoWSstate,0);
-        }
-
         // extract acadostate
         rollingstate.s = acadoWSstate[0];
         rollingstate.d = acadoWSstate[1];
@@ -491,38 +487,29 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
         rollingstate.psidot = acadoWSstate[3];
         rollingstate.vx = acadoWSstate[4];
         rollingstate.vy = acadoWSstate[5];
+
+        // push back state
         planning_util::traj_push_back_state(traj,rollingstate);
-
-        // update kappac at rollingstate
-        vector<float> kappac_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.kappa_c,false);
-        kappac = kappac_vec.at(0);
-        acadoWSstate[88] = kappac;
-        acadoWSstate[89] = Cr; // Cr tmp!
-
-        // push back od
+        // push back all other variables
+        traj.Fyr.push_back(Fyr);
+        traj.Fzf.push_back(Fzf);
+        traj.Fzr.push_back(Fzr);
         traj.kappac.push_back(kappac);
         traj.Cr.push_back(Cr);
-
-        // update mu at rollingstate
-        if(traction_adaptive == 1){
-            vector<float> mu_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.mu,false);
-            mu = mu_vec.at(0);
-        } else if (traction_adaptive == 0) {
-            mu = mu_nominal;
-        }
         traj.mu.push_back(mu);
     }
-    // tmp fix! Todo reverse order!
-    traj.Cr.push_back(traj.Cr.back());
 
+    // output checks
     if (traj.s.size() != N+1){
         throw std::invalid_argument("Error in rolloutSingleTraj, state sequence is not equal to N+1 at return");
     }
     if (traj.mu.size() != N+1){
         throw std::invalid_argument("Error in rolloutSingleTraj, length of mu estimate is not equal to N+1 at return");
     }
+    if (traj.Cr.size() != N+1){
+        throw std::invalid_argument("Error in rolloutSingleTraj, length of Cr is not equal to N+1 at return");
+    }
 }
-
 
 /* Description: state space sampling trajectory rollout. Rolls out trajectories using a fast RK4
  * integrator from the acado toolkit. The control input is recomputed at every stage. A vector of
@@ -609,8 +596,7 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
             acadoWSstate[89] = Cr;
 
             // compute Fyr not needed here
-            //float Fyr = 2*Cr*std::atan(sp.lr*rollingstate.psidot-rollingstate.vy)/rollingstate.vx; // need atan here?
-            //traj.Fyr.push_back(Fyr);
+            float Fyr = 2*Cr*std::atan(sp.lr*rollingstate.psidot-rollingstate.vy)/rollingstate.vx; // need atan here?
 
             // compute maximum tire forces
             float Ffmax = mu*Fzf;
@@ -669,11 +655,12 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
 
                 ctrl.Fxr = 1000*vxerror;
                 // saturate
-                if(ctrl.Fxr >= Frmax){
-                    ctrl.Fxr = Frmax;
+                float Fxrmax = std::sqrt(Frmax*Frmax-Fyr*Fyr);
+                if(ctrl.Fxr >= Fxrmax){
+                    ctrl.Fxr = Fxrmax;
                 }
-                if(ctrl.Fxr<=-Frmax){
-                    ctrl.Fxr = -Frmax;
+                if(ctrl.Fxr<=-Fxrmax){
+                    ctrl.Fxr = -Fxrmax;
                 }
             }
 
