@@ -58,7 +58,7 @@ f0_ax5.set_title("ax")
 f0_ax6 = f0.add_subplot(gs[0, 2])
 f0_ax6.set_title("Fyf (u1)")
 f0_ax7 = f0.add_subplot(gs[1, 2])
-f0_ax7.set_title("Fxf (u2)")
+f0_ax7.set_title("Fx")
 f0_ax8 = f0.add_subplot(gs[2, 2])
 f0_ax8.set_title("Fxr (u3)")
 f0_ax9 = f0.add_subplot(gs[3, 2])
@@ -112,7 +112,7 @@ f0_ax1.plot(trajstar["t"],trajstar["psi"],'m--')
 f0_ax1.plot(trajcl["t"],trajcl["psi"],'k')
 f0_ax1.legend(["planned","actual"])
 
-# vx
+# psidot
 f0_ax2.plot(trajstar["t"],trajstar["psidot"],'m--')
 f0_ax2.plot(trajcl["t"],trajcl["psidot"],'k')
 f0_ax2.legend(["planned","actual"])
@@ -139,13 +139,15 @@ f0_ax5.legend(["planned","actual"])
 # ctrls
 #
 f0_ax6.plot(trajstar["t"][0:-1],trajstar["Fyf"],'m.')
-f0_ax6.legend(["planned"])
+f0_ax6.plot(trajcl["t"],trajcl["Fyf"],'k')
+f0_ax6.legend(["planned","actual"])
 
-f0_ax7.plot(trajstar["t"][0:-1],trajstar["Fxf"],'m.')
-f0_ax7.legend(["planned"])
+f0_ax7.plot(trajstar["t"][0:-1],trajstar["Fxf"]+trajstar["Fxr"],'m.')
+f0_ax7.plot(trajcl["t"],trajcl["Fx"],'k')
+f0_ax7.legend(["planned", "actual"])
 
-f0_ax8.plot(trajstar["t"][0:-1],trajstar["Fxr"],'m.')
-f0_ax8.legend(["planned"])
+#f0_ax8.plot(trajstar["t"][0:-1],trajstar["Fxr"],'m.')
+#f0_ax8.legend(["planned"])
 
 #
 # total tire forces
@@ -155,13 +157,13 @@ mu = np.interp(trajstar["s"],pathglobal["s"],pathglobal["mu"])
 Ff = np.sqrt(trajstar["Fxf"]**2+trajstar["Fyf"]**2)
 f0_ax9.plot(trajstar["t"][0:-1],Ff,'m.')
 Ffmax = mu[0:-1]*trajstar["Fzf"]
-f0_ax9.plot(trajstar["t"][0:-1],Ffmax,'k--')
+f0_ax9.plot(trajstar["t"][0:-1],Ffmax,'b--')
 f0_ax9.legend(["planned","boundary"])
 
 Fr = np.sqrt(trajstar["Fxr"]**2+trajstar["Fyr"]**2)
 f0_ax10.plot(trajstar["t"][0:-1],Fr,'m.')
 Frmax = mu[0:-1]*trajstar["Fzr"]
-f0_ax10.plot(trajstar["t"][0:-1],Frmax,'k--')
+f0_ax10.plot(trajstar["t"][0:-1],Frmax,'b--')
 f0_ax10.legend(["planned","boundary"])
 
 

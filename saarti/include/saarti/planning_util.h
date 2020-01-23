@@ -36,6 +36,7 @@ struct trajstruct{
     std::vector<float> psi;
     // frictionestimate
     std::vector<float> mu;
+    std::vector<float> Cf;
     std::vector<float> Cr;
     // misc
     std::vector<float> ax;
@@ -145,22 +146,22 @@ float get_cornering_stiffness(float mu, float Fz){
     if(0.0f <= mu && mu <0.3f){ // ice
         B = 4.0f;
         C = 2.0f;
-        D = 0.1f;
+        D = mu;
         //E = 1.0f;
-    } else if (0.3f <= mu && mu <0.82f) { // snow
+    } else if (0.3f <= mu && mu <0.5f) { // snow
         B = 5.0f;
         C = 2.0f;
-        D = 0.3f;
+        D = mu;
         //E = 1.0f;
-    } else if (0.82f <= mu && mu <1.0f) { // wet
+    } else if (0.5f <= mu && mu <0.9f) { // wet
         B = 12.0f;
         C = 2.3f;
-        D = 0.82f;
+        D = mu;
         //E = 1.0f;
-    } else if (1.0f <= mu && mu <2.5f) { // dry
+    } else if (0.9f <= mu && mu <2.5f) { // dry
         B = 10.0f;
         C = 1.9f;
-        D = 1.0f;
+        D = mu;
         //E = 0.97f;
     } else {
         throw std::invalid_argument("faulty mu value in get_cornering_stiffness");

@@ -21,6 +21,7 @@ float32[] Fzf
 float32[] Fzr
 float32[] alphaf
 float32[] alphar
+float32[] Cf
 float32[] Cr
 float32[] delta
 float32[] slb

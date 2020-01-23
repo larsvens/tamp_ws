@@ -19,6 +19,7 @@ from common.msg import Obstacles
 from common.msg import State
 from common.msg import Trajectory
 from fssim_common.msg import TireParams
+from fssim_common.msg import CarInfo
 from std_msgs.msg import Int16
 from visualization_msgs.msg import Marker
 from coordinate_transforms import ptsFrenetToCartesian
@@ -53,6 +54,7 @@ class ExperimentManager:
         #self.clockpub = rospy.Publisher('/clock', Clock, queue_size=10)   
         self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
         self.statesub = rospy.Subscriber("state", State, self.state_callback)
+        self.carinfosub = rospy.Subscriber("/fssim/car_info", CarInfo, self.fssim_carinfo_callback)
         self.trajstarsub = rospy.Subscriber("trajstar", Trajectory, self.trajstar_callback)
         self.obspub = rospy.Publisher('/obs', Obstacles, queue_size=1)
         self.obsvispub = rospy.Publisher('/obs_vis', Marker, queue_size=1)
@@ -75,6 +77,7 @@ class ExperimentManager:
         self.received_state = False
         self.trajstar = Trajectory()
         self.received_trajstar = False
+        self.fssim_carinfo = CarInfo()
         
         while(not self.received_pathglobal):
             print("waiting for pathglobal")
@@ -121,12 +124,42 @@ class ExperimentManager:
                 #print "mu_segment_idx =     ", self.mu_segment_idx
                 #print "mu in this section = ", self.mu_segment_values[self.mu_segment_idx] 
                 
-                # only vary D for now
+                # set tire params of sim vehicle
+                
+                
+                if (0.0 <= mu <0.3): # ice
+                    B = 4.0
+                    C = 2.0
+                    D = mu
+                    E = 1.0
+                elif (0.3 <= mu < 0.5): # snow
+                    B = 5.0
+                    C = 2.0
+                    D = mu
+                    E = 1.0
+                elif (0.5 <= mu < 0.9): # wet
+                    B = 12.0
+                    C = 2.3
+                    D = mu
+                    E = 1.0
+                elif (0.9 <= mu < 2.5): # dry
+                    B = 10.0
+                    C = 1.9
+                    D = mu
+                    E = 0.97
+                else: 
+                    rospy.loginfo_throttle(1, "Faulty mu value in exp manager")
+                
+                
                 self.tireparams.tire_coefficient = 1.0 
-                self.tireparams.B = 10
-                self.tireparams.C = 1.9
-                self.tireparams.D = -mu
-                self.tireparams.E = 1.0            
+                #self.tireparams.B = 10
+                #self.tireparams.C = 1.9
+                #self.tireparams.D = -mu
+                #self.tireparams.E = 1.0        
+                self.tireparams.B = B
+                self.tireparams.C = C
+                self.tireparams.D = -D
+                self.tireparams.E = E    
                 self.tireparams.header.stamp = rospy.Time.now()
                 self.tireparampub.publish(self.tireparams)
                 
@@ -208,6 +241,9 @@ class ExperimentManager:
                     self.ax_cl = []
                     self.ay_cl = []
                     self.t_cl = []
+                    self.Fyf_cl = []
+                    self.Fyr_cl = []
+                    self.Fx_cl = []
                     
                 if (self.state.s >= self.s_begin_log and self.explog_activated and self.exptime >= t_start_explog + self.explog_iterationcounter*dt_algo):
                     # build CL traj       
@@ -223,6 +259,10 @@ class ExperimentManager:
                     self.ax_cl.append(self.state.ax)
                     self.ay_cl.append(self.state.ay)
                     self.t_cl.append(self.exptime)
+                    self.Fyf_cl.append(self.fssim_carinfo.Fy_f)
+                    self.Fyr_cl.append(self.fssim_carinfo.Fy_r)
+                    self.Fx_cl.append(self.fssim_carinfo.Fx)
+                    
                     # store CL traj as dict
                     if (self.explog_iterationcounter == N): # store N+1 values, same as trajstar
                         self.trajcl_dict = {
@@ -238,6 +278,9 @@ class ExperimentManager:
                           "ax": np.array(self.ax_cl),
                           "ay": np.array(self.ay_cl),
                           "t": np.array(self.t_cl),
+                          "Fyf": np.array(self.Fyf_cl),
+                          "Fyr": np.array(self.Fyr_cl),
+                          "Fx": np.array(self.Fx_cl),
                         }
                         self.stored_trajcl = True
                     
@@ -341,6 +384,9 @@ class ExperimentManager:
     def state_callback(self, msg):
         self.state = msg
         self.received_state = True
+
+    def fssim_carinfo_callback(self,msg):
+        self.fssim_carinfo = msg
 
     def trajstar_callback(self, msg):
         self.trajstar = msg

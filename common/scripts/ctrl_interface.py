@@ -158,12 +158,20 @@ class CtrlInterface:
         # todo add feedback from yawrate
 
         # compute control
-        delta_out = rho_pp*(self.lf + self.lr) # kinematic feed fwd
+        K = self.trajstar.Fzf[0]/self.trajstar.Cf[0] - self.trajstar.Fzr[0]/self.trajstar.Cr[0]
+        print("K = ", K)
+        
+        kin_ff_term = rho_pp*(self.lf + self.lr) 
+        #dyn_ff_term = rho_pp*(K*self.state.vx**2/self.g)
+        yr_feedback = 0.05*(self.trajstar.psidot[1]-self.state.psidot)
+        delta_out = kin_ff_term + yr_feedback
+
+        # todo feedback term
 
         # LONGITUDINAL CTRL
         # feedfwd
         Fx_request = self.trajstar.Fxf[0] + self.trajstar.Fxr[0]
-        delta_comp_Fx = self.trajstar.Fyf[0]*np.tan(delta_out)
+        #delta_comp_Fx = self.trajstar.Fyf[0]*np.tan(delta_out)
         #print "delta_comp_Fx = ", delta_comp_Fx
         
         if(self.robot_name == "gotthard"):
@@ -172,7 +180,10 @@ class CtrlInterface:
             Cm1 = 5000          
             dc_out = (Fx_request+Cr0)/Cm1 # not including aero
         elif(self.robot_name == "rhino"):
-            dc_out = 1*Fx_request #+ 0.5*delta_comp_Fx
+            feedfwd = Fx_request
+            feedback = 50000*(self.trajstar.vx[1]-self.state.vx)
+            print("feedback: ", feedback)
+            dc_out = feedfwd + feedback
         else:
             dc_out = Fx_request
             print "ERROR: incorrect /robot_name"
@@ -257,6 +268,7 @@ class CtrlInterface:
         self.ctrl_mode = msg.data
 
     def setStaticParams(self):
+        self.g = 9.81
         self.lf = rospy.get_param('/car/kinematics/b_F')
         self.lr = rospy.get_param('/car/kinematics/b_R')
 

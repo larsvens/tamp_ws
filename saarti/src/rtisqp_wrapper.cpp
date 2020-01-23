@@ -146,7 +146,7 @@ void RtisqpWrapper::setInputConstraints(planning_util::trajstruct traj){
     vector<float> Ffmax;
     vector<float> Frmax;
     for (uint k = 0; k < N ; ++k){
-        Ffmax.push_back(traj.mu.at(k)*traj.Fzf.at(k));
+        Ffmax.push_back(traj.mu.at(k)*traj.Fzf.at(k)*0.8f); // tmp adjust with some margin (todo just put on lateral)
         Frmax.push_back(traj.mu.at(k)*traj.Fzr.at(k));
     }
 

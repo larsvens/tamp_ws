@@ -45,20 +45,6 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         exit(EXIT_FAILURE);
     }
 
-    // TMP set Cr
-//            float m = 8350.0f;
-//            float g = 9.81f;
-//            float B = 10.0f;
-//            float C = 1.9f;
-//            float D = 1.0f;
-//            float Fztot = m*g;
-//            float w_rear = 0.5; // percentage weigt on rear axle
-//            float Cr = B*C*D*Fztot*w_rear; // Rajamani
-    float Cr = 778178.0f;
-    for (uint k = 0; k < N + 1; ++k){
-        acadoVariables.od[k * NOD + 1] = Cr;
-    }
-
     // initialize trajhat last
     planning_util::trajstruct trajstar_last;
 
@@ -235,7 +221,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             planning_util::trajstruct trajstar = rtisqp_wrapper_.getTrajectory();
             // compute additional traj variables
             traj2cart(trajstar);
-            compute_additional_forces(trajstar,sp_);
+            get_additional_traj_variables(trajstar,pathlocal_,sp_);
             nav_msgs::Path p_trajstar = traj2navpath(trajstar);
 
             // checks on trajstar
@@ -455,12 +441,17 @@ void SAARTI::traj2cart(planning_util::trajstruct &traj){
 }
 
 // computes normal forces of a trajectory
-void SAARTI::compute_additional_forces(planning_util::trajstruct &traj, planning_util::staticparamstruct sp){
+void SAARTI::get_additional_traj_variables(planning_util::trajstruct &traj, planning_util::pathstruct &pathlocal, planning_util::staticparamstruct sp){
+    // mu
+    vector<float> mu = cpp_utils::interp(traj.s,pathlocal.s,pathlocal.mu,false);
+
+    // forces
     float theta = 0; // grade angle todo get from pathlocal
     float ax;
     float Fzf;
     float Fzr;
     float Fyr;
+    float Cf;
     for (size_t k=0;k<N;k++) {
         // normal forces
         ax = (traj.Fxf.at(k)+traj.Fxr.at(k))/sp.m;
@@ -471,8 +462,12 @@ void SAARTI::compute_additional_forces(planning_util::trajstruct &traj, planning
         // Fyr
         Fyr = 2*traj.Cr.at(k)*std::atan(sp.lr*traj.psidot.at(k)-traj.vy.at(k))/traj.vx.at(k); // need atan here?
         traj.Fyr.push_back(Fyr);
-    }
 
+
+        // Cf
+        Cf = planning_util::get_cornering_stiffness(mu.at(k),Fzf);
+        traj.Cf.push_back(Cf);
+    }
 }
 
 // computes cartesian coordinates of a trajectory set
@@ -626,6 +621,7 @@ common::Trajectory SAARTI::traj2msg(planning_util::trajstruct traj){
     // misc
     trajmsg.kappac = traj.kappac;
     trajmsg.Cr = traj.Cr;
+    trajmsg.Cf = traj.Cf;
 
     return trajmsg;
 }
