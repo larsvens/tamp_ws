@@ -163,8 +163,9 @@ class CtrlInterface:
         
         kin_ff_term = rho_pp*(self.lf + self.lr) 
         #dyn_ff_term = rho_pp*(K*self.state.vx**2/self.g)
-        yr_feedback = 0.05*(self.trajstar.psidot[1]-self.state.psidot)
-        delta_out = kin_ff_term + yr_feedback
+        dyn_ff_term = 0.5*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
+        #yr_feedback = 0.05*(self.trajstar.psidot[1]-self.state.psidot)
+        delta_out = kin_ff_term + dyn_ff_term
 
         # todo feedback term
 
