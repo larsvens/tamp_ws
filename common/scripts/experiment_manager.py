@@ -45,6 +45,9 @@ class ExperimentManager:
         self.N_mu_segments = len(self.s_begin_mu_segments)
         self.mu_segment_idx = 0
         
+        # vehicle params
+        self.vehicle_width = rospy.get_param('/car/kinematics/l_width')
+        
         # algo params (from acado)
         N = 40 
         dt_algo = 0.1
@@ -90,7 +93,8 @@ class ExperimentManager:
         self.obs.s = [self.s_obs_at_popup]
         self.obs.d = [self.d_obs_at_popup]
         self.obs.R = [0.5]
-        self.obs.Rmgn = [1.5]
+        wiggleroom = 0.5
+        self.obs.Rmgn = [0.5*self.obs.R[0] + 0.5*self.vehicle_width + wiggleroom]
         Xobs, Yobs = ptsFrenetToCartesian(np.array(self.obs.s), \
                                           np.array(self.obs.d), \
                                           np.array(self.pathglobal.X), \
@@ -100,14 +104,15 @@ class ExperimentManager:
         self.ctrl_mode = 0 # initial ctrl_mode: STOP
         
         # Main loop
-        print 'running experiment: '
-        print 'track: ', self.track_name
+        #print 'running experiment: '
+        #print 'track: ', self.track_name
         self.exptime = 0 
         while (not rospy.is_shutdown()) and self.exptime<self.t_final :
             
-            #print 'exptime t =', self.exptime
+            
             if (self.exptime >= self.t_activate):
-                              
+                            
+                rospy.loginfo_throttle(1, "Running experiment")
                 # HANDLE TRACTION IN SIMULATION                
                 s_ego = self.state.s % self.s_lap                
                 for i in range(self.N_mu_segments-1):
@@ -259,7 +264,7 @@ class ExperimentManager:
                     self.ax_cl.append(self.state.ax)
                     self.ay_cl.append(self.state.ay)
                     self.t_cl.append(self.exptime)
-                    self.Fyf_cl.append(self.fssim_carinfo.Fy_f)
+                    self.Fyf_cl.append(self.fssim_carinfo.Fy_f_l+self.fssim_carinfo.Fy_f_r)
                     self.Fyr_cl.append(self.fssim_carinfo.Fy_r)
                     self.Fx_cl.append(self.fssim_carinfo.Fx)
                     
@@ -302,6 +307,8 @@ class ExperimentManager:
                     self.explog_saved = True
                     print "SAVED EXPLOG"
             
+            else: # not reached activation time
+                rospy.loginfo_throttle(1, "Experiment starting in %i seconds"%(self.t_activate-self.exptime))
             
             # handle exptime
             self.exptime += self.dt_sim

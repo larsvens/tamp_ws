@@ -112,6 +112,7 @@ struct staticparamstruct{
     float lf;
     float lr;
     float h_cg;
+    float l_width;
 };
 
 /*

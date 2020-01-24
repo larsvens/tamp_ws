@@ -70,7 +70,6 @@ class CtrlInterface:
         while not rospy.is_shutdown(): 
             
             if(self.ctrl_mode == 0):     # STOP (set by exp manager if outside of track)
-                print "vx = ", self.state.vx
                 if (self.state.vx > 0.05):
                     print "stopping"
                     delta_out = self.delta_out_last
@@ -113,6 +112,7 @@ class CtrlInterface:
             self.rate.sleep()
     
     def cc_ctrl(self):
+        rospy.loginfo_throttle(1, "Running CC control")
         # get lhpt
         lhdist = 7 # todo determine from velocity
         s_lh = self.state.s + lhdist
@@ -141,11 +141,11 @@ class CtrlInterface:
         
         
     def tamp_ctrl(self):
-        
+        rospy.loginfo_throttle(1, "Running TAMP control")
         # LATERAL CTRL
         # feedfwd        
         # compute local curvature of trajhat (rho)
-        lhpt_idx = 5;
+        lhpt_idx = 7;
         Xlh = self.trajstar.X[lhpt_idx]
         Ylh = self.trajstar.Y[lhpt_idx]
         rho_pp = self.pp_curvature(self.trajstar.X[0],
@@ -153,21 +153,19 @@ class CtrlInterface:
                                    self.trajstar.psi[0],
                                    Xlh,
                                    Ylh)
-        
-        # feedback
-        # todo add feedback from yawrate
 
-        # compute control
-        K = self.trajstar.Fzf[0]/self.trajstar.Cf[0] - self.trajstar.Fzr[0]/self.trajstar.Cr[0]
-        print("K = ", K)
-        
-        kin_ff_term = rho_pp*(self.lf + self.lr) 
+        # stanford control
+        #K = self.trajstar.Fzf[0]/self.trajstar.Cf[0] - self.trajstar.Fzr[0]/self.trajstar.Cr[0]
         #dyn_ff_term = rho_pp*(K*self.state.vx**2/self.g)
-        dyn_ff_term = 0.5*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
+        
+        # yawrate feedback
         #yr_feedback = 0.05*(self.trajstar.psidot[1]-self.state.psidot)
+
+        # kin + dyn feedforward        
+        kin_ff_term = rho_pp*(self.lf + self.lr)         
+        dyn_ff_term = 0.5*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
         delta_out = kin_ff_term + dyn_ff_term
 
-        # todo feedback term
 
         # LONGITUDINAL CTRL
         # feedfwd
@@ -182,15 +180,13 @@ class CtrlInterface:
             dc_out = (Fx_request+Cr0)/Cm1 # not including aero
         elif(self.robot_name == "rhino"):
             feedfwd = Fx_request
-            feedback = 50000*(self.trajstar.vx[1]-self.state.vx)
-            print("feedback: ", feedback)
+            self.vx_error = self.trajstar.vx[1]-self.state.vx
+            feedback = 50000*self.vx_error
+            #print("feedback: ", feedback)
             dc_out = feedfwd + feedback
         else:
             dc_out = Fx_request
             print "ERROR: incorrect /robot_name"
-        
-        # feedback (todo)
-        self.vx_error = self.trajstar.vx[1]-self.state.vx
         
         return delta_out, dc_out, Xlh, Ylh
 
@@ -246,22 +242,20 @@ class CtrlInterface:
         self.pathlocal_received = True
     
     def vehicle_out_callback(self, msg):
-        self.state.X = msg.x
-        self.state.Y = msg.y
-        self.state.psi = msg.yaw
-        self.state.psidot = msg.r
-        self.state.vx = msg.vx
-        self.state.vy = msg.vy
-      
-        while(not self.pathlocal_received):
-            print("waiting for pathlocal")
-            self.rate.sleep()
-        self.state.s,self.state.d = ptsCartesianToFrenet(np.array(self.state.X), \
-                                                         np.array(self.state.Y), \
-                                                         np.array(self.pathlocal.X), \
-                                                         np.array(self.pathlocal.Y), \
-                                                         np.array(self.pathlocal.psi_c), \
-                                                         np.array(self.pathlocal.s))
+        if(self.pathlocal_received and (self.ctrl_mode in [1,2])):
+            self.state.X = msg.x
+            self.state.Y = msg.y
+            self.state.psi = msg.yaw
+            self.state.psidot = msg.r
+            self.state.vx = msg.vx
+            self.state.vy = msg.vy
+            self.state.s,self.state.d = ptsCartesianToFrenet(np.array(self.state.X), \
+                                                             np.array(self.state.Y), \
+                                                             np.array(self.pathlocal.X), \
+                                                             np.array(self.pathlocal.Y), \
+                                                             np.array(self.pathlocal.psi_c), \
+                                                             np.array(self.pathlocal.s))      
+
         
         self.state_received = True
 

@@ -11,7 +11,7 @@
      <!-- inputs to saarti -->
      <node pkg="perception" type="fssim_track_iface.py" name="fssim_track_iface" > </node>
      <node pkg="perception" type="stateestimation.py" name="stateestimation"> </node>
-     <node pkg="perception" type="perception.py" name="perception"> </node>
+     <node pkg="perception" type="perception.py" name="perception" > </node>
 
      <!-- outputs from saarti -->     
      <!-- <node pkg="common" type="ctrl_interface.py" name="ctrl_interface"> </node> -->

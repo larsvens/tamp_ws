@@ -82,6 +82,7 @@ class Perception:
            
             # update local path 
             self.updateLocalPath()
+            print self.pathlocal.s
             self.pathlocalpub.publish(self.pathlocal)
             
             # visualize local path in rviz

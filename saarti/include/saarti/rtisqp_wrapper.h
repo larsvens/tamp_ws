@@ -59,7 +59,7 @@ public:
                                                        planning_util::obstastruct obs,
                                                        vector<float> lld,
                                                        vector<float> rld,
-                                                       float w);
+                                                       planning_util::staticparamstruct &sp);
     void shiftStateAndControls();
     void shiftTrajectoryFwdSimple(planning_util::trajstruct &traj);
     planning_util::trajstruct shiftTrajectoryByIntegration(planning_util::trajstruct traj,

@@ -15,7 +15,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     trajhat_pub_ = nh.advertise<common::Trajectory>("trajhat",1);
     trajstar_pub_ = nh.advertise<common::Trajectory>("trajstar",1);
     pathlocal_sub_ = nh.subscribe("pathlocal", 1, &SAARTI::pathlocal_callback,this);
-    obstacles_sub_ = nh.subscribe("obstacles", 1, &SAARTI::obstacles_callback,this);
+    obstacles_sub_ = nh.subscribe("obs", 1, &SAARTI::obstacles_callback,this);
     state_sub_ = nh.subscribe("state", 1,  &SAARTI::state_callback,this);
     // visualization
     trajhat_vis_pub_ = nh.advertise<nav_msgs::Path>("trajhat_vis",1);
@@ -198,8 +198,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             ROS_INFO_STREAM("setting state constraints..");
             vector<float> lld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dub,false);
             vector<float> rld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dlb,false);
-            float w = 1.75; // TODO get from param
-            planning_util::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obst_,lld,rld,w);
+            planning_util::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obst_,lld,rld,sp_);
             jsk_recognition_msgs::PolygonArray polarr = stateconstr2polarr(posconstr); // visualize state constraint
 
             // run optimization (separate thread for timeout option)
@@ -266,7 +265,6 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
             // store trajstar for next iteration
             trajstar_last = trajstar;
-
 
             // debug 2d variables
             jsk_recognition_msgs::PlotData pd;
@@ -743,7 +741,7 @@ void SAARTI::obstacles_callback(const common::Obstacles::ConstPtr& msg){
     obst_.d = msg->d;
     obst_.R = msg->R;
     obst_.Rmgn = msg->Rmgn;
-}
+ }
 
 // get static params from rosparam
 void SAARTI::get_rosparams(){
@@ -798,7 +796,7 @@ void SAARTI::get_rosparams(){
     sp_.lf = float(nh_.param("/car/kinematics/b_F",2.0));
     sp_.lr = float(nh_.param("/car/kinematics/b_R",2.0));
     sp_.h_cg = float(nh_.param("/car/kinematics/h_cg",0.5));
-
+    sp_.l_width = float(nh_.param("/car/kinematics/l_width",1.0));
 }
 
 // run opt

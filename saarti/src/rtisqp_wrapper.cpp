@@ -179,7 +179,7 @@ planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util:
                                                                   planning_util::obstastruct obs,
                                                                   vector<float> lld,
                                                                   vector<float> rld,
-                                                                  float w){
+                                                                  planning_util::staticparamstruct &sp){
 
     planning_util::posconstrstruct posconstr;
 
@@ -192,8 +192,8 @@ planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util:
         float sub = traj.s.at(k)+s_diff_default;
 
         // initialize at lane boundaries
-        float dlb = rld.at(k)+0.5f*w;
-        float dub = lld.at(k)-0.5f*w;
+        float dlb = rld.at(k)+0.5f*sp.l_width;
+        float dub = lld.at(k)-0.5f*sp.l_width;
 
         // adjust lbs and ubs for obstacles
         uint Nobs = uint(obs.s.size());
@@ -204,20 +204,18 @@ planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util:
             if (slb - Rmgn <= sobs && sobs <= sub + Rmgn){
                 if(dobs >= traj.d.at(k)){ // obs left of vehicle, adjust dub
                     dub = std::min(dub, dobs-Rmgn);
-                    dub = std::max(dub,traj.d.at(k)); // s.t. d-interval is nonzero
+                    if(dub-dlb < sp.l_width){ // open up lane boundary constraint to fit the vehicle
+                        dlb = dub - sp.l_width;
+                    }
                 } else{ // obs right of vehicle, adjust dlb
                     dlb = std::max(dlb, dobs+Rmgn);
-                    dlb = std::min(dlb, traj.d.at(k)); // s.t. d-interval is nonzero
+                    if(dub-dlb < sp.l_width){ // open up lane boundary constraint to fit the vehicle
+                        dub = dlb + sp.l_width;
+                    }
                 }
             }
         }
 
-        // make sure constraint area does not diminish on narrow tracks
-        float d_rangemin = 0.5;
-        if(dub-dlb < d_rangemin){
-            dlb = -0.5f*d_rangemin;
-            dub = 0.5f*d_rangemin;
-        }
         posconstr.slb.push_back(slb);
         posconstr.sub.push_back(sub);
         posconstr.dlb.push_back(dlb);
