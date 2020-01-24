@@ -101,7 +101,7 @@ class ExperimentManager:
                                           np.array(self.pathglobal.Y), \
                                           np.array(self.pathglobal.psi_c), \
                                           np.array(self.pathglobal.s))
-        self.ctrl_mode = 0 # initial ctrl_mode: STOP
+        self.ctrl_mode = 0 # # 0: stop, 1: cruise_ctrl, 2: tamp 
         
         # Main loop
         #print 'running experiment: '
@@ -182,7 +182,7 @@ class ExperimentManager:
                 # REDUCED MU TURN
                 elif(self.scenario_id == 2):
                     self.ctrl_mode = 1 # pp cruise control from standstill
-                    if(self.state.vx > 5):
+                    if(self.state.vx > 5): # todo
                         self.ctrl_mode = 2 # tamp cruise control when we get up to speed
                                        
                 # RACING

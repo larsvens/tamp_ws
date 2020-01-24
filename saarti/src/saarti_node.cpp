@@ -17,6 +17,8 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     pathlocal_sub_ = nh.subscribe("pathlocal", 1, &SAARTI::pathlocal_callback,this);
     obstacles_sub_ = nh.subscribe("obs", 1, &SAARTI::obstacles_callback,this);
     state_sub_ = nh.subscribe("state", 1,  &SAARTI::state_callback,this);
+    ctrlmode_sub_ = nh.subscribe("ctrl_mode", 1,  &SAARTI::ctrlmode_callback,this);
+
     // visualization
     trajhat_vis_pub_ = nh.advertise<nav_msgs::Path>("trajhat_vis",1);
     trajstar_vis_pub_ = nh.advertise<nav_msgs::Path>("trajstar_vis",1);
@@ -720,6 +722,10 @@ void SAARTI::state_callback(const common::State::ConstPtr& msg){
     //    if (std::abs(state_.deltapsi) > 0.2f){
     //        ROS_ERROR_STREAM("deltapsi large! deltapsi = " << state_.deltapsi );
     //    }
+}
+
+void SAARTI::ctrlmode_callback(const std_msgs::Int16::ConstPtr& msg){
+    ctrlmode_ = msg->data;
 }
 
 // pathlocal callback

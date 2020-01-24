@@ -12,10 +12,10 @@ d_obs_at_popup: -1.75
 ### track config 
 track_name: "asta_zero" # todo pipe through at "simulation.cfg"
 s_begin_mu_segments:  [0.0, 200.0]
-mu_segment_values:  [1.0, 0.4]
+mu_segment_values:  [1.0, 0.7]
 
 # cc config
-cc_vxref: 15
+cc_vxref: 20
 cc_dref: 0
 
 ### saarti algorithm config		

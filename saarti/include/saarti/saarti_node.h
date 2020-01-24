@@ -6,6 +6,7 @@
 #include "ros/time.h"
 #include <tf2/LinearMath/Quaternion.h>
 #include "std_msgs/String.h"
+#include "std_msgs/Int16.h"
 
 // visualization
 #include "visualization_msgs/MarkerArray.h"
@@ -68,6 +69,7 @@ private:
     ros::Subscriber pathlocal_sub_;
     ros::Subscriber obstacles_sub_;
     ros::Subscriber state_sub_;
+    ros::Subscriber ctrlmode_sub_;
     ros::Publisher trajstar_pub_;
     ros::Publisher trajhat_pub_;
     ros::Publisher trajset_vis_pub_;
@@ -76,6 +78,7 @@ private:
     ros::Publisher posconstr_vis_pub_;
     ros::Publisher vectordebug_pub_;
     planning_util::statestruct state_;
+    int ctrlmode_;
     planning_util::pathstruct pathlocal_;
     vector<planning_util::trajstruct> trajset_;
     planning_util::obstastruct obst_;
@@ -99,6 +102,7 @@ private:
     visualization_msgs::Marker trajset2cubelist();
     jsk_recognition_msgs::PolygonArray stateconstr2polarr(planning_util::posconstrstruct pc);
     void state_callback(const common::State::ConstPtr& msg);
+    void ctrlmode_callback(const std_msgs::Int16::ConstPtr& msg);
     void pathlocal_callback(const common::Path::ConstPtr& msg);
     void obstacles_callback(const common::Obstacles::ConstPtr& msg);
     void get_rosparams();
