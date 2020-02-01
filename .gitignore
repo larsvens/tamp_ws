@@ -1,6 +1,6 @@
 # ignore external packages
 **/catkin_simple/
-**/fssim/
+**/opendlv-ros/
 
 # ignore generated code
 **/rtisqp_export/

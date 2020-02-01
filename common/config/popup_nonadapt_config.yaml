@@ -6,13 +6,13 @@ scenario_id: 1 # 1: pop-up, 2: reduced mu turn, 3: racing
 
 # pop-up obstacle config
 s_ego_at_popup:  90
-s_obs_at_popup: 100
-d_obs_at_popup: -1.2 #-1.75 
+s_obs_at_popup: 105
+d_obs_at_popup: -0.5 #-1.75 
 
 ### track config 
 track_name: "asta_zero" # todo pipe through at "simulation.cfg"
 s_begin_mu_segments:  [0.0]
-mu_segment_values:  [0.7]
+mu_segment_values:  [1.0]
 
 # cc config
 cc_vxref: 15
