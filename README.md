@@ -2,11 +2,15 @@
 
 Main repo for developing traction adaptive motion planning using sampling augmented adaptive RTI. Under development! Details on the algorithm are available here: https://arxiv.org/abs/1903.04240   
 
+<p align="center"> 
+<img src="doc/static_vs_dynamic_constraints_reduced_mu_turn.gif" width="600" />
+</p>
+
 Basic demo of the algorithm running with the fssim simulator https://github.com/AMZ-Driverless/fssim .   
 Planning time < 20ms with a prediction horizon of 3s on a laptop CPU.
 
 <p align="center"> 
-<img src="doc/tamp_demo.gif" width="600" />
+<img src="doc/tamp_racing_demo.gif" width="600" />
 </p>
 
 
