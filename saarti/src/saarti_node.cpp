@@ -89,7 +89,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
                 // initialize with single rollout at startup
                 if (trajstar_last.s.size()==0){
-                    ROS_INFO_STREAM("generating init traj for RTISQP");
+                    ROS_INFO_STREAM("generating first initial guess for RTI");
                     for (uint i=0;i<N;i++) {
                         trajprime.Fyf.push_back(0);
                         trajprime.Fxf.push_back(300); // todo get from ax desired
@@ -99,6 +99,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                     trajset_.push_back(trajprime);
                 } else{
                     // set trajprime as initial guess
+                    ROS_INFO_STREAM("setting trajstar last as initial guess for RTI");
                     trajprime = rtisqp_wrapper_.shiftTrajectoryByIntegration(trajstar_last,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_);
                     trajset_.push_back(trajprime);
                 }

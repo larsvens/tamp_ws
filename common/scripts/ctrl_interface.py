@@ -164,6 +164,8 @@ class CtrlInterface:
         # kin + dyn feedforward        
         kin_ff_term = rho_pp*(self.lf + self.lr)         
         dyn_ff_term = 0.5*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
+        if(self.robot_name == "gotthard"):
+            dyn_ff_term = 0.1*dyn_ff_term
         delta_out = kin_ff_term + dyn_ff_term
 
 
@@ -175,9 +177,15 @@ class CtrlInterface:
         
         if(self.robot_name == "gotthard"):
             # feedfwd 
+          
+            feedfwd = 1.1*Fx_request 
+            self.vx_error = self.trajstar.vx[1]-self.state.vx
+            feedback = 0.0*self.vx_error
+            
             Cr0 = 180
-            Cm1 = 5000          
-            dc_out = (Fx_request+Cr0)/Cm1 # not including aero
+            Cm1 = 5000            
+            dc_out = ((feedfwd+feedback)+Cr0)/Cm1 
+            
         elif(self.robot_name == "rhino"):
             feedfwd = Fx_request
             self.vx_error = self.trajstar.vx[1]-self.state.vx

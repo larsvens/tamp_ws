@@ -147,11 +147,16 @@ class ExperimentManager:
                     C = 2.3
                     D = mu
                     E = 1.0
-                elif (0.9 <= mu < 2.5): # dry
+                elif (0.9 <= mu < 1.5): # dry
                     B = 10.0
                     C = 1.9
                     D = mu
                     E = 0.97
+                elif (1.5 <= mu < 2.5): # dry + racing tires (gotthard default)
+                    B = 12.56;
+                    C = 1.38; 
+                    D = mu;
+                    E = 1.0               
                 else: 
                     rospy.loginfo_throttle(1, "Faulty mu value in exp manager")
                 
