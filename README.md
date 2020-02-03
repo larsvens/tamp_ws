@@ -1,22 +1,22 @@
-## TAMP: Traction Adaptive Motion Planning
+# TAMP: Traction Adaptive Motion Planning
 
-Main repo for developing traction adaptive motion planning using sampling augmented adaptive RTI. Under development! Details on the algorithm are available here: https://arxiv.org/abs/1903.04240   
+Main repo for developing traction adaptive motion planning using sampling augmented adaptive RTI. Under development!    
+The TAMP algorithm uses sampling augmented adaptive RTI to allow dynamically setting the tire force constraints. This enables the motion planner to deal with locally varying traction conditions in critical maneuvers. Details on the algorithm are available here: https://arxiv.org/abs/1903.04240. Simulations are done using https://github.com/AMZ-Driverless/fssim and the RTI solver is exported by the acado toolkit https://github.com/acado/acado. 
 
+## Example 1: Curve with reduced traction
 <p align="center"> 
 <img src="doc/static_vs_dynamic_constraints_reduced_mu_turn.gif" width="600" />
 </p>
 
-Basic demo of the algorithm running with the fssim simulator https://github.com/AMZ-Driverless/fssim .   
-Planning time < 20ms with a prediction horizon of 3s on a laptop CPU.
-
+## Example 2: Autonomous Racing
 <p align="center"> 
 <img src="doc/tamp_racing_demo.gif" width="600" />
 </p>
 
 
-### Basic setup instructions  
-
+## Setup    
 System configuration: ubuntu 16.04 LTS & ROS Kinetic   
+http://wiki.ros.org/kinetic/Installation/Ubuntu
 
 dependencies:   
 `apt-get install ros-kinetic-jsk-rviz-plugins`   
@@ -27,11 +27,16 @@ clone this repo and fork of fssim to a new catkin workspace
 
 build with `catkin build`   
 
-source the workspace with `source devel/setup.bash` and run demo with `roslaunch common demo.launch`   
+To run the racing demo:   
+`source devel/setup.bash`   
+`roslaunch common bringup_gotthard_FSG.launch`   
+`roslaunch common experiment.launch exp_config:="gotthard_racing_nonadapt_config.yaml"`   
+`saarti saarti_node.launch`   
+`roslaunch common ctrl_interface.launch`   
 
 ### Cite
 
-If you find the code useful in your research, please consider citing 
+If you find the code useful in your own research, please consider citing 
 
     @article{svensson2019adaptive,
       title={Adaptive trajectory planning and optimization at limits of handling},
