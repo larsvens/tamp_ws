@@ -3,6 +3,8 @@
 t_activate: 15.0
 t_final: 500.0
 scenario_id: 2 # 1: pop-up, 2: reduced mu turn, 3: racing
+s_begin_log: 195
+s_pause_gazebo: [190, 208, 230]
 
 # pop-up obstacle config
 s_ego_at_popup:  50
@@ -12,11 +14,15 @@ d_obs_at_popup: -1.75
 ### track config 
 track_name: "asta_zero" # todo pipe through at "simulation.cfg"
 s_begin_mu_segments:  [0.0, 200.0]
-mu_segment_values:  [1.0, 0.7]
+mu_segment_values:  [1.0, 0.5]
 
 # cc config
-cc_vxref: 20
+cc_vxref: 15
 cc_dref: 0
+
+# pcs refs
+pcs_vxref: 1.0
+pcs_dref: -1
 
 ### saarti algorithm config		
 

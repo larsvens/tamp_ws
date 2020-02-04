@@ -9,8 +9,6 @@ from coordinate_transforms import ptsFrenetToCartesian
 from matplotlib.collections import LineCollection
 #from matplotlib.colors import ListedColormap, BoundaryNorm
 
-
-
 def getcolorlineXYvx(x,y,vx):
     points = np.array([x, y]).T.reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
@@ -19,8 +17,6 @@ def getcolorlineXYvx(x,y,vx):
     lc.set_array(vx)
     lc.set_linewidth(3)
     return lc
-
-
 
 # adjust for high dpi screen
 plt.rcParams['figure.dpi'] = 200 # default 100

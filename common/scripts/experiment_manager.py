@@ -23,6 +23,7 @@ from fssim_common.msg import CarInfo
 from std_msgs.msg import Int16
 from visualization_msgs.msg import Marker
 from coordinate_transforms import ptsFrenetToCartesian
+from std_srvs.srv import Empty
 
 class ExperimentManager:
     # constructor
@@ -31,7 +32,7 @@ class ExperimentManager:
         # timing params
         self.dt_sim = 0.01 # timestep of the simulation
         self.t_activate = rospy.get_param('/t_activate')
-        self.t_final = rospy.get_param('/t_final')
+        self.t_final = rospy.get_param('/t_final')             
         
         # pop-up scenario params
         self.s_ego_at_popup = rospy.get_param('/s_ego_at_popup')
@@ -52,6 +53,15 @@ class ExperimentManager:
         N = 40 
         dt_algo = 0.1
         
+        # set up pausing of gazebo
+        rospy.wait_for_service('gazebo/pause_physics')
+        pause_gazebo = rospy.ServiceProxy('gazebo/pause_physics', Empty)
+        rospy.wait_for_service('gazebo/unpause_physics')
+        unpause_gazebo = rospy.ServiceProxy('gazebo/unpause_physics', Empty)
+        self.s_pause_gazebo = rospy.get_param('/s_pause_gazebo')
+        n_pauses = len(self.s_pause_gazebo) 
+        i_pauses = 0
+        
         # init node subs pubs
         rospy.init_node('experiment_manager', anonymous=True)
         #self.clockpub = rospy.Publisher('/clock', Clock, queue_size=10)   
@@ -66,6 +76,7 @@ class ExperimentManager:
         self.statetextmarkerpub = rospy.Publisher('/state_text_marker', Marker, queue_size=1)        
 
         # init logging vars
+        self.s_begin_log = rospy.get_param('/s_begin_log')
         self.explog_activated = False
         self.explog_iterationcounter = 0
         self.stored_pathglobal = False
@@ -159,13 +170,8 @@ class ExperimentManager:
                     E = 1.0               
                 else: 
                     rospy.loginfo_throttle(1, "Faulty mu value in exp manager")
-                
-                
-                self.tireparams.tire_coefficient = 1.0 
-                #self.tireparams.B = 10
-                #self.tireparams.C = 1.9
-                #self.tireparams.D = -mu
-                #self.tireparams.E = 1.0        
+                                
+                self.tireparams.tire_coefficient = 1.0        
                 self.tireparams.B = B
                 self.tireparams.C = C
                 self.tireparams.D = -D
@@ -208,7 +214,15 @@ class ExperimentManager:
             
                 # save data for plot
                 filename = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/explog_latest.npy" # todo get from param
-                self.s_begin_log = 195 # 190 todo get from param
+                
+                # handle pausing of gazebo
+                if (i_pauses < n_pauses):
+                    if (self.state.s >= self.s_pause_gazebo[i_pauses]):
+                        pause_gazebo()
+                        raw_input("Press Enter to continue...")
+                        unpause_gazebo()
+                        i_pauses += 1
+                
                 if (self.state.s >= self.s_begin_log and not self.explog_activated):
                     print "STARTED EXPLOG"
                     t_start_explog = copy.deepcopy(self.exptime) 

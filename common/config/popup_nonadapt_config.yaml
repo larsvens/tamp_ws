@@ -3,16 +3,17 @@
 t_activate: 15.0
 t_final: 500.0
 scenario_id: 1 # 1: pop-up, 2: reduced mu turn, 3: racing
+s_begin_log: 94
 
 # pop-up obstacle config
 s_ego_at_popup:  90
-s_obs_at_popup: 105
-d_obs_at_popup: -0.5 #-1.75 
+s_obs_at_popup: 100
+d_obs_at_popup: -0.3 #-1.75 
 
 ### track config 
 track_name: "asta_zero" # todo pipe through at "simulation.cfg"
 s_begin_mu_segments:  [0.0]
-mu_segment_values:  [1.0]
+mu_segment_values:  [0.5]
 
 # cc config
 cc_vxref: 15
@@ -40,7 +41,7 @@ Ntrajs_rollout: 12 # default 24
 # 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics)
 # 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics
 traction_adaptive: 1
-mu_nominal: 1.0 # used only when traction_adaptive = 0
+mu_nominal: 0.7 # used only when traction_adaptive = 0
 
 # optimization config
 Wx:  [1000.0, 10000000.0, 1.0, 0.1, 1000000.0, 0.1]

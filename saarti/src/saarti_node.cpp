@@ -63,7 +63,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         float dub = dubv.at(0);
         vector<float> dlbv = cpp_utils::interp({state_.s},pathlocal_.s,pathlocal_.dlb,false);
         float dlb = dlbv.at(0);
-        if(state_.d > dub-0.1f || state_.d < dlb+0.1f){
+        if(state_.d > dub-1.5f || state_.d < dlb+1.5f){
             planner_activated_ = false; // && ref == track_speed
         }
 

@@ -189,7 +189,7 @@ class CtrlInterface:
         elif(self.robot_name == "rhino"):
             feedfwd = Fx_request
             self.vx_error = self.trajstar.vx[1]-self.state.vx
-            feedback = 50000*self.vx_error
+            feedback = 100000*self.vx_error
             #print("feedback: ", feedback)
             dc_out = feedfwd + feedback
         else:
