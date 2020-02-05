@@ -4,6 +4,8 @@
 #include <cstdlib>
 #include <vector>
 #include <iostream>
+#include <eigen3/Eigen/Dense>
+#include <math.h>
 
 namespace planning_util {
 
@@ -168,6 +170,40 @@ float get_cornering_stiffness(float mu, float Fz){
         throw std::invalid_argument("faulty mu value in get_cornering_stiffness");
     }
     return B*C*D*Fz; // Rajamani
+}
+
+Eigen::MatrixXf get_vehicle_corners(float X, float Y, float psi, float lf, float lr, float w){
+    Eigen::MatrixXf R(2,2);
+    Eigen::MatrixXf dims(5,2);
+    Eigen::MatrixXf Xoffset(5,2);
+    Eigen::MatrixXf Yoffset(5,2);
+    Eigen::MatrixXf corners(5,2);
+
+    R << std::cos(psi), std::sin(psi),
+        -std::sin(psi), std::cos(psi);
+
+    dims << lf, w/2,
+            -lr, w/2,
+            -lr, -w/2,
+            lf, -w/2,
+            lf, w/2;
+
+    // rotate
+    corners = dims*R;
+
+    // add position offset
+    Xoffset << X, 0.0f,
+               X, 0.0f,
+               X, 0.0f,
+               X, 0.0f,
+               X, 0.0f;
+    Yoffset << 0.0f, Y,
+               0.0f, Y,
+               0.0f, Y,
+               0.0f, Y,
+               0.0f, Y;
+
+    return corners + Xoffset + Yoffset;
 }
 
 

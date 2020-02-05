@@ -22,6 +22,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     // visualization
     trajhat_vis_pub_ = nh.advertise<nav_msgs::Path>("trajhat_vis",1);
     trajstar_vis_pub_ = nh.advertise<nav_msgs::Path>("trajstar_vis",1);
+    trajstar_polarr_vis_pub_ = nh.advertise<jsk_recognition_msgs::PolygonArray>("trajstar_polarr_vis",1);
     trajset_vis_pub_ = nh.advertise<visualization_msgs::Marker>("trajset_vis",1);
     posconstr_vis_pub_ = nh.advertise<jsk_recognition_msgs::PolygonArray>("posconstr_vis",1);
     vectordebug_pub_ = nh.advertise<jsk_recognition_msgs::PlotData>("saarti_plot_debug",1);
@@ -202,7 +203,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             vector<float> lld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dub,false);
             vector<float> rld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dlb,false);
             planning_util::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obst_,lld,rld,sp_);
-            jsk_recognition_msgs::PolygonArray polarr = stateconstr2polarr(posconstr); // visualize state constraint
+            jsk_recognition_msgs::PolygonArray posconstr_polarr = stateconstr2polarr(posconstr); // visualize state constraint
 
             // run optimization (separate thread for timeout option)
             auto t1_opt = std::chrono::high_resolution_clock::now();
@@ -225,6 +226,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             traj2cart(trajstar);
             get_additional_traj_variables(trajstar,pathlocal_,sp_);
             nav_msgs::Path p_trajstar = traj2navpath(trajstar);
+            jsk_recognition_msgs::PolygonArray trajstar_polarr = traj2polarr(trajstar,sp_);
 
             // checks on trajstar
             bool publish_trajs = true;
@@ -262,8 +264,9 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             if(publish_trajs){
                 trajhat_vis_pub_.publish(p_trajhat);
                 trajstar_vis_pub_.publish(p_trajstar);
+                trajstar_polarr_vis_pub_.publish(trajstar_polarr);
                 trajset_vis_pub_.publish(trajset_cubelist);
-                posconstr_vis_pub_.publish(polarr);
+                posconstr_vis_pub_.publish(posconstr_polarr);
             }
 
             // store trajstar for next iteration
@@ -653,6 +656,36 @@ nav_msgs::Path SAARTI::traj2navpath(planning_util::trajstruct traj){
     return p;
 }
 
+// represent traj as polygon array for rviz
+jsk_recognition_msgs::PolygonArray SAARTI::traj2polarr(planning_util::trajstruct traj, planning_util::staticparamstruct sp){
+    if (traj.X.size() == 0){
+        ROS_ERROR_STREAM("No cartesan coordinates for traj" );
+    }
+    // lenght and width of chassis for visualization
+    float w = sp.l_width;
+    float lf = sp.lf + 0.5f;
+    float lr = sp.lr + 1.0f;
+
+    jsk_recognition_msgs::PolygonArray polarr;
+    polarr.header.frame_id = "map";
+    for (uint i=0;i<traj.s.size();i+=1){
+        geometry_msgs::PolygonStamped poly;
+        poly.header.stamp = ros::Time::now();
+        poly.header.frame_id = "map";
+        Eigen::MatrixXf corners = planning_util::get_vehicle_corners(traj.X.at(i),traj.Y.at(i),traj.psi.at(i),lf,lr,w);
+        for (uint j=0;j<4;j++){
+            geometry_msgs::Point32 pt;
+            pt.x = corners(j,0);
+            pt.y = corners(j,1);
+            poly.polygon.points.push_back(pt);
+        }
+        polarr.polygons.push_back(poly);
+    }
+
+    polarr.header.stamp = ros::Time::now();
+    return polarr;
+}
+
 // represent trajset as cubelist for fast rendering visualization
 visualization_msgs::Marker SAARTI::trajset2cubelist(){
     visualization_msgs::Marker m;
@@ -682,7 +715,6 @@ visualization_msgs::Marker SAARTI::trajset2cubelist(){
 // create visualization obj for state constraints
 jsk_recognition_msgs::PolygonArray SAARTI::stateconstr2polarr(planning_util::posconstrstruct pc){
     jsk_recognition_msgs::PolygonArray polarr;
-    polarr.header.stamp = ros::Time::now();
     polarr.header.frame_id = "map";
     for (uint i=0;i<pc.dlb.size();i+=5){
         geometry_msgs::PolygonStamped poly;
@@ -701,6 +733,7 @@ jsk_recognition_msgs::PolygonArray SAARTI::stateconstr2polarr(planning_util::pos
         }
         polarr.polygons.push_back(poly);
     }
+    polarr.header.stamp = ros::Time::now();
     return polarr;
 }
 

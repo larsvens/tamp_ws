@@ -75,6 +75,7 @@ private:
     ros::Publisher trajset_vis_pub_;
     ros::Publisher trajhat_vis_pub_;
     ros::Publisher trajstar_vis_pub_;
+    ros::Publisher trajstar_polarr_vis_pub_;
     ros::Publisher posconstr_vis_pub_;
     ros::Publisher vectordebug_pub_;
     planning_util::statestruct state_;
@@ -98,7 +99,7 @@ private:
     int trajset_eval_cost();
     common::Trajectory traj2msg(planning_util::trajstruct traj);
     nav_msgs::Path traj2navpath(planning_util::trajstruct traj);
-    //jsk_recognition_msgs::PolygonArray traj2polarr(planning_util::trajstruct traj);
+    jsk_recognition_msgs::PolygonArray traj2polarr(planning_util::trajstruct traj, planning_util::staticparamstruct sp);
     void trajset2ma();
     visualization_msgs::Marker trajset2cubelist();
     jsk_recognition_msgs::PolygonArray stateconstr2polarr(planning_util::posconstrstruct pc);

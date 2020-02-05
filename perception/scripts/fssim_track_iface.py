@@ -24,10 +24,10 @@ plt.rcParams['figure.figsize'] = 10, 10
 class TrackInterface:
     def __init__(self):
         rospy.init_node('track_interface', anonymous=True)
-        self.pathglobalpub = rospy.Publisher('pathglobal', Path, queue_size=10)
-        self.pathglobalvispub = rospy.Publisher('pathglobal_vis', navPath, queue_size=10)
-        self.dubvispub = rospy.Publisher('dubglobal_vis', navPath, queue_size=10)
-        self.dlbvispub = rospy.Publisher('dlbglobal_vis', navPath, queue_size=10)
+        self.pathglobalpub = rospy.Publisher('pathglobal', Path, queue_size=1)
+        self.pathglobalvispub = rospy.Publisher('pathglobal_vis', navPath, queue_size=1)
+        self.dubvispub = rospy.Publisher('dubglobal_vis', navPath, queue_size=1)
+        self.dlbvispub = rospy.Publisher('dlbglobal_vis', navPath, queue_size=1)
         self.track_sub = rospy.Subscriber("/fssim/track", Track, self.track_callback)
         self.track = Track()
         self.pathglobal = Path()
