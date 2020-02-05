@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import numpy as np
-#import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from coordinate_transforms import ptsFrenetToCartesian
@@ -23,8 +22,9 @@ plt.rcParams['figure.dpi'] = 200 # default 100
 plt.rcParams['figure.figsize'] = 20, 10
 
 # load file and unpack
-filename = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/explog_latest.npy" # todo get from param
-log = np.load(filename,allow_pickle=True).item()
+filepath = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/"
+filename = "explog_latest_reducedmuturn_nonadaptive.npy"
+log = np.load(filepath+filename,allow_pickle=True).item()
 pathglobal = log["pathglobal"]
 trajstar = log["trajstar"]
 trajcl = log["trajcl"]

@@ -112,7 +112,11 @@ for ax in axes.flat:
 axes[2,1].legend(['accelerating', 'constant speed', 'braking'])
 
 plt.show()
-plt.savefig('force_limits.pdf')  
+
+# save as pdf
+filepath = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/"
+filename = "force_limits.pdf"
+plt.savefig(filepath + filename)  
 
 
 

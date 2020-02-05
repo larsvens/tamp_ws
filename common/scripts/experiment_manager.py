@@ -47,7 +47,10 @@ class ExperimentManager:
         self.mu_segment_idx = 0
         
         # vehicle params
+        self.robot_name = rospy.get_param('/robot_name') 
         self.vehicle_width = rospy.get_param('/car/kinematics/l_width')
+        
+        
         
         # algo params (from acado)
         N = 40 
@@ -77,8 +80,9 @@ class ExperimentManager:
 
         # init logging vars
         self.s_begin_log = rospy.get_param('/s_begin_log')
-        self.explog_activated = False
+        self.N_iters_to_save = 60
         self.explog_iterationcounter = 0
+        self.explog_activated = False
         self.stored_pathglobal = False
         self.stored_trajstar = False
         self.stored_trajcl = False
@@ -99,6 +103,8 @@ class ExperimentManager:
 
         # init experiment variables
         self.scenario_id = rospy.get_param('/scenario_id')
+        self.traction_adaptive  = rospy.get_param('/traction_adaptive')
+        
         self.tireparams = TireParams()
         self.obs = Obstacles()
         self.obs.s = [self.s_obs_at_popup]
@@ -115,15 +121,11 @@ class ExperimentManager:
         self.ctrl_mode = 0 # # 0: stop, 1: cruise_ctrl, 2: tamp 
         
         # Main loop
-        #print 'running experiment: '
-        #print 'track: ', self.track_name
         self.exptime = 0 
         while (not rospy.is_shutdown()) and self.exptime<self.t_final :
-            
-            
-            if (self.exptime >= self.t_activate):
-                            
-                rospy.loginfo_throttle(1, "Running experiment")
+            if (self.exptime >= self.t_activate):        
+                rospy.loginfo_throttle(1, "Running experiment, ctrl mode = %i"%self.ctrl_mode)
+                
                 # HANDLE TRACTION IN SIMULATION                
                 s_ego = self.state.s % self.s_lap                
                 for i in range(self.N_mu_segments-1):
@@ -203,17 +205,14 @@ class ExperimentManager:
                 # SEND STOP IF EXIT TRACK
                 dlb = np.interp(self.state.s,self.pathglobal.s,self.pathglobal.dlb)
                 dub = np.interp(self.state.s,self.pathglobal.s,self.pathglobal.dub)
-                if (self.state.d < dlb or self.state.d > dub):
+                if (self.state.d < dlb-1.0 or self.state.d > dub+1.0): # todo get from param
                     self.ctrl_mode = 0 # stop
                 self.ctrl_mode_pub.publish(self.ctrl_mode)
                 
                 # publish text marker (state info)
                 state_text = "vx: " + "%.3f" % self.state.vx + "\n"  \
                              "mu: " + "%.3f" % mu            
-                self.statetextmarkerpub.publish(self.gettextmarker(state_text))
-            
-                # save data for plot
-                filename = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/explog_latest.npy" # todo get from param
+                self.statetextmarkerpub.publish(self.gettextmarker(state_text))    
                 
                 # handle pausing of gazebo
                 if (i_pauses < n_pauses):
@@ -223,6 +222,7 @@ class ExperimentManager:
                         unpause_gazebo()
                         i_pauses += 1
                 
+                # save data for plot
                 if (self.state.s >= self.s_begin_log and not self.explog_activated):
                     print "STARTED EXPLOG"
                     t_start_explog = copy.deepcopy(self.exptime) 
@@ -309,22 +309,31 @@ class ExperimentManager:
                         self.stored_trajcl = True
                     
                     self.explog_iterationcounter +=1
-                # save explog
                 
-                # debug
-                #print "stored_pathglobal: ", self.stored_pathglobal 
-                #print "stored_trajstar: ", self.stored_trajstar 
-                #print "stored_trajcl: ", self.stored_trajcl
+                # save explog               
                 if (self.stored_pathglobal and self.stored_trajstar and self.stored_trajcl and not self.explog_saved):  
                     explog = {
                       "pathglobal": self.pathglobal_dict,
                       "trajstar": self.trajstar_dict,
                       "trajcl": self.trajcl_dict,
                     }
+                    filepath = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/"
+                    filename = "explog_latest"
+                    if(self.scenario_id == 1):
+                        filename = filename + "_popup"
+                    elif(self.scenario_id == 2):
+                        filename = filename + "_reducedmuturn"
+                    elif(self.scenario_id == 3):
+                        filename = filename + "_racing"
+                    if(self.traction_adaptive):
+                        filename = filename + "_adaptive"
+                    else:
+                        filename = filename + "_nonadaptive"
+                    filename = filename + ".npy"
                     
-                    np.save(filename,explog)
+                    np.save(filepath+filename,explog)
                     self.explog_saved = True
-                    print "SAVED EXPLOG"
+                    print("SAVED EXPLOG to " + filepath + filename)
             
             else: # not reached activation time
                 rospy.loginfo_throttle(1, "Experiment starting in %i seconds"%(self.t_activate-self.exptime))

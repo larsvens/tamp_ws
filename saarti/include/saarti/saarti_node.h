@@ -98,6 +98,7 @@ private:
     int trajset_eval_cost();
     common::Trajectory traj2msg(planning_util::trajstruct traj);
     nav_msgs::Path traj2navpath(planning_util::trajstruct traj);
+    //jsk_recognition_msgs::PolygonArray traj2polarr(planning_util::trajstruct traj);
     void trajset2ma();
     visualization_msgs::Marker trajset2cubelist();
     jsk_recognition_msgs::PolygonArray stateconstr2polarr(planning_util::posconstrstruct pc);

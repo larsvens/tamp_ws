@@ -71,7 +71,7 @@ class CtrlInterface:
             
             if(self.ctrl_mode == 0):     # STOP (set by exp manager if outside of track)
                 if (self.state.vx > 0.05):
-                    print "stopping"
+                    rospy.loginfo_throttle(1,"in stop mode")
                     delta_out = self.delta_out_last
                     dc_out = -200000 #self.dc_out_last
                 else:
@@ -189,7 +189,7 @@ class CtrlInterface:
         elif(self.robot_name == "rhino"):
             feedfwd = Fx_request
             self.vx_error = self.trajstar.vx[1]-self.state.vx
-            feedback = 100000*self.vx_error
+            feedback = 50000*self.vx_error
             #print("feedback: ", feedback)
             dc_out = feedfwd + feedback
         else:
