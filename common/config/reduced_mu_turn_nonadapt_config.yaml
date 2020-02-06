@@ -4,8 +4,8 @@ t_activate: 15.0
 t_final: 500.0
 scenario_id: 2 # 1: pop-up, 2: reduced mu turn, 3: racing
 s_begin_log: 180
-s_pause_gazebo: []
-#s_pause_gazebo: [190, 208, 230]
+#s_pause_gazebo: []
+s_pause_gazebo: [180, 195, 210, 225, 240] # adaptive
 
 # pop-up obstacle config
 s_ego_at_popup:  50
@@ -42,7 +42,7 @@ Ntrajs_rollout: 12 # default 24 @ 3s
 # Traction adaptation 
 # 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics), static Cr
 # 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics, Cr from mu and Fz
-traction_adaptive: 1
+traction_adaptive: 0
 mu_nominal: 1.0 # used only when traction_adaptive = 0
 
 # optimization config

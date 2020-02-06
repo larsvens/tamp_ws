@@ -23,8 +23,6 @@ from geometry_msgs.msg import PolygonStamped
 from jsk_recognition_msgs.msg import PolygonArray
 import time
 
-
-
 class Perception:
     # constructor
     def __init__(self):
@@ -61,6 +59,8 @@ class Perception:
         while(not self.received_pathglobal):
             print "perception: waiting for pathglobal"
             self.rate.sleep()
+        self.maxmu = np.max(self.pathglobal.mu)
+        
         
         while(not self.received_state):
             print "perception: waiting for state"
@@ -167,7 +167,7 @@ class Perception:
             #p.color.b = 0.0        
         
         # color for mu
-        pa.likelihood = self.pathlocal.mu[0:-1]*(0.2/np.max(self.pathlocal.mu)) # discarding final value
+        pa.likelihood = self.pathlocal.mu*(0.2/self.maxmu) # discarding final value
                
         #pa.color.r = 1.0
         #pa.color.g = 0.0

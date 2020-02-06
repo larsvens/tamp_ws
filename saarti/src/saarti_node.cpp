@@ -677,6 +677,7 @@ jsk_recognition_msgs::PolygonArray SAARTI::traj2polarr(planning_util::trajstruct
             geometry_msgs::Point32 pt;
             pt.x = corners(j,0);
             pt.y = corners(j,1);
+            pt.z = 0.05f; // lift above pathlocal vis
             poly.polygon.points.push_back(pt);
         }
         polarr.polygons.push_back(poly);
