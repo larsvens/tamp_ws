@@ -1,5 +1,7 @@
 #include "saarti/saarti_node.h"
 
+float cuda_rollout(std::vector<float> tmp_vec);
+
 namespace saarti_node{
 
 SAARTI::SAARTI(ros::NodeHandle nh){
@@ -52,8 +54,9 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     planning_util::trajstruct trajstar_last;
 
     // tmp test CUDA
-    int testmain();
-    cout << "cuda print before this " << endl;
+    vector<float> tmp_vec;
+    float cuda_out = cuda_rollout(tmp_vec);
+    cout << "cuda function output: " << cuda_out <<  endl;
 
     // main loop
     planner_activated_ = true;

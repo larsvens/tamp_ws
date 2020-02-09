@@ -166,7 +166,7 @@ add_library(rtisqp_wrapper src/rtisqp_wrapper.cpp)
 SET(CUDA_NVCC_FLAGS "-arch=compute_61" CACHE STRING "nvcc flags" FORCE) # compute_61 specific for GTX 1070
 SET (CUDA_VERBOSE_BUILD ON CACHE BOOL "nvcc verbose" FORCE)
 SET(LIB_TYPE STATIC)
-CUDA_ADD_LIBRARY(TestLib ${LIB_TYPE} src/helloWorld.cu)
+CUDA_ADD_LIBRARY(cuda_lib ${LIB_TYPE} src/cuda_rollout.cu)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -179,7 +179,7 @@ CUDA_ADD_LIBRARY(TestLib ${LIB_TYPE} src/helloWorld.cu)
 add_executable(${PROJECT_NAME}_node src/saarti_node.cpp)
 
 # CUDA
-add_dependencies(${PROJECT_NAME}_node TestLib)
+add_dependencies(${PROJECT_NAME}_node cuda_lib)
 
 target_link_libraries(rtisqp_wrapper rtisqp_solver)
 
@@ -190,7 +190,7 @@ target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES})
 # CUDA
 TARGET_LINK_LIBRARIES(${PROJECT_NAME}_node
 ${catkin_LIBRARIES}
-TestLib
+cuda_lib
 )
 
 
