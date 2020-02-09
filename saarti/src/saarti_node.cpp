@@ -51,6 +51,10 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     // initialize trajhat last
     planning_util::trajstruct trajstar_last;
 
+    // tmp test CUDA
+    int testmain();
+    cout << "cuda print before this " << endl;
+
     // main loop
     planner_activated_ = true;
     while (ros::ok())

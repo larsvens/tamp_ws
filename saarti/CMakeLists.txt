@@ -19,6 +19,10 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
 )
 
+# CUDA
+FIND_PACKAGE(CUDA REQUIRED)
+
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -158,6 +162,12 @@ add_library(rtisqp_wrapper src/rtisqp_wrapper.cpp)
 #   src/${PROJECT_NAME}/saarti.cpp
 # )
 
+# CUDA
+SET(CUDA_NVCC_FLAGS "-arch=compute_61" CACHE STRING "nvcc flags" FORCE) # compute_61 specific for GTX 1070
+SET (CUDA_VERBOSE_BUILD ON CACHE BOOL "nvcc verbose" FORCE)
+SET(LIB_TYPE STATIC)
+CUDA_ADD_LIBRARY(TestLib ${LIB_TYPE} src/helloWorld.cu)
+
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
@@ -168,11 +178,20 @@ add_library(rtisqp_wrapper src/rtisqp_wrapper.cpp)
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_node src/saarti_node.cpp)
 
+# CUDA
+add_dependencies(${PROJECT_NAME}_node TestLib)
+
 target_link_libraries(rtisqp_wrapper rtisqp_solver)
 
 target_link_libraries(${PROJECT_NAME}_node rtisqp_wrapper rtisqp_solver)
 
 target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES})
+
+# CUDA
+TARGET_LINK_LIBRARIES(${PROJECT_NAME}_node
+${catkin_LIBRARIES}
+TestLib
+)
 
 
 ## Rename C++ executable without prefix
