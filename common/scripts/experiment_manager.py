@@ -210,7 +210,13 @@ class ExperimentManager:
                 self.ctrl_mode_pub.publish(self.ctrl_mode)
                 
                 # publish text marker (state info)
-                state_text = "vx: " + "%.3f" % self.state.vx + "\n"  \
+                if(self.traction_adaptive):
+                    traction_adaptive_str = "on"
+                else:
+                    traction_adaptive_str = "off"
+                    
+                state_text = "traction_adapt: " + traction_adaptive_str + "\n"  \
+                             "vx: " + "%.3f" % self.state.vx + "\n"  \
                              "mu: " + "%.3f" % mu            
                 self.statetextmarkerpub.publish(self.gettextmarker(state_text))    
                 
@@ -378,13 +384,13 @@ class ExperimentManager:
         m.header.stamp = rospy.Time.now()
         m.header.frame_id = "fssim/vehicle/base_link"
         m.pose.position.x = 0;
-        m.pose.position.y = 0;
+        m.pose.position.y = 7.5;
         m.pose.position.z = 5.0;
         m.type = m.TEXT_VIEW_FACING;
         m.text = text
-        m.scale.x = 0.5;
-        m.scale.y = 0.5;
-        m.scale.z = 0.5;
+        m.scale.x = 1.0;
+        m.scale.y = 1.0;
+        m.scale.z = 1.0;
         m.color.a = 1.0; 
         m.color.r = 0.0;
         m.color.g = 0.0;
