@@ -1,6 +1,6 @@
 #include "saarti/saarti_node.h"
 
-float cuda_rollout(std::vector<planning_util::trajstruct> &trajset);
+float cuda_rollout(std::vector<containers::trajstruct> &trajset);
 
 namespace saarti_node{
 
@@ -51,7 +51,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     }
 
     // initialize trajhat last
-    planning_util::trajstruct trajstar_last;
+    containers::trajstruct trajstar_last;
 
     // main loop
     planner_activated_ = true;
@@ -81,11 +81,11 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
             ROS_INFO_STREAM("selecting initial guess");
             trajset_.clear();
-            planning_util::trajstruct trajhat;
+            containers::trajstruct trajhat;
             auto t1_rollout = std::chrono::high_resolution_clock::now();
 
             // initialize initial guess
-            planning_util::trajstruct trajprime;
+            containers::trajstruct trajprime;
 
             // regular RTI
             if (sampling_augmentation_== 0) {
@@ -146,10 +146,10 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             }
 
             // get cartesian coords
-            traj2cart(trajhat);
+            planning_util::traj2cart(trajhat,pathlocal_);
 
             // only for visualization, comment out to save time
-            trajset2cart();
+            planning_util::trajset2cart(trajset_,pathlocal_);
             visualization_msgs::Marker trajset_cubelist = trajset2cubelist();
 
             // timing
@@ -210,7 +210,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             ROS_INFO_STREAM("setting state constraints..");
             vector<float> lld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dub,false);
             vector<float> rld = cpp_utils::interp(trajhat.s,pathlocal_.s,pathlocal_.dlb,false);
-            planning_util::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obst_,lld,rld,sp_);
+            containers::posconstrstruct posconstr = rtisqp_wrapper_.setStateConstraints(trajhat,obst_,lld,rld,sp_);
             jsk_recognition_msgs::PolygonArray posconstr_polarr = stateconstr2polarr(posconstr); // visualize state constraint
 
             // run optimization (separate thread for timeout option)
@@ -229,9 +229,9 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
             // extract trajstar from solver
             // todo extract force constraints too?
-            planning_util::trajstruct trajstar = rtisqp_wrapper_.getTrajectory();
+            containers::trajstruct trajstar = rtisqp_wrapper_.getTrajectory();
             // compute additional traj variables
-            traj2cart(trajstar);
+            planning_util::traj2cart(trajstar,pathlocal_);
             get_additional_traj_variables(trajstar,pathlocal_,sp_);
             nav_msgs::Path p_trajstar = traj2navpath(trajstar);
             jsk_recognition_msgs::PolygonArray trajstar_polarr = traj2polarr(trajstar,sp_);
@@ -320,14 +320,14 @@ SAARTI::SAARTI(ros::NodeHandle nh){
  */
 
 // sets refs to be used in rollout and optimization
-planning_util::refstruct SAARTI::setRefs(int ref_mode,
+containers::refstruct SAARTI::setRefs(int ref_mode,
                                          int traction_adaptive,
                                          float mu_nominal,
                                          float vxref_cc,
                                          float dref_cc,
-                                         planning_util::staticparamstruct sp,
-                                         planning_util::pathstruct pathlocal){
-    planning_util::refstruct refs;
+                                         containers::staticparamstruct sp,
+                                         containers::pathstruct pathlocal){
+    containers::refstruct refs;
     refs.ref_mode = ref_mode;
     switch (ref_mode) {
     case 0:  // minimize s (emg brake)
@@ -411,49 +411,9 @@ planning_util::refstruct SAARTI::setRefs(int ref_mode,
     return refs;
 }
 
-// computes cartesian coordinates of a trajectory
-void SAARTI::traj2cart(planning_util::trajstruct &traj){
-    if(!traj.s.size()){
-        ROS_ERROR("traj2cart on traj of 0 length");
-    }
-    else {
-        // clear previous cartesian if exists
-        if (traj.X.size() != 0){
-            ROS_WARN_STREAM("traj already has cartesian, clearing X, Y, psi, kappac");
-            traj.X.clear();
-            traj.Y.clear();
-            traj.psi.clear();
-            traj.kappac.clear();
-        }
-
-        vector<float> Xc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.X,false);
-        vector<float> Yc = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.Y,false);
-        // handle discontinuities in psic
-        vector<float> pathlocal_psic_cont = angle_to_continous(pathlocal_.psi_c);
-        vector<float> psic = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_psic_cont,false);
-        angle_to_interval(psic); // bring traj.psic back to [-pi pi]
-
-        for (uint j=0; j<traj.s.size();j++) {
-            // X = Xc - d*sin(psic);
-            // Y = Yc + d*cos(psic);
-            // psi = deltapsi + psic;
-            float X = Xc.at(j) - traj.d.at(j)*std::sin(psic.at(j));
-            float Y = Yc.at(j) + traj.d.at(j)*std::cos(psic.at(j));
-            float psi = traj.deltapsi.at(j) + psic.at(j);
-
-            // build vectors
-            traj.X.push_back(X);
-            traj.Y.push_back(Y);
-            traj.psi.push_back(psi);
-        }
-        traj.kappac = cpp_utils::interp(traj.s,pathlocal_.s,pathlocal_.kappa_c,false);
-        // ensure psi is in [-pi pi]
-        angle_to_interval(traj.psi);
-    }
-}
 
 // computes normal forces of a trajectory
-void SAARTI::get_additional_traj_variables(planning_util::trajstruct &traj, planning_util::pathstruct &pathlocal, planning_util::staticparamstruct sp){
+void SAARTI::get_additional_traj_variables(containers::trajstruct &traj, containers::pathstruct &pathlocal, containers::staticparamstruct sp){
     // mu
     vector<float> mu = cpp_utils::interp(traj.s,pathlocal.s,pathlocal.mu,false);
 
@@ -482,73 +442,12 @@ void SAARTI::get_additional_traj_variables(planning_util::trajstruct &traj, plan
     }
 }
 
-// computes cartesian coordinates of a trajectory set
-void SAARTI::trajset2cart(){
-    for (uint i=0;i<trajset_.size();i++) {
-        traj2cart(trajset_.at(i));
-    }
-}
-
-// computes cartesian coordinates of a set of s,d pts
-void SAARTI::sd_pts2cart(vector<float> &s, vector<float> &d, vector<float> &Xout, vector<float> &Yout){
-    vector<float> Xc = cpp_utils::interp(s,pathlocal_.s,pathlocal_.X,false);
-    vector<float> Yc = cpp_utils::interp(s,pathlocal_.s,pathlocal_.Y,false);
-    vector<float> pathlocal_psic_cont = angle_to_continous(pathlocal_.psi_c);
-    vector<float> psic = cpp_utils::interp(s,pathlocal_.s,pathlocal_psic_cont,false);
-    angle_to_interval(psic);
-
-    for (uint j=0; j<s.size();j++) {
-        // X = Xc - d*sin(psic);
-        // Y = Yc + d*cos(psic);
-        // psi = deltapsi + psic;
-        float X = Xc.at(j) - d.at(j)*std::sin(psic.at(j));
-        float Y = Yc.at(j) + d.at(j)*std::cos(psic.at(j));
-        Xout.push_back(X);
-        Yout.push_back(Y);
-    }
-}
-
-// wraps an angle variable on the interval [-pi pi]
-void SAARTI::angle_to_interval(vector<float> &psi){
-    // default interval: [-pi pi]
-    float pi = float(M_PI);
-    for (uint i=0; i<psi.size(); i++){
-        while(psi.at(i) > pi){
-            psi.at(i) = psi.at(i) - 2*pi;
-        }
-        while(psi.at(i) <= -pi){
-            psi.at(i) = psi.at(i) + 2*pi;
-        }
-    }
-}
-
-// unwraps an angle variable on the interval [-pi pi] to continous
-vector<float> SAARTI::angle_to_continous(vector<float> &psi){
-    float pi = float(M_PI);
-    float offset = 0;
-    vector<float> psi_cont;
-    for (uint i=0;i<psi.size()-1;i++) {
-        psi_cont.push_back(psi.at(i) + offset);
-        if(psi.at(i+1) - psi.at(i) > pi){ // detecting up-flip
-            offset = offset - 2*pi;
-        }
-        if(psi.at(i+1) - psi.at(i) < -pi){ // detecting down-flip
-            offset = offset + 2*pi;
-        }
-    }
-    psi_cont.push_back(psi.back() + offset); // final value
-    if (psi_cont.size() != psi.size()){
-        ROS_ERROR_STREAM("fault in angle_to_continous");
-    }
-    return psi_cont;
-}
-
 // cost evaluation and collision checking of trajset
 int SAARTI::trajset_eval_cost(){
     float mincost = float(Wslack_)*10;
     int trajhat_idx = -1;
     for (uint i=0;i<trajset_.size();i++) {
-        planning_util::trajstruct traj = trajset_.at(i);
+        containers::trajstruct traj = trajset_.at(i);
         bool colliding = false;
         bool exitroad = false;
         float cost = 0;
@@ -609,7 +508,7 @@ int SAARTI::trajset_eval_cost(){
 }
 
 // builds trajectry message from traj struct
-common::Trajectory SAARTI::traj2msg(planning_util::trajstruct traj){
+common::Trajectory SAARTI::traj2msg(containers::trajstruct traj){
     common::Trajectory trajmsg;
     // state
     trajmsg.s = traj.s;
@@ -639,7 +538,7 @@ common::Trajectory SAARTI::traj2msg(planning_util::trajstruct traj){
 }
 
 // represent traj as navmsgs path for visualization
-nav_msgs::Path SAARTI::traj2navpath(planning_util::trajstruct traj){
+nav_msgs::Path SAARTI::traj2navpath(containers::trajstruct traj){
     if (traj.X.size() == 0){
         ROS_ERROR_STREAM("No cartesan coordinates for traj" );
     }
@@ -665,7 +564,7 @@ nav_msgs::Path SAARTI::traj2navpath(planning_util::trajstruct traj){
 }
 
 // represent traj as polygon array for rviz
-jsk_recognition_msgs::PolygonArray SAARTI::traj2polarr(planning_util::trajstruct traj, planning_util::staticparamstruct sp){
+jsk_recognition_msgs::PolygonArray SAARTI::traj2polarr(containers::trajstruct traj, containers::staticparamstruct sp){
     if (traj.X.size() == 0){
         ROS_ERROR_STREAM("No cartesan coordinates for traj" );
     }
@@ -745,7 +644,7 @@ visualization_msgs::Marker SAARTI::trajset2cubelist(){
     m.header.frame_id = "map";
     m.pose.orientation.w = 1.0;
     for (uint i=0; i<trajset_.size(); i++) {
-        planning_util::trajstruct traj = trajset_.at(i);
+        containers::trajstruct traj = trajset_.at(i);
         for (uint j=0; j<traj.s.size();j++) {
             geometry_msgs::Point pt;
             pt.x = double(traj.X.at(j));
@@ -757,7 +656,7 @@ visualization_msgs::Marker SAARTI::trajset2cubelist(){
 }
 
 // create visualization obj for state constraints
-jsk_recognition_msgs::PolygonArray SAARTI::stateconstr2polarr(planning_util::posconstrstruct pc){
+jsk_recognition_msgs::PolygonArray SAARTI::stateconstr2polarr(containers::posconstrstruct pc){
     jsk_recognition_msgs::PolygonArray polarr;
     polarr.header.frame_id = "map";
     for (uint i=0;i<pc.dlb.size();i+=5){
@@ -768,7 +667,7 @@ jsk_recognition_msgs::PolygonArray SAARTI::stateconstr2polarr(planning_util::pos
         vector<float> d{pc.dub.at(i),pc.dub.at(i),pc.dlb.at(i),pc.dlb.at(i)};
         vector<float> X;
         vector<float> Y;
-        sd_pts2cart(s, d, X, Y);
+        planning_util::sd_pts2cart(X,Y,s,d,pathlocal_);
         for (uint j=0;j<4;j++){
             geometry_msgs::Point32 pt;
             pt.x = X.at(j);

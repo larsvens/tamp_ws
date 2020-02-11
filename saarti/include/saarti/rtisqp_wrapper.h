@@ -17,8 +17,6 @@
 
 // util
 #include "planning_util.h"
-#include <common/interp.h>
-#include "common/cpp_utils.h"
 
 // define variables
 #define NX         ACADO_NX	/* number of differential states */
@@ -51,47 +49,47 @@ public:
 
     // functions
     void setWeights(vector<float>, vector<float>, vector<float>, float);
-    void setInitialGuess(planning_util::trajstruct);
-    void setInitialState(planning_util::statestruct);
-    void setOptReference(planning_util::trajstruct, planning_util::refstruct refs);
-    void setInputConstraints(planning_util::trajstruct traj);
-    planning_util::posconstrstruct setStateConstraints(planning_util::trajstruct &traj,
-                                                       planning_util::obstastruct obs,
-                                                       vector<float> lld,
-                                                       vector<float> rld,
-                                                       planning_util::staticparamstruct &sp);
+    void setInitialGuess(containers::trajstruct);
+    void setInitialState(containers::statestruct);
+    void setOptReference(containers::trajstruct, containers::refstruct refs);
+    void setInputConstraints(containers::trajstruct traj);
+    containers::posconstrstruct setStateConstraints(containers::trajstruct &traj,
+                                                    containers::obstastruct obs,
+                                                    vector<float> lld,
+                                                    vector<float> rld,
+                                                    containers::staticparamstruct &sp);
     void shiftStateAndControls();
-    void shiftTrajectoryFwdSimple(planning_util::trajstruct &traj);
-    planning_util::trajstruct shiftTrajectoryByIntegration(planning_util::trajstruct traj,
-                                                           planning_util::statestruct state,
-                                                           planning_util::pathstruct &pathlocal,
-                                                           planning_util::staticparamstruct &sp,
-                                                           int adaptive_mode,
-                                                           float mu_static);
+    void shiftTrajectoryFwdSimple(containers::trajstruct &traj);
+    containers::trajstruct shiftTrajectoryByIntegration(containers::trajstruct traj,
+                                                        containers::statestruct state,
+                                                        containers::pathstruct &pathlocal,
+                                                        containers::staticparamstruct &sp,
+                                                        int adaptive_mode,
+                                                        float mu_static);
     void doPreparationStep();
     int  doFeedbackStep();
     Eigen::MatrixXd getStateTrajectory();
     Eigen::MatrixXd getControlTrajectory();
-    planning_util::trajstruct getTrajectory();
-    void computeTrajset(vector<planning_util::trajstruct> &trajset,
-                        planning_util::statestruct &initstate,
-                        planning_util::pathstruct &pathlocal,
-                        planning_util::staticparamstruct & sp,
+    containers::trajstruct getTrajectory();
+    void computeTrajset(vector<containers::trajstruct> &trajset,
+                        containers::statestruct &initstate,
+                        containers::pathstruct &pathlocal,
+                        containers::staticparamstruct & sp,
                         int adaptive_mode,
                         float mu_nominal,
                         float vxref_nominal,
-                        planning_util::refstruct ref_mode,
+                        containers::refstruct ref_mode,
                         uint Ntrajs);
-    void rolloutSingleTraj(planning_util::trajstruct  &traj,
-                           planning_util::statestruct &initstate,
-                           planning_util::pathstruct  &pathlocal,
-                           planning_util::staticparamstruct &sp,
+    void rolloutSingleTraj(containers::trajstruct  &traj,
+                           containers::statestruct &initstate,
+                           containers::pathstruct  &pathlocal,
+                           containers::staticparamstruct &sp,
                            int adaptive_mode,
                            float mu_static);
 
     void setIntegratorState(real_t *acadoWSstate,
-                            planning_util::statestruct state,
-                            planning_util::ctrlstruct ctrl,
+                            containers::statestruct state,
+                            containers::ctrlstruct ctrl,
                             float kappac);
 
 };

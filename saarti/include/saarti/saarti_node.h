@@ -78,32 +78,30 @@ private:
     ros::Publisher trajstar_polarr_vis_pub_;
     ros::Publisher posconstr_vis_pub_;
     ros::Publisher vectordebug_pub_;
-    planning_util::statestruct state_;
+    containers::statestruct state_;
     int ctrlmode_;
-    planning_util::pathstruct pathlocal_;
-    vector<planning_util::trajstruct> trajset_;
-    planning_util::obstastruct obst_;
-    planning_util::refstruct refs_;
-    planning_util::staticparamstruct sp_;
+    containers::pathstruct pathlocal_;
+    vector<containers::trajstruct> trajset_;
+    containers::obstastruct obst_;
+    containers::refstruct refs_;
+    containers::staticparamstruct sp_;
     RtisqpWrapper rtisqp_wrapper_;
 
     // functions
-    void print_obj(planning_util::trajstruct traj);
-    planning_util::refstruct setRefs(int ref_mode_, int traction_adaptive_, float mu_nominal_, float vxref_cc, float dref_cc, planning_util::staticparamstruct sp_, planning_util::pathstruct pathlocal_);
-    void traj2cart(planning_util::trajstruct &traj);
-    void get_additional_traj_variables(planning_util::trajstruct &traj, planning_util::pathstruct &pathlocal, planning_util::staticparamstruct sp);
-    void trajset2cart();
-    void sd_pts2cart(vector<float> &s, vector<float> &d, vector<float> &Xout, vector<float> &Yout);
-    void angle_to_interval(vector<float> &psi);
-    vector<float> angle_to_continous(vector<float> &psi);
-    int trajset_eval_cost();
-    common::Trajectory traj2msg(planning_util::trajstruct traj);
-    nav_msgs::Path traj2navpath(planning_util::trajstruct traj);
-    jsk_recognition_msgs::PolygonArray traj2polarr(planning_util::trajstruct traj, planning_util::staticparamstruct sp);
+
+    // move
+    void get_additional_traj_variables(containers::trajstruct &traj, containers::pathstruct &pathlocal, containers::staticparamstruct sp);
+    common::Trajectory traj2msg(containers::trajstruct traj);
+    nav_msgs::Path traj2navpath(containers::trajstruct traj);
+    jsk_recognition_msgs::PolygonArray traj2polarr(containers::trajstruct traj, containers::staticparamstruct sp);
     Eigen::MatrixXf get_vehicle_corners(float X, float Y, float psi, float lf, float lr, float w);
     void trajset2ma();
     visualization_msgs::Marker trajset2cubelist();
-    jsk_recognition_msgs::PolygonArray stateconstr2polarr(planning_util::posconstrstruct pc);
+    jsk_recognition_msgs::PolygonArray stateconstr2polarr(containers::posconstrstruct pc);
+
+    // keep
+    containers::refstruct setRefs(int ref_mode_, int traction_adaptive_, float mu_nominal_, float vxref_cc, float dref_cc, containers::staticparamstruct sp_, containers::pathstruct pathlocal_);
+    int trajset_eval_cost();
     void state_callback(const common::State::ConstPtr& msg);
     void ctrlmode_callback(const std_msgs::Int16::ConstPtr& msg);
     void pathlocal_callback(const common::Path::ConstPtr& msg);

@@ -70,7 +70,7 @@ void RtisqpWrapper::setWeights(vector<float> Wx, vector<float> WNx, vector<float
     cout << "Setting Weigth matrices:" << endl << "W = " << W  << endl << "WN = " << WN << endl;
 }
 
-void RtisqpWrapper::setInitialGuess(planning_util::trajstruct traj){
+void RtisqpWrapper::setInitialGuess(containers::trajstruct traj){
     // set state trajectory guess
     if(traj.s.size() != N+1){
         throw std::invalid_argument("faulty state trajectory in setInitialGuess");
@@ -108,7 +108,7 @@ void RtisqpWrapper::setInitialGuess(planning_util::trajstruct traj){
     }
 }
 
-void RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_util::refstruct refs){
+void RtisqpWrapper::setOptReference(containers::trajstruct traj, containers::refstruct refs){
     vector<float> sref = refs.sref;
     //vector<float> vxref = refs.vxref;
     // todo rm traj
@@ -139,7 +139,7 @@ void RtisqpWrapper::setOptReference(planning_util::trajstruct traj, planning_uti
     acadoVariables.yN[ 6 ] = 0;                                // dummy
 }
 
-void RtisqpWrapper::setInputConstraints(planning_util::trajstruct traj){
+void RtisqpWrapper::setInputConstraints(containers::trajstruct traj){
     // note: mu and Fz have been previously set either static or adaptive
 
     // get max forces front and back
@@ -175,13 +175,13 @@ void RtisqpWrapper::setInputConstraints(planning_util::trajstruct traj){
     }
 }
 
-planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util::trajstruct &traj,
-                                                                  planning_util::obstastruct obs,
-                                                                  vector<float> lld,
-                                                                  vector<float> rld,
-                                                                  planning_util::staticparamstruct &sp){
+containers::posconstrstruct RtisqpWrapper::setStateConstraints(containers::trajstruct &traj,
+                                                               containers::obstastruct obs,
+                                                               vector<float> lld,
+                                                               vector<float> rld,
+                                                               containers::staticparamstruct &sp){
 
-    planning_util::posconstrstruct posconstr;
+    containers::posconstrstruct posconstr;
 
     for (uint k = 0; k < N + 1; ++k)
     {
@@ -230,7 +230,7 @@ planning_util::posconstrstruct RtisqpWrapper::setStateConstraints(planning_util:
     return posconstr;
 }
 
-void RtisqpWrapper::setInitialState(planning_util::statestruct state){
+void RtisqpWrapper::setInitialState(containers::statestruct state){
     acadoVariables.x0[0] = state.s;
     acadoVariables.x0[1] = state.d;
     acadoVariables.x0[2] = state.deltapsi;
@@ -249,7 +249,7 @@ void RtisqpWrapper::shiftStateAndControls(){
 }
 
 // not used atm
-void RtisqpWrapper::shiftTrajectoryFwdSimple(planning_util::trajstruct &traj){
+void RtisqpWrapper::shiftTrajectoryFwdSimple(containers::trajstruct &traj){
 
 
     if(!traj.s.size()){
@@ -280,12 +280,12 @@ void RtisqpWrapper::shiftTrajectoryFwdSimple(planning_util::trajstruct &traj){
     }
 }
 
-planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_util::trajstruct traj,
-                                                                      planning_util::statestruct state, // todo rm?
-                                                                      planning_util::pathstruct &pathlocal,
-                                                                      planning_util::staticparamstruct &sp,
-                                                                      int traction_adaptive,
-                                                                      float mu_nominal){
+containers::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(containers::trajstruct traj,
+                                                                   containers::statestruct state, // todo rm?
+                                                                   containers::pathstruct &pathlocal,
+                                                                   containers::staticparamstruct &sp,
+                                                                   int traction_adaptive,
+                                                                   float mu_nominal){
     if(traj.s.size() != N+1){
         throw std::invalid_argument("Error in shiftTrajectoryByIntegration: state has wrong size");
     }
@@ -293,12 +293,12 @@ planning_util::trajstruct RtisqpWrapper::shiftTrajectoryByIntegration(planning_u
         throw std::invalid_argument("Error in shiftTrajectoryByIntegration: ctrl has wrong size");
     }
     // grab ctrl sequence and init state from traj
-    planning_util::trajstruct traj_out;
+    containers::trajstruct traj_out;
     traj_out.Fyf = traj.Fyf;
     traj_out.Fxf = traj.Fxf;
     traj_out.Fxr = traj.Fxr;
 
-    planning_util::statestruct initstate;
+    containers::statestruct initstate;
 
     // if moving, shift u one step fwd before rollout and roll from x_{1|t-1}
     if(state.vx < 1.0f){
@@ -331,8 +331,8 @@ int RtisqpWrapper::doFeedbackStep(){
     return status;
 }
 
-planning_util::trajstruct RtisqpWrapper::getTrajectory(){
-    planning_util::trajstruct traj_out;
+containers::trajstruct RtisqpWrapper::getTrajectory(){
+    containers::trajstruct traj_out;
 
     for (uint k = 0; k < N + 1; ++k){
         // state
@@ -358,10 +358,10 @@ planning_util::trajstruct RtisqpWrapper::getTrajectory(){
 
 // usage: set (ONLY) control sequence of traj ahead of time,
 // the function will roll dynamics fwd according to those controls
-void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
-                                      planning_util::statestruct &initstate,
-                                      planning_util::pathstruct  &pathlocal,
-                                      planning_util::staticparamstruct &sp,
+void RtisqpWrapper::rolloutSingleTraj(containers::trajstruct  &traj,
+                                      containers::statestruct &initstate,
+                                      containers::pathstruct  &pathlocal,
+                                      containers::staticparamstruct &sp,
                                       int traction_adaptive,
                                       float mu_nominal){
 
@@ -380,7 +380,7 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
     }
 
     // initialize rollingstate
-    planning_util::statestruct rollingstate = initstate;
+    containers::statestruct rollingstate = initstate;
     // initialize vector same size as ACADOvariables.state (see acado_solver.c, acado_initializeNodesByForwardSimulation)
     real_t acadoWSstate[94];
 
@@ -513,14 +513,14 @@ void RtisqpWrapper::rolloutSingleTraj(planning_util::trajstruct  &traj,
  * integrator from the acado toolkit. The control input is recomputed at every stage. A vector of
  * references is constructed as [dlb ... dub dlb ... dub], where the first half of the trajset has
  * positive Fx and the second half has negative */
-void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
-                                   planning_util::statestruct &initstate,
-                                   planning_util::pathstruct &pathlocal,
-                                   planning_util::staticparamstruct & sp,
+void RtisqpWrapper::computeTrajset(vector<containers::trajstruct> &trajset,
+                                   containers::statestruct &initstate,
+                                   containers::pathstruct &pathlocal,
+                                   containers::staticparamstruct & sp,
                                    int traction_adaptive,
                                    float mu_nominal,
                                    float vxref_nominal,
-                                   planning_util::refstruct refs,
+                                   containers::refstruct refs,
                                    uint Ntrajs){
     if(Ntrajs % 2 !=0){
         throw "Error in computeTrajset, Ntrajs must be even";
@@ -538,12 +538,12 @@ void RtisqpWrapper::computeTrajset(vector<planning_util::trajstruct> &trajset,
     // generate trajs
     for (uint i=0;i<Ntrajs;i++) { // loop over trajectory set
         real_t acadoWSstate[94];
-        planning_util::statestruct rollingstate = initstate;
-        planning_util::ctrlstruct ctrl;
+        containers::statestruct rollingstate = initstate;
+        containers::ctrlstruct ctrl;
 
         // roll loop
         auto t1_single = std::chrono::high_resolution_clock::now();
-        planning_util::trajstruct traj;
+        containers::trajstruct traj;
         bool is_initstate = true;
         bool integrator_initiated = false;
         float kappac;

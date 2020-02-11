@@ -4,7 +4,7 @@
 #include <cuda_runtime.h>
 #include <iostream>
 #include <vector>
-#include "planning_util.h"
+#include "containers.h"
 
 __global__
 void single_rollout(int N,
@@ -26,7 +26,7 @@ void single_rollout(int N,
         psi[i+1] = psi[i] + dt*1.0f;
 }
 
-float cuda_rollout(std::vector<planning_util::trajstruct> &trajset)
+float cuda_rollout(std::vector<containers::trajstruct> &trajset)
 {
     int N = 40;
     float dt = 0.1;
