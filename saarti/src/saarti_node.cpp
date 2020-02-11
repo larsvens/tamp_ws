@@ -1,6 +1,6 @@
 #include "saarti/saarti_node.h"
 
-float cuda_rollout(std::vector<float> tmp_vec);
+float cuda_rollout(std::vector<planning_util::trajstruct> &trajset);
 
 namespace saarti_node{
 
@@ -52,11 +52,6 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
     // initialize trajhat last
     planning_util::trajstruct trajstar_last;
-
-    // tmp test CUDA
-    vector<float> tmp_vec;
-    float cuda_out = cuda_rollout(tmp_vec);
-    cout << "cuda function output: " << cuda_out <<  endl;
 
     // main loop
     planner_activated_ = true;
@@ -117,7 +112,13 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             // SAARTI
             if(sampling_augmentation_ == 1){
                 ROS_INFO_STREAM("generating trajectory set");
+                // cpu rollout
                 rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_,vxref_cc_,refs_,uint(Ntrajs_rollout_));
+
+                // gpu rollout
+                float cuda_out = cuda_rollout(trajset_);
+                cout << "cuda function output: " << cuda_out <<  endl;
+
                 // append trajprime
                 if (trajstar_last.s.size()!=0){
                     trajprime = rtisqp_wrapper_.shiftTrajectoryByIntegration(trajstar_last,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_);
@@ -679,7 +680,7 @@ jsk_recognition_msgs::PolygonArray SAARTI::traj2polarr(planning_util::trajstruct
         geometry_msgs::PolygonStamped poly;
         poly.header.stamp = ros::Time::now();
         poly.header.frame_id = "map";
-        Eigen::MatrixXf corners = planning_util::get_vehicle_corners(traj.X.at(i),traj.Y.at(i),traj.psi.at(i),lf,lr,w);
+        Eigen::MatrixXf corners = get_vehicle_corners(traj.X.at(i),traj.Y.at(i),traj.psi.at(i),lf,lr,w);
         for (uint j=0;j<4;j++){
             geometry_msgs::Point32 pt;
             pt.x = corners(j,0);
@@ -692,6 +693,41 @@ jsk_recognition_msgs::PolygonArray SAARTI::traj2polarr(planning_util::trajstruct
 
     polarr.header.stamp = ros::Time::now();
     return polarr;
+}
+
+// get corners for visualization
+Eigen::MatrixXf SAARTI::get_vehicle_corners(float X, float Y, float psi, float lf, float lr, float w){
+    Eigen::MatrixXf R(2,2);
+    Eigen::MatrixXf dims(5,2);
+    Eigen::MatrixXf Xoffset(5,2);
+    Eigen::MatrixXf Yoffset(5,2);
+    Eigen::MatrixXf corners(5,2);
+
+    R << std::cos(psi), std::sin(psi),
+        -std::sin(psi), std::cos(psi);
+
+    dims << lf, w/2,
+            -lr, w/2,
+            -lr, -w/2,
+            lf, -w/2,
+            lf, w/2;
+
+    // rotate
+    corners = dims*R;
+
+    // add position offset
+    Xoffset << X, 0.0f,
+               X, 0.0f,
+               X, 0.0f,
+               X, 0.0f,
+               X, 0.0f;
+    Yoffset << 0.0f, Y,
+               0.0f, Y,
+               0.0f, Y,
+               0.0f, Y,
+               0.0f, Y;
+
+    return corners + Xoffset + Yoffset;
 }
 
 // represent trajset as cubelist for fast rendering visualization

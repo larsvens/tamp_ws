@@ -114,7 +114,7 @@ FIND_PACKAGE(CUDA REQUIRED)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
    INCLUDE_DIRS include
-   LIBRARIES rtisqp_solver rtisqp_wrapper
+   LIBRARIES rtisqp_solver rtisqp_wrapper planning_util
 #  CATKIN_DEPENDS common roscpp rospy std_msgs
 #  DEPENDS system_lib
 )
@@ -155,7 +155,7 @@ add_library(rtisqp_solver
 
 ## Custom: Declare a C++ library for wrapper
 add_library(rtisqp_wrapper src/rtisqp_wrapper.cpp)
-
+add_library(planning_util src/planning_util.cpp)
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -178,21 +178,20 @@ CUDA_ADD_LIBRARY(cuda_lib ${LIB_TYPE} src/cuda_rollout.cu)
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_node src/saarti_node.cpp)
 
-# CUDA
+# Add cmake target dependencies of CUDA library
 add_dependencies(${PROJECT_NAME}_node cuda_lib)
 
-target_link_libraries(rtisqp_wrapper rtisqp_solver)
+#target_link_libraries(rtisqp_wrapper rtisqp_solver)
 
-target_link_libraries(${PROJECT_NAME}_node rtisqp_wrapper rtisqp_solver)
-
-target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_node
+    rtisqp_wrapper
+    rtisqp_solver)
 
 # CUDA
-TARGET_LINK_LIBRARIES(${PROJECT_NAME}_node
-${catkin_LIBRARIES}
-cuda_lib
-)
-
+target_link_libraries(${PROJECT_NAME}_node
+    ${catkin_LIBRARIES}
+    cuda_lib
+    planning_util)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

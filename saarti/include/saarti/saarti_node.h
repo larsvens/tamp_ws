@@ -100,6 +100,7 @@ private:
     common::Trajectory traj2msg(planning_util::trajstruct traj);
     nav_msgs::Path traj2navpath(planning_util::trajstruct traj);
     jsk_recognition_msgs::PolygonArray traj2polarr(planning_util::trajstruct traj, planning_util::staticparamstruct sp);
+    Eigen::MatrixXf get_vehicle_corners(float X, float Y, float psi, float lf, float lr, float w);
     void trajset2ma();
     visualization_msgs::Marker trajset2cubelist();
     jsk_recognition_msgs::PolygonArray stateconstr2polarr(planning_util::posconstrstruct pc);
@@ -109,6 +110,7 @@ private:
     void obstacles_callback(const common::Obstacles::ConstPtr& msg);
     void get_rosparams();
     void run_optimization();
+
 };
 } // end namespace saarti_node
 #endif // SAARTI_NODE_H
