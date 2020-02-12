@@ -1,5 +1,6 @@
 #include "saarti/saarti_node.h"
 
+// global fcn for cuda
 float cuda_rollout(std::vector<containers::trajstruct> &trajset);
 
 namespace saarti_node{

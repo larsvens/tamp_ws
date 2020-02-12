@@ -15,8 +15,11 @@
 #include "geometry_msgs/PolygonStamped.h"
 #include "nav_msgs/Path.h"
 
-// saarti
+// wrapper libs
+#include "containers.h"
 #include "saarti/rtisqp_wrapper.h"
+
+// messages
 #include <common/Path.h>
 #include <common/Obstacles.h>
 #include <common/Trajectory.h>
@@ -106,6 +109,8 @@ private:
     void obstacles_callback(const common::Obstacles::ConstPtr& msg);
     void get_rosparams();
     void run_optimization();
+
+
 
 };
 } // end namespace saarti_node

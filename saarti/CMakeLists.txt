@@ -166,7 +166,7 @@ add_library(planning_util src/planning_util.cpp)
 SET(CUDA_NVCC_FLAGS "-arch=compute_61" CACHE STRING "nvcc flags" FORCE) # compute_61 specific for GTX 1070
 SET (CUDA_VERBOSE_BUILD ON CACHE BOOL "nvcc verbose" FORCE)
 SET(LIB_TYPE STATIC)
-CUDA_ADD_LIBRARY(cuda_lib ${LIB_TYPE} src/cuda_rollout.cu)
+CUDA_ADD_LIBRARY(cuda_lib ${LIB_TYPE} src/cuda_wrapper.cu)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -184,14 +184,18 @@ add_dependencies(${PROJECT_NAME}_node cuda_lib)
 #target_link_libraries(rtisqp_wrapper rtisqp_solver)
 
 target_link_libraries(${PROJECT_NAME}_node
+    ${catkin_LIBRARIES})
+
+target_link_libraries(${PROJECT_NAME}_node
+    planning_util)
+
+target_link_libraries(${PROJECT_NAME}_node
     rtisqp_wrapper
     rtisqp_solver)
 
 # CUDA
 target_link_libraries(${PROJECT_NAME}_node
-    ${catkin_LIBRARIES}
-    cuda_lib
-    planning_util)
+    cuda_lib)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

@@ -69,7 +69,6 @@ float cuda_rollout(std::vector<containers::trajstruct> &trajset)
 //        maxError = fmax(maxError, fabs(y[i]-3.0f));
 //    std::cout << "Max error: " << maxError << std::endl;
 
-
     float val = psi[N-1];
 
     // Free memory
