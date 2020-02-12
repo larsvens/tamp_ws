@@ -232,7 +232,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             containers::trajstruct trajstar = rtisqp_wrapper_.getTrajectory();
             // compute additional traj variables
             planning_util::traj2cart(trajstar,pathlocal_);
-            get_additional_traj_variables(trajstar,pathlocal_,sp_);
+            planning_util::get_additional_traj_variables(trajstar,pathlocal_,sp_,N);
             nav_msgs::Path p_trajstar = traj2navpath(trajstar);
             jsk_recognition_msgs::PolygonArray trajstar_polarr = traj2polarr(trajstar,sp_);
 
@@ -316,7 +316,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
 
 /*
- * FUNCTIONS todo put some in util
+ * FUNCTIONS
  */
 
 // sets refs to be used in rollout and optimization
@@ -411,36 +411,6 @@ containers::refstruct SAARTI::setRefs(int ref_mode,
     return refs;
 }
 
-
-// computes normal forces of a trajectory
-void SAARTI::get_additional_traj_variables(containers::trajstruct &traj, containers::pathstruct &pathlocal, containers::staticparamstruct sp){
-    // mu
-    vector<float> mu = cpp_utils::interp(traj.s,pathlocal.s,pathlocal.mu,false);
-
-    // forces
-    float theta = 0; // grade angle todo get from pathlocal
-    float ax;
-    float Fzf;
-    float Fzr;
-    float Fyr;
-    float Cf;
-    for (size_t k=0;k<N;k++) {
-        // normal forces
-        ax = (traj.Fxf.at(k)+traj.Fxr.at(k))/sp.m;
-        Fzf = (1.0f/(sp.lf+sp.lr))*( sp.m*ax*sp.h_cg - sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lr*std::cos(theta));
-        Fzr = (1.0f/(sp.lf+sp.lr))*(-sp.m*ax*sp.h_cg + sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lf*std::cos(theta));
-        traj.Fzf.push_back(Fzf);
-        traj.Fzr.push_back(Fzr);
-        // Fyr
-        Fyr = 2*traj.Cr.at(k)*std::atan(sp.lr*traj.psidot.at(k)-traj.vy.at(k))/traj.vx.at(k); // need atan here?
-        traj.Fyr.push_back(Fyr);
-
-
-        // Cf
-        Cf = planning_util::get_cornering_stiffness(mu.at(k),Fzf);
-        traj.Cf.push_back(Cf);
-    }
-}
 
 // cost evaluation and collision checking of trajset
 int SAARTI::trajset_eval_cost(){
@@ -579,7 +549,7 @@ jsk_recognition_msgs::PolygonArray SAARTI::traj2polarr(containers::trajstruct tr
         geometry_msgs::PolygonStamped poly;
         poly.header.stamp = ros::Time::now();
         poly.header.frame_id = "map";
-        Eigen::MatrixXf corners = get_vehicle_corners(traj.X.at(i),traj.Y.at(i),traj.psi.at(i),lf,lr,w);
+        Eigen::MatrixXf corners = planning_util::get_vehicle_corners(traj.X.at(i),traj.Y.at(i),traj.psi.at(i),lf,lr,w);
         for (uint j=0;j<4;j++){
             geometry_msgs::Point32 pt;
             pt.x = corners(j,0);
@@ -592,41 +562,6 @@ jsk_recognition_msgs::PolygonArray SAARTI::traj2polarr(containers::trajstruct tr
 
     polarr.header.stamp = ros::Time::now();
     return polarr;
-}
-
-// get corners for visualization
-Eigen::MatrixXf SAARTI::get_vehicle_corners(float X, float Y, float psi, float lf, float lr, float w){
-    Eigen::MatrixXf R(2,2);
-    Eigen::MatrixXf dims(5,2);
-    Eigen::MatrixXf Xoffset(5,2);
-    Eigen::MatrixXf Yoffset(5,2);
-    Eigen::MatrixXf corners(5,2);
-
-    R << std::cos(psi), std::sin(psi),
-        -std::sin(psi), std::cos(psi);
-
-    dims << lf, w/2,
-            -lr, w/2,
-            -lr, -w/2,
-            lf, -w/2,
-            lf, w/2;
-
-    // rotate
-    corners = dims*R;
-
-    // add position offset
-    Xoffset << X, 0.0f,
-               X, 0.0f,
-               X, 0.0f,
-               X, 0.0f,
-               X, 0.0f;
-    Yoffset << 0.0f, Y,
-               0.0f, Y,
-               0.0f, Y,
-               0.0f, Y,
-               0.0f, Y;
-
-    return corners + Xoffset + Yoffset;
 }
 
 // represent trajset as cubelist for fast rendering visualization
@@ -694,11 +629,6 @@ void SAARTI::state_callback(const common::State::ConstPtr& msg){
     if (state_.vx <= v_th){
         state_.vx = v_th;
     }
-
-    // input checks on state
-    //    if (std::abs(state_.deltapsi) > 0.2f){
-    //        ROS_ERROR_STREAM("deltapsi large! deltapsi = " << state_.deltapsi );
-    //    }
 }
 
 void SAARTI::ctrlmode_callback(const std_msgs::Int16::ConstPtr& msg){

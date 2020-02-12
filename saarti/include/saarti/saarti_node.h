@@ -90,11 +90,9 @@ private:
     // functions
 
     // move
-    void get_additional_traj_variables(containers::trajstruct &traj, containers::pathstruct &pathlocal, containers::staticparamstruct sp);
     common::Trajectory traj2msg(containers::trajstruct traj);
     nav_msgs::Path traj2navpath(containers::trajstruct traj);
     jsk_recognition_msgs::PolygonArray traj2polarr(containers::trajstruct traj, containers::staticparamstruct sp);
-    Eigen::MatrixXf get_vehicle_corners(float X, float Y, float psi, float lf, float lr, float w);
     void trajset2ma();
     visualization_msgs::Marker trajset2cubelist();
     jsk_recognition_msgs::PolygonArray stateconstr2polarr(containers::posconstrstruct pc);

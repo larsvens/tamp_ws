@@ -125,10 +125,75 @@ void planning_util::trajset2cart(vector<containers::trajstruct> &trajset, contai
     }
 }
 
-// MOVE BACK TO SAARTI
+// get corners for visualization
+Eigen::MatrixXf planning_util::get_vehicle_corners(float X, float Y, float psi, float lf, float lr, float w){
+    Eigen::MatrixXf R(2,2);
+    Eigen::MatrixXf dims(5,2);
+    Eigen::MatrixXf Xoffset(5,2);
+    Eigen::MatrixXf Yoffset(5,2);
+    Eigen::MatrixXf corners(5,2);
+
+    R << std::cos(psi), std::sin(psi),
+        -std::sin(psi), std::cos(psi);
+
+    dims << lf, w/2,
+            -lr, w/2,
+            -lr, -w/2,
+            lf, -w/2,
+            lf, w/2;
+
+    // rotate
+    corners = dims*R;
+
+    // add position offset
+    Xoffset << X, 0.0f,
+               X, 0.0f,
+               X, 0.0f,
+               X, 0.0f,
+               X, 0.0f;
+    Yoffset << 0.0f, Y,
+               0.0f, Y,
+               0.0f, Y,
+               0.0f, Y,
+               0.0f, Y;
+
+    return corners + Xoffset + Yoffset;
+}
+
+// computes normal forces of a trajectory
+void planning_util::get_additional_traj_variables(containers::trajstruct &traj, containers::pathstruct &pathlocal, containers::staticparamstruct sp, uint N){
+    // mu
+    vector<float> mu = cpp_utils::interp(traj.s,pathlocal.s,pathlocal.mu,false);
+
+    // forces
+    float theta = 0; // grade angle todo get from pathlocal
+    float ax;
+    float Fzf;
+    float Fzr;
+    float Fyr;
+    float Cf;
+    for (size_t k=0;k<N;k++) {
+        // normal forces
+        ax = (traj.Fxf.at(k)+traj.Fxr.at(k))/sp.m;
+        Fzf = (1.0f/(sp.lf+sp.lr))*( sp.m*ax*sp.h_cg - sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lr*std::cos(theta));
+        Fzr = (1.0f/(sp.lf+sp.lr))*(-sp.m*ax*sp.h_cg + sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lf*std::cos(theta));
+        traj.Fzf.push_back(Fzf);
+        traj.Fzr.push_back(Fzr);
+        // Fyr
+        Fyr = 2*traj.Cr.at(k)*std::atan(sp.lr*traj.psidot.at(k)-traj.vy.at(k))/traj.vx.at(k); // need atan here?
+        traj.Fyr.push_back(Fyr);
+
+
+        // Cf
+        Cf = planning_util::get_cornering_stiffness(mu.at(k),Fzf);
+        traj.Cf.push_back(Cf);
+    }
+}
+
+// linearizes paceica magic formula
 float planning_util::get_cornering_stiffness(float mu, float Fz){
     float B, C, D; //, E;
-    // todo adjust thresholds
+    // todo add case for racing
 
     if(0.0f <= mu && mu <0.3f){ // ice
         B = 4.0f;

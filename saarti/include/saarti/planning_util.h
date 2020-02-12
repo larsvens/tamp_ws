@@ -22,8 +22,8 @@ std::vector<float> angle_to_continous(std::vector<float> &psi);
 void sd_pts2cart(vector<float> &Xout, vector<float> &Yout, vector<float> &s, vector<float> &d, containers::pathstruct &pathlocal);
 void traj2cart(containers::trajstruct &traj, containers::pathstruct &pathlocal);
 void trajset2cart(vector<containers::trajstruct> &trajset, containers::pathstruct &pathlocal);
-
-
+void get_additional_traj_variables(containers::trajstruct &traj, containers::pathstruct &pathlocal, containers::staticparamstruct sp, uint N);
+Eigen::MatrixXf get_vehicle_corners(float X, float Y, float psi, float lf, float lr, float w);
 float get_cornering_stiffness(float mu, float Fz);
 
 }; // END NAMESPACE
