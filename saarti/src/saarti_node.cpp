@@ -1,7 +1,12 @@
 #include "saarti/saarti_node.h"
 
 // global fcn for cuda
-float cuda_rollout(std::vector<containers::trajstruct> &trajset);
+void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
+                  containers::statestruct initstate,
+                  uint Nt,
+                  uint Ni,
+                  uint Ntrajs,
+                  float dt);
 
 namespace saarti_node{
 
@@ -117,8 +122,8 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                 rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_,vxref_cc_,refs_,uint(Ntrajs_rollout_));
 
                 // gpu rollout
-                float cuda_out = cuda_rollout(trajset_);
-                cout << "cuda function output: " << cuda_out <<  endl;
+                uint Ni = 10;
+                cuda_rollout(trajset_, state_, N, Ni, uint(Ntrajs_rollout_),dt_);
 
                 // append trajprime
                 if (trajstar_last.s.size()!=0){
