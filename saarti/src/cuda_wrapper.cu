@@ -6,36 +6,55 @@
 #include <vector>
 #include "containers.h"
 
-__global__
-void single_rollout(float *trajset_arr,
-                    uint Nt,
-                    uint Ni,
-                    uint Nx,
-                    uint Nu,
-                    uint Ntrajs,
-                    uint Npp,
-                    float dt)
+// device code for rollout
+__global__ void single_rollout(float *trajset_arr,
+                               float *x_init,
+                               uint Npath,
+                               float *s_path,
+                               float *kappac_path,
+                               float m,
+                               float Iz,
+                               float lf,
+                               float lr,
+                               uint Nt,
+                               uint Ni,
+                               uint Nx,
+                               uint Nu,
+                               uint Ntrajs,
+                               uint Npp,
+                               float dt)
 {
-    // params (todo give as inputs)
-    float Iz = 8158.0;
-    float m = 8350.0;
-    float lf = 1.205;
-    float lr = 2.188;
-
-    uint elements_per_page = (Nx+Nu)*Ntrajs;
+    // notes on indexing:
+    // trajset_arr:
+    // row (i) <- state (Nx+Nu)
+    // column (j) <- traj (Ntrajs)
+    // page (k) <- time (Nt)
+    // iii - index of the 1d array that represents the 3d array (increase order: rows - columns - pages)
+    // threadIdx.x = index of the current thread within its block (replaces j)
 
     // get init state
-    float s        = trajset_arr[threadIdx.x + 0*Ntrajs + 0*elements_per_page];
-    float d        = trajset_arr[threadIdx.x + 1*Ntrajs + 0*elements_per_page];
-    float deltapsi = trajset_arr[threadIdx.x + 2*Ntrajs + 0*elements_per_page];
-    float psidot   = trajset_arr[threadIdx.x + 3*Ntrajs + 0*elements_per_page];
-    float vx       = trajset_arr[threadIdx.x + 4*Ntrajs + 0*elements_per_page];
-    float vy       = trajset_arr[threadIdx.x + 5*Ntrajs + 0*elements_per_page];
+    float s        = x_init[0];
+    float d        = x_init[1];
+    float deltapsi = x_init[2];
+    float psidot   = x_init[3];
+    float vx       = x_init[4];
+    float vy       = x_init[5];
 
-    // threadIdx.x = index of the current thread within its block (replaces j)
+    // set init state in trajset_arr
+    trajset_arr[threadIdx.x + 0*Ntrajs + 0*Npp] = s;
+    trajset_arr[threadIdx.x + 1*Ntrajs + 0*Npp] = d;
+    trajset_arr[threadIdx.x + 2*Ntrajs + 0*Npp] = deltapsi;
+    trajset_arr[threadIdx.x + 3*Ntrajs + 0*Npp] = psidot;
+    trajset_arr[threadIdx.x + 4*Ntrajs + 0*Npp] = vx;
+    trajset_arr[threadIdx.x + 5*Ntrajs + 0*Npp] = vy;
+
+    // rollout loop
     for (int ki=0; ki<(Nt*Ni)-1; ki++){
 
         // get kappac at s (todo!)
+        for (int id= 0; id<Npath; ++id) {
+            // break if spath - s is positive, save index
+        }
         float kappac = 0;
 
         // set control input
@@ -57,70 +76,104 @@ void single_rollout(float *trajset_arr,
 
         if(ki % Ni == 0){
             uint k = ki/Ni;
-            trajset_arr[threadIdx.x + 0*Ntrajs + (k+1)*elements_per_page] = s;
-            trajset_arr[threadIdx.x + 1*Ntrajs + (k+1)*elements_per_page] = d;
-            trajset_arr[threadIdx.x + 2*Ntrajs + (k+1)*elements_per_page] = deltapsi;
-            trajset_arr[threadIdx.x + 3*Ntrajs + (k+1)*elements_per_page] = psidot;
-            trajset_arr[threadIdx.x + 4*Ntrajs + (k+1)*elements_per_page] = vx;
-            trajset_arr[threadIdx.x + 5*Ntrajs + (k+1)*elements_per_page] = vy;
-            trajset_arr[threadIdx.x + 6*Ntrajs + (k+1)*elements_per_page] = Fyf;
-            trajset_arr[threadIdx.x + 7*Ntrajs + (k+1)*elements_per_page] = Fxf;
-            trajset_arr[threadIdx.x + 8*Ntrajs + (k+1)*elements_per_page] = Fxr;
+            // set x at k+1
+            trajset_arr[threadIdx.x + 0*Ntrajs + (k+1)*Npp] = s;
+            trajset_arr[threadIdx.x + 1*Ntrajs + (k+1)*Npp] = d;
+            trajset_arr[threadIdx.x + 2*Ntrajs + (k+1)*Npp] = deltapsi;
+            trajset_arr[threadIdx.x + 3*Ntrajs + (k+1)*Npp] = psidot;
+            trajset_arr[threadIdx.x + 4*Ntrajs + (k+1)*Npp] = vx;
+            trajset_arr[threadIdx.x + 5*Ntrajs + (k+1)*Npp] = vy;
+            // set u at k
+            trajset_arr[threadIdx.x + 6*Ntrajs + (k)*Npp] = Fyf;
+            trajset_arr[threadIdx.x + 7*Ntrajs + (k)*Npp] = Fxf;
+            trajset_arr[threadIdx.x + 8*Ntrajs + (k)*Npp] = Fxr;
         }
     }
 }
 
+// main rollout fcn, called by saarti_node
 void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                   containers::statestruct initstate,
+                  containers::pathstruct pathlocal,
+                  containers::staticparamstruct sp,
+                  int traction_adaptive,
+                  float mu_nominal,
                   uint Nt, // N in planning horizon
                   uint Ni, // scaling factor in integration
-                  uint Ntrajs, // Nr of trajs to roll out
+                  uint Ntrajs, // Nr of trajs to roll out TODO replace w. Nd and Nvx
                   float dt)  // dt of planning horizon
 {
 
+    // init variables
     uint Nx = 6;
     uint Nu = 3;
     uint Npp = (Nx+Nu)*Ntrajs; // elements_per_page
     float *trajset_arr;
+    float *x_init;
+    float *d_ref;
 
-    // Allocate shared memory for trajset as 3d array
-    // row (i) <- state (Nx+Nu)
-    // column (j) <- traj (Ntrajs)
-    // page (k) <- time (Nt)
-    // iii - index of the 1d array that represents the 3d array (increase order: rows - columns - pages)
+    uint Npath = pathlocal.s.size();
+    float *s_path;
+    float *kappac_path;
+    //float *mu_path;
+
+    // allocate shared memory
     cudaMallocManaged(&trajset_arr, (Nx+Nu)*Ntrajs*Nt*sizeof(float));
+    cudaMallocManaged(&x_init, Nx*sizeof(float));
+    cudaMallocManaged(&d_ref, Ntrajs*sizeof(float));
+    cudaMallocManaged(&s_path, Npath*sizeof(float));
+    cudaMallocManaged(&kappac_path, Npath*sizeof(float));
+    //cudaMallocManaged(&mu_path, Npath*sizeof(float));
 
-    // set init state in trajset_arr
-    for (uint j=0; j<Ntrajs; j++) {
-        trajset_arr[j] = initstate.s;
-    }
-    for (uint j=0; j<Ntrajs; j++) {
-        trajset_arr[j+Ntrajs] = initstate.d;
-    }
-    for (uint j=0; j<Ntrajs; j++) {
-        trajset_arr[j+2*Ntrajs] = initstate.deltapsi;
-    }
-    for (uint j=0; j<Ntrajs; j++) {
-        trajset_arr[j+3*Ntrajs] = initstate.psidot;
-    }
-    for (uint j=0; j<Ntrajs; j++) {
-        trajset_arr[j+4*Ntrajs] = initstate.vx;
-    }
-    for (uint j=0; j<Ntrajs; j++) {
-        trajset_arr[j+5*Ntrajs] = initstate.vy;
+    // set init state
+    x_init[0] = initstate.s;
+    x_init[1] = initstate.d;
+    x_init[2] = initstate.deltapsi;
+    x_init[3] = initstate.psidot;
+    x_init[4] = initstate.vx;
+    x_init[5] = initstate.vy;
+
+    // set dref
+    float dlb = pathlocal.dlb.at(0);
+    float dub = pathlocal.dub.at(0);
+    float dstep = (dub-dlb)/Ntrajs;
+    for(int id=0; id<Ntrajs; ++id) {
+        d_ref[id] = dlb+id*dstep;
     }
 
-    // Run Ntrajs rollouts on Ntraj threads on the GPU
-    single_rollout<<<1, Ntrajs>>>(trajset_arr,Nt,Ni,Nx,Nu,Ntrajs,Npp,dt);
+    // set path variables
+    for(int id=0; id<Npath; ++id) {
+        s_path[id] = pathlocal.s.at(id);
+        kappac_path[id] = pathlocal.kappa_c.at(id);
+        //mu_path[id] = pathlocal.mu.at(id);
+    }
 
-    // Wait for GPU to finish before accessing on host
+    // run Ntrajs rollouts on Ntraj threads on gpu
+    single_rollout<<<1, Ntrajs>>>(trajset_arr,
+                                  x_init,
+                                  Npath,
+                                  s_path,
+                                  kappac_path,
+                                  sp.m,
+                                  sp.Iz,
+                                  sp.lf,
+                                  sp.lr,
+                                  Nt,
+                                  Ni,
+                                  Nx,
+                                  Nu,
+                                  Ntrajs,
+                                  Npp,
+                                  dt);
+
+    // wait for GPU to finish before accessing on host
     cudaDeviceSynchronize();
 
     // put result on struct format
     for (uint j=0;j<Ntrajs;j++) {
         containers::trajstruct traj;
         for (size_t k=0;k<Nt+1;k++) {
-            std::cout << "s = " << trajset_arr[j + 0*Ntrajs + k*Npp] << std::endl;
+            // std::cout << "s = " << trajset_arr[j + 0*Ntrajs + k*Npp] << std::endl;
             traj.s.push_back(trajset_arr[j + 0*Ntrajs + k*Npp]);
             traj.d.push_back(trajset_arr[j + 1*Ntrajs + k*Npp]);
             traj.deltapsi.push_back(trajset_arr[j + 2*Ntrajs + k*Npp]);
@@ -131,6 +184,7 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
         trajset_struct.push_back(traj);
     }
     std::cout << "reached end of cuda_rollout" << std::endl;
+
     // Free memory
     cudaFree(trajset_arr);
 

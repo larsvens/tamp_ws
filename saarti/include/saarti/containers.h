@@ -105,6 +105,7 @@ struct refstruct{
 // static params 
 struct staticparamstruct{
     float m;
+    float Iz;
     float g;
     float lf;
     float lr;

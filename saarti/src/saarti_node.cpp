@@ -3,6 +3,10 @@
 // global fcn for cuda
 void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                   containers::statestruct initstate,
+                  containers::pathstruct pathlocal,
+                  containers::staticparamstruct sp,
+                  int traction_adaptive,
+                  float mu_nominal,
                   uint Nt,
                   uint Ni,
                   uint Ntrajs,
@@ -123,7 +127,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
                 // gpu rollout
                 uint Ni = 10;
-                cuda_rollout(trajset_, state_, N, Ni, uint(Ntrajs_rollout_),dt_);
+                cuda_rollout(trajset_, state_, pathlocal_, sp_, traction_adaptive_, mu_nominal_, N, Ni, uint(Ntrajs_rollout_),dt_);
 
                 // append trajprime
                 if (trajstar_last.s.size()!=0){
@@ -711,6 +715,7 @@ void SAARTI::get_rosparams(){
 
     // static vehicle model params
     sp_.m =  float(nh_.param("/car/inertia/m",1000.0));
+    sp_.Iz = float(nh_.param("/car/inertia/I_z",1000.0));
     sp_.g =  float(nh_.param("/car/inertia/g",9.81));
     sp_.lf = float(nh_.param("/car/kinematics/b_F",2.0));
     sp_.lr = float(nh_.param("/car/kinematics/b_R",2.0));
