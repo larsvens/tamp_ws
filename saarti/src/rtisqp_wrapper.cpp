@@ -567,7 +567,7 @@ void RtisqpWrapper::computeTrajset(vector<containers::trajstruct> &trajset,
             if(k==0){
                 traj.ax.push_back(0);
             } else {
-                traj.ax.push_back( (traj.Fxf.at(k-1)+traj.Fyf.at(k-1))/sp.m );
+                traj.ax.push_back( (traj.Fxf.at(k-1)+traj.Fxr.at(k-1))/sp.m );
             }
 
             // compute normal forces front and back

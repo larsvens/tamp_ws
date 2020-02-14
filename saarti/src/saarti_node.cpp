@@ -7,6 +7,8 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                   containers::staticparamstruct sp,
                   int traction_adaptive,
                   float mu_nominal,
+                  containers::refstruct refs,
+                  float vxref_nominal,
                   uint Nt,
                   uint Ni,
                   uint Ntrajs,
@@ -123,11 +125,22 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             if(sampling_augmentation_ == 1){
                 ROS_INFO_STREAM("generating trajectory set");
                 // cpu rollout
-                rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_,vxref_cc_,refs_,uint(Ntrajs_rollout_));
+                //rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_,vxref_cc_,refs_,uint(Ntrajs_rollout_));
 
                 // gpu rollout
                 uint Ni = 10;
-                cuda_rollout(trajset_, state_, pathlocal_, sp_, traction_adaptive_, mu_nominal_, N, Ni, uint(Ntrajs_rollout_),dt_);
+                cuda_rollout(trajset_,
+                             state_,
+                             pathlocal_,
+                             sp_,
+                             traction_adaptive_,
+                             mu_nominal_,
+                             refs_,
+                             vxref_cc_,
+                             N,
+                             Ni,
+                             uint(Ntrajs_rollout_),
+                             dt_);
 
                 // append trajprime
                 if (trajstar_last.s.size()!=0){

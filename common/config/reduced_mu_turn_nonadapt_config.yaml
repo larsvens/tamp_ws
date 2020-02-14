@@ -4,8 +4,8 @@ t_activate: 15.0
 t_final: 500.0
 scenario_id: 2 # 1: pop-up, 2: reduced mu turn, 3: racing
 s_begin_log: 180
-s_pause_gazebo: []
-#s_pause_gazebo: [180, 195, 210, 225, 240] # snapshots
+#s_pause_gazebo: []
+s_pause_gazebo: [180, 195, 210, 225, 240] # snapshots
 
 # pop-up obstacle config
 s_ego_at_popup:  50
