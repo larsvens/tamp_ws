@@ -125,7 +125,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             if(sampling_augmentation_ == 1){
                 ROS_INFO_STREAM("generating trajectory set");
                 // cpu rollout
-                //rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_,vxref_cc_,refs_,uint(Ntrajs_rollout_));
+                // rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_,vxref_cc_,refs_,uint(Ntrajs_rollout_));
 
                 // gpu rollout
                 uint Ni = 10;

@@ -64,7 +64,7 @@ __global__ void single_rollout(float *trajset_arr,
     uint k = 0; // k is the regular iterator, ki is upsampled
     for (int ki=0; ki<((Nt+1)*Ni); ki++){
 
-        // get kappac at s
+        // get kappac at s (perhaps not every si?)
         int path_idx;
         for (path_idx = 0; path_idx<Npath; path_idx++) {
             // break if s - spath is negative, save index
@@ -194,10 +194,10 @@ __global__ void single_rollout(float *trajset_arr,
             }
         }
 
-        // old
-        // Fyf = 10000*((float(threadIdx.x)/float(Ntrajs))-0.5f);
-        // Fxf = 500;
-        // Fxr = 500;
+        // TMP!!!!! old
+        //Fyf = 10000*((float(threadIdx.x)/float(Ntrajs))-0.5f);
+        //Fxf = 500;
+        //Fxr = 500;
 
         // euler fwd step
         s        = s + (dt/Ni)*((vx*cos(deltapsi)-vy*sin(deltapsi))/(1-d*kappac));
@@ -280,16 +280,17 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     // set dref
     float dlb = pathlocal.dlb.at(0);
     float dub = pathlocal.dub.at(0);
-    float dstep = (dub-dlb)/Ntrajs;
+    float dstep = (dub-dlb)/(Ntrajs-1);
     for(uint id=0; id<Ntrajs; ++id) {
-        d_ref[id] = dlb+id*dstep;
+        d_ref[id] = dlb+float(id)*dstep;
+        std::cout << "d_ref[id] = " << d_ref[id] << std::endl;
     }
 
     // set path variables
     for(uint id=0; id<Npath; ++id) {
         s_path[id] = pathlocal.s.at(id);
         kappac_path[id] = pathlocal.kappa_c.at(id);
-        //mu_path[id] = pathlocal.mu.at(id);
+        mu_path[id] = pathlocal.mu.at(id);
     }
 
     // run Ntrajs rollouts on Ntraj threads on gpu
