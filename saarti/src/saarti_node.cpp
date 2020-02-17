@@ -11,7 +11,8 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                   float vxref_nominal,
                   uint Nt,
                   uint Ni,
-                  uint Ntrajs,
+                  uint Nd,
+                  uint Nvx,
                   float dt);
 
 namespace saarti_node{
@@ -129,6 +130,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
                 // gpu rollout
                 uint Ni = 10;
+                uint Nvx = 5; // tmp get from param
                 cuda_rollout(trajset_,
                              state_,
                              pathlocal_,
@@ -140,6 +142,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                              N,
                              Ni,
                              uint(Ntrajs_rollout_),
+                             Nvx,
                              dt_);
 
                 // append trajprime

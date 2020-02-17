@@ -25,18 +25,21 @@ __global__ void single_rollout(float *trajset_arr,
                                uint Ni,
                                uint Nx,
                                uint Nu,
-                               uint Ntrajs,
+                               uint Nd,
+                               uint Nvx,
                                uint Npp,
+                               uint Npb,
                                float dt,
                                int traction_adaptive,
                                int ref_mode,
                                float vxref_nominal,
-                               float *d_ref)
+                               float *d_ref_arr,
+                               float *vx_ref_arr)
 {
     // notes on indexing:
     // trajset_arr:
     // row (i) <- state (Nx+Nu+Nmisc)
-    // column (j) <- traj (Ntrajs)
+    // column (j) <- traj (Nd)
     // page (k) <- time (Nt)
     // iii - index of the 1d array that represents the 3d array (increase order: rows - columns - pages)
     // threadIdx.x = index of the current thread within its block (replaces j)
@@ -50,12 +53,12 @@ __global__ void single_rollout(float *trajset_arr,
     float vy       = x_init[5];
 
     // set init state in trajset_arr
-    trajset_arr[threadIdx.x + 0*Ntrajs + 0*Npp] = s;
-    trajset_arr[threadIdx.x + 1*Ntrajs + 0*Npp] = d;
-    trajset_arr[threadIdx.x + 2*Ntrajs + 0*Npp] = deltapsi;
-    trajset_arr[threadIdx.x + 3*Ntrajs + 0*Npp] = psidot;
-    trajset_arr[threadIdx.x + 4*Ntrajs + 0*Npp] = vx;
-    trajset_arr[threadIdx.x + 5*Ntrajs + 0*Npp] = vy;
+    trajset_arr[threadIdx.x + 0*Nd + 0*Npp + blockIdx.x*Npb] = s;
+    trajset_arr[threadIdx.x + 1*Nd + 0*Npp + blockIdx.x*Npb] = d;
+    trajset_arr[threadIdx.x + 2*Nd + 0*Npp + blockIdx.x*Npb] = deltapsi;
+    trajset_arr[threadIdx.x + 3*Nd + 0*Npp + blockIdx.x*Npb] = psidot;
+    trajset_arr[threadIdx.x + 4*Nd + 0*Npp + blockIdx.x*Npb] = vx;
+    trajset_arr[threadIdx.x + 5*Nd + 0*Npp + blockIdx.x*Npb] = vy;
 
     // rollout loop
     float Fyf = 0.0f;
@@ -128,18 +131,21 @@ __global__ void single_rollout(float *trajset_arr,
         float Frmax = mu*Fzr;
 
         // get local vxref and vxerror
-        float vxref;
-        if(ref_mode == 1){ // cc
-            vxref = vxref_nominal;
-        } else if(ref_mode == 2) { // max s
-            vxref = vxref_path[path_idx];
-        } else {
-            vxref = 0; // minimize s (refmode 0)
-        }
-        float vxerror = vxref-vx; // todo use blockIdx.x here
+//        float vxref;
+//        if(ref_mode == 1){ // cc
+//            vxref = vxref_nominal;
+//        } else if(ref_mode == 2) { // max s
+//            vxref = vxref_path[path_idx];
+//        } else {
+//            vxref = 0; // minimize s (refmode 0)
+//        }
+//        float vxerror = vxref-vx; // todo use blockIdx.x here
+
+        float vxerror = vx_ref_arr[blockIdx.x] - vx;
+
 
         // get derror (one per thread)
-        float derror = d_ref[threadIdx.x] - d;
+        float derror = d_ref_arr[threadIdx.x] - d;
 
         /*
          * ROLLOUT CONTROLLER
@@ -194,11 +200,6 @@ __global__ void single_rollout(float *trajset_arr,
             }
         }
 
-        // TMP!!!!! old
-        //Fyf = 10000*((float(threadIdx.x)/float(Ntrajs))-0.5f);
-        //Fxf = 500;
-        //Fxr = 500;
-
         // euler fwd step
         s        = s + (dt/Ni)*((vx*cos(deltapsi)-vy*sin(deltapsi))/(1-d*kappac));
         d        = d + (dt/Ni)*(vx*sin(deltapsi)+vy*cos(deltapsi));
@@ -210,22 +211,22 @@ __global__ void single_rollout(float *trajset_arr,
         if(ki % Ni == 0){
             k = ki/Ni;
             // set x at k+1
-            trajset_arr[threadIdx.x + 0*Ntrajs + (k+1)*Npp] = s;
-            trajset_arr[threadIdx.x + 1*Ntrajs + (k+1)*Npp] = d;
-            trajset_arr[threadIdx.x + 2*Ntrajs + (k+1)*Npp] = deltapsi;
-            trajset_arr[threadIdx.x + 3*Ntrajs + (k+1)*Npp] = psidot;
-            trajset_arr[threadIdx.x + 4*Ntrajs + (k+1)*Npp] = vx;
-            trajset_arr[threadIdx.x + 5*Ntrajs + (k+1)*Npp] = vy;
+            trajset_arr[threadIdx.x + 0*Nd + (k+1)*Npp + blockIdx.x*Npb] = s;
+            trajset_arr[threadIdx.x + 1*Nd + (k+1)*Npp + blockIdx.x*Npb] = d;
+            trajset_arr[threadIdx.x + 2*Nd + (k+1)*Npp + blockIdx.x*Npb] = deltapsi;
+            trajset_arr[threadIdx.x + 3*Nd + (k+1)*Npp + blockIdx.x*Npb] = psidot;
+            trajset_arr[threadIdx.x + 4*Nd + (k+1)*Npp + blockIdx.x*Npb] = vx;
+            trajset_arr[threadIdx.x + 5*Nd + (k+1)*Npp + blockIdx.x*Npb] = vy;
             // set u at k
-            trajset_arr[threadIdx.x + 6*Ntrajs + (k)*Npp] = Fyf;
-            trajset_arr[threadIdx.x + 7*Ntrajs + (k)*Npp] = Fxf;
-            trajset_arr[threadIdx.x + 8*Ntrajs + (k)*Npp] = Fxr;
+            trajset_arr[threadIdx.x + 6*Nd + (k)*Npp + blockIdx.x*Npb] = Fyf;
+            trajset_arr[threadIdx.x + 7*Nd + (k)*Npp + blockIdx.x*Npb] = Fxf;
+            trajset_arr[threadIdx.x + 8*Nd + (k)*Npp + blockIdx.x*Npb] = Fxr;
             // set miscvars
-            trajset_arr[threadIdx.x + 9*Ntrajs + (k)*Npp] = Fzf;
-            trajset_arr[threadIdx.x + 10*Ntrajs + (k)*Npp] = Fzr;
-            trajset_arr[threadIdx.x + 11*Ntrajs + (k)*Npp] = kappac;
-            trajset_arr[threadIdx.x + 12*Ntrajs + (k)*Npp] = mu;
-            trajset_arr[threadIdx.x + 13*Ntrajs + (k)*Npp] = Cr;
+            trajset_arr[threadIdx.x + 9*Nd + (k)*Npp + blockIdx.x*Npb] = Fzf;
+            trajset_arr[threadIdx.x + 10*Nd + (k)*Npp + blockIdx.x*Npb] = Fzr;
+            trajset_arr[threadIdx.x + 11*Nd + (k)*Npp + blockIdx.x*Npb] = kappac;
+            trajset_arr[threadIdx.x + 12*Nd + (k)*Npp + blockIdx.x*Npb] = mu;
+            trajset_arr[threadIdx.x + 13*Nd + (k)*Npp + blockIdx.x*Npb] = Cr;
         }
     }
 }
@@ -241,7 +242,8 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                   float vxref_nominal,
                   uint Nt, // N in planning horizon
                   uint Ni, // scaling factor in integration
-                  uint Ntrajs, // Nr of trajs to roll out TODO replace w. Nd and Nvx
+                  uint Nd, // Nr of goal pts in d
+                  uint Nvx, // Nr of goal pts in vx
                   float dt)  // dt of planning horizon
 {
 
@@ -249,10 +251,12 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     uint Nx = 6;
     uint Nu = 3;
     uint Nmisc = 5; // nr of additional traj vars
-    uint Npp = (Nx+Nu+Nmisc)*Ntrajs; // elements_per_page
+    uint Npp = (Nx+Nu+Nmisc)*Nd; // elements_per_page
+    uint Npb = Npp*Nt;
     float *trajset_arr;
     float *x_init;
-    float *d_ref;
+    float *d_ref_arr;
+    float *vx_ref_arr;
 
     uint Npath = pathlocal.s.size();
     float *s_path;
@@ -261,9 +265,10 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     float *mu_path;
 
     // allocate shared memory
-    cudaMallocManaged(&trajset_arr, (Nx+Nu+Nmisc)*Ntrajs*Nt*sizeof(float));
+    cudaMallocManaged(&trajset_arr, (Nx+Nu+Nmisc)*Nd*Nt*sizeof(float));
     cudaMallocManaged(&x_init, Nx*sizeof(float));
-    cudaMallocManaged(&d_ref, Ntrajs*sizeof(float));
+    cudaMallocManaged(&d_ref_arr, Nd*sizeof(float));
+    cudaMallocManaged(&vx_ref_arr, Nvx*sizeof(float));
     cudaMallocManaged(&s_path, Npath*sizeof(float));
     cudaMallocManaged(&vxref_path, Npath*sizeof(float));
     cudaMallocManaged(&kappac_path, Npath*sizeof(float));
@@ -277,13 +282,23 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     x_init[4] = initstate.vx;
     x_init[5] = initstate.vy;
 
-    // set dref
+    // set dref_arr
     float dlb = pathlocal.dlb.at(0);
     float dub = pathlocal.dub.at(0);
-    float dstep = (dub-dlb)/(Ntrajs-1);
-    for(uint id=0; id<Ntrajs; ++id) {
-        d_ref[id] = dlb+float(id)*dstep;
-        std::cout << "d_ref[id] = " << d_ref[id] << std::endl;
+    float dstep = (dub-dlb)/(float(Nd)-1);
+    for(uint id=0; id<Nd; ++id) {
+        d_ref_arr[id] = dlb+float(id)*dstep;
+        //std::cout << "d_ref_arr[id] = " << d_ref_arr[id] << std::endl;
+    }
+
+    // set vxref_arr
+    float vxlb = 1.0f;
+    float vxub = 20.0f; // todo get dynamically as vmax X^*(t-1)
+    float vxstep = (vxub-vxlb)/(float(Nvx)-1);
+    std::cout << "Nvx = " << Nvx << std::endl;
+    for(uint id=0; id<Nvx; ++id) {
+        vx_ref_arr[id] = vxlb+float(id)*vxstep;
+        //std::cout << "vx_ref_arr[id] = " << vx_ref_arr[id] << std::endl;
     }
 
     // set path variables
@@ -293,66 +308,71 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
         mu_path[id] = pathlocal.mu.at(id);
     }
 
-    // run Ntrajs rollouts on Ntraj threads on gpu
-    single_rollout<<<1, Ntrajs>>>(trajset_arr,
-                                  x_init,
-                                  Npath,
-                                  s_path,
-                                  vxref_path,
-                                  kappac_path,
-                                  mu_path,
-                                  mu_nominal,
-                                  sp.m,
-                                  sp.Iz,
-                                  sp.lf,
-                                  sp.lr,
-                                  sp.h_cg,
-                                  sp.g,
-                                  Nt,
-                                  Ni,
-                                  Nx,
-                                  Nu,
-                                  Ntrajs,
-                                  Npp,
-                                  dt,
-                                  traction_adaptive,
-                                  refs.ref_mode,
-                                  vxref_nominal,
-                                  d_ref);
+    // run Nd*Nvx rollouts on Ntraj threads on gpu
+    single_rollout<<<Nvx, Nd>>>(trajset_arr,
+                                x_init,
+                                Npath,
+                                s_path,
+                                vxref_path,
+                                kappac_path,
+                                mu_path,
+                                mu_nominal,
+                                sp.m,
+                                sp.Iz,
+                                sp.lf,
+                                sp.lr,
+                                sp.h_cg,
+                                sp.g,
+                                Nt,
+                                Ni,
+                                Nx,
+                                Nu,
+                                Nd,
+                                Nvx,
+                                Npp,
+                                Npb,
+                                dt,
+                                traction_adaptive,
+                                refs.ref_mode,
+                                vxref_nominal,
+                                d_ref_arr,
+                                vx_ref_arr);
 
     // wait for GPU to finish before accessing on host
     cudaDeviceSynchronize();
 
     // put result on struct format
-    for (uint j=0;j<Ntrajs;j++) {
-        containers::trajstruct traj;
-        for (size_t k=0;k<Nt+1;k++) {
-            // std::cout << "s = " << trajset_arr[j + 0*Ntrajs + k*Npp] << std::endl;
-            traj.s.push_back(trajset_arr[j + 0*Ntrajs + k*Npp]);
-            traj.d.push_back(trajset_arr[j + 1*Ntrajs + k*Npp]);
-            traj.deltapsi.push_back(trajset_arr[j + 2*Ntrajs + k*Npp]);
-            traj.psidot.push_back(trajset_arr[j + 3*Ntrajs + k*Npp]);
-            traj.vx.push_back(trajset_arr[j + 4*Ntrajs + k*Npp]);
-            traj.vy.push_back(trajset_arr[j + 5*Ntrajs + k*Npp]);
-            if(k<Nt){ // N+1 states and N ctrls
-                traj.Fyf.push_back(trajset_arr[j + 6*Ntrajs + k*Npp]);
-                traj.Fxf.push_back(trajset_arr[j + 7*Ntrajs + k*Npp]);
-                traj.Fxr.push_back(trajset_arr[j + 8*Ntrajs + k*Npp]);
-                // miscvars
-                traj.Fzf.push_back(trajset_arr[j + 9*Ntrajs + k*Npp]);
-                traj.Fzr.push_back(trajset_arr[j + 10*Ntrajs + k*Npp]);
-                traj.kappac.push_back(trajset_arr[j + 11*Ntrajs + k*Npp]);
-                traj.mu.push_back(trajset_arr[j + 12*Ntrajs + k*Npp]);
-                traj.Cr.push_back(trajset_arr[j + 13*Ntrajs + k*Npp]);
+    for (uint l=0;l<Nvx;l++){
+        for (uint j=0;j<Nd;j++) {
+            containers::trajstruct traj;
+            for (size_t k=0;k<Nt+1;k++) {
+                // std::cout << "s = " << trajset_arr[j + 0*Nd + k*Npp] << std::endl;
+                traj.s.push_back(trajset_arr[j + 0*Nd + k*Npp + l*Npb]);
+                traj.d.push_back(trajset_arr[j + 1*Nd + k*Npp + l*Npb]);
+                traj.deltapsi.push_back(trajset_arr[j + 2*Nd + k*Npp + l*Npb]);
+                traj.psidot.push_back(trajset_arr[j + 3*Nd + k*Npp + l*Npb]);
+                traj.vx.push_back(trajset_arr[j + 4*Nd + k*Npp + l*Npb]);
+                traj.vy.push_back(trajset_arr[j + 5*Nd + k*Npp + l*Npb]);
+                if(k<Nt){ // N+1 states and N ctrls
+                    traj.Fyf.push_back(trajset_arr[j + 6*Nd + k*Npp + l*Npb]);
+                    traj.Fxf.push_back(trajset_arr[j + 7*Nd + k*Npp + l*Npb]);
+                    traj.Fxr.push_back(trajset_arr[j + 8*Nd + k*Npp + l*Npb]);
+                    // miscvars
+                    traj.Fzf.push_back(trajset_arr[j + 9*Nd + k*Npp + l*Npb]);
+                    traj.Fzr.push_back(trajset_arr[j + 10*Nd + k*Npp + l*Npb]);
+                    traj.kappac.push_back(trajset_arr[j + 11*Nd + k*Npp + l*Npb]);
+                    traj.mu.push_back(trajset_arr[j + 12*Nd + k*Npp + l*Npb]);
+                    traj.Cr.push_back(trajset_arr[j + 13*Nd + k*Npp + l*Npb]);
+                }
             }
+            // add last element of misc vars
+            traj.Fzf.push_back(traj.Fzf.back());
+            traj.Fzr.push_back(traj.Fzr.back());
+            traj.kappac.push_back(traj.kappac.back());
+            traj.mu.push_back(traj.mu.back());
+            traj.Cr.push_back(traj.Cr.back());
+            trajset_struct.push_back(traj);
         }
-        // add last element of misc vars
-        traj.Fzf.push_back(traj.Fzf.back());
-        traj.Fzr.push_back(traj.Fzr.back());
-        traj.kappac.push_back(traj.kappac.back());
-        traj.mu.push_back(traj.mu.back());
-        traj.Cr.push_back(traj.Cr.back());
-        trajset_struct.push_back(traj);
     }
     //std::cout << "reached end of cuda_rollout" << std::endl;
 

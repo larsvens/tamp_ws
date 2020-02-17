@@ -4,8 +4,8 @@ t_activate: 15.0
 t_final: 500.0
 scenario_id: 2 # 1: pop-up, 2: reduced mu turn, 3: racing
 s_begin_log: 180
-#s_pause_gazebo: []
-s_pause_gazebo: [180, 195, 210, 225, 240] # snapshots
+s_pause_gazebo: []
+#s_pause_gazebo: [180, 195, 210, 225, 240] # snapshots
 
 # pop-up obstacle config
 s_ego_at_popup:  50
@@ -37,7 +37,7 @@ ref_mode: 1
 # 0: RTI
 # 1: SAA-RTI 
 sampling_augmentation: 1
-Ntrajs_rollout: 12 # default 24 @ 3s
+Ntrajs_rollout: 32 # default 24 @ 3s
 
 # Traction adaptation 
 # 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics), static Cr
