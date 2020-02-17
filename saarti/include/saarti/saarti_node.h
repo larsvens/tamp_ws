@@ -61,7 +61,9 @@ private:
     float mu_nominal_; // only used for nonadaptive case
     float vxref_cc_; // only used for velocity keeping (refmode 1)
     float dref_cc_; // only used for velocity keeping (refmode 1)
-    int Ntrajs_rollout_;
+    int Nd_rollout_;
+    int Nvx_rollout_;
+    float vxub_rollout_;
     vector<float> Wx_;
     vector<float> WNx_;
     vector<float> Wu_;
@@ -109,9 +111,6 @@ private:
     void obstacles_callback(const common::Obstacles::ConstPtr& msg);
     void get_rosparams();
     void run_optimization();
-
-
-
 };
 } // end namespace saarti_node
 #endif // SAARTI_NODE_H

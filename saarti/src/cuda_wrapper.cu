@@ -31,8 +31,6 @@ __global__ void single_rollout(float *trajset_arr,
                                uint Npb,
                                float dt,
                                int traction_adaptive,
-                               int ref_mode,
-                               float vxref_nominal,
                                float *d_ref_arr,
                                float *vx_ref_arr)
 {
@@ -130,19 +128,8 @@ __global__ void single_rollout(float *trajset_arr,
         float Ffmax = mu*Fzf;
         float Frmax = mu*Fzr;
 
-        // get local vxref and vxerror
-//        float vxref;
-//        if(ref_mode == 1){ // cc
-//            vxref = vxref_nominal;
-//        } else if(ref_mode == 2) { // max s
-//            vxref = vxref_path[path_idx];
-//        } else {
-//            vxref = 0; // minimize s (refmode 0)
-//        }
-//        float vxerror = vxref-vx; // todo use blockIdx.x here
-
+        // get vxerror (one per block)
         float vxerror = vx_ref_arr[blockIdx.x] - vx;
-
 
         // get derror (one per thread)
         float derror = d_ref_arr[threadIdx.x] - d;
@@ -151,7 +138,6 @@ __global__ void single_rollout(float *trajset_arr,
          * ROLLOUT CONTROLLER
          */
 
-        // TODO CHECK THAT WEE GET SIMILAR OUTPUT FROM EULER AND RK4
         // TODO GET PARAMS FOR STARNDARD STATE FEEDBACK
 
         // select Fyf
@@ -169,35 +155,25 @@ __global__ void single_rollout(float *trajset_arr,
 
         // select Fxf
         float Fxfmax = sqrt(Ffmax*Ffmax-Fyf*Fyf);
-        if (ref_mode == 0){ // minimize s
-            // select max negative Fxf until stop
-            Fxf = -Fxfmax;
-        } else if (ref_mode == 1 || ref_mode == 2){ // maximize s or cc
-            if(vxerror > 0){ // accelerating
-                Fxf = 0; // rear wheel drive - no drive on front wheel
-            } else { // braking
-                Fxf = 1000*vxerror;
-                // saturate
-                if(Fxf<=-Fxfmax){
-                    Fxf = -Fxfmax;
-                }
+        if(vxerror > 0){ // accelerating
+            Fxf = 0; // rear wheel drive - no drive on front wheel
+        } else { // braking
+            Fxf = 1000*vxerror;
+            // saturate
+            if(Fxf<=-Fxfmax){
+                Fxf = -Fxfmax;
             }
         }
 
         // select Fxr
-        //float Fxrmax = mu*Fzr;
         float Fxrmax = sqrt(Frmax*Frmax-Fyr*Fyr);
-        if (ref_mode == 0){ // minimize s
+        Fxr = 1000*vxerror;
+        // saturate
+        if(Fxr >= Fxrmax){
+            Fxr = Fxrmax;
+        }
+        if(Fxr<=-Fxrmax){
             Fxr = -Fxrmax;
-        } else if (ref_mode == 1 || ref_mode == 2){ // maximize s or cc
-            Fxr = 1000*vxerror;
-            // saturate
-            if(Fxr >= Fxrmax){
-                Fxr = Fxrmax;
-            }
-            if(Fxr<=-Fxrmax){
-                Fxr = -Fxrmax;
-            }
         }
 
         // euler fwd step
@@ -238,16 +214,15 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                   containers::staticparamstruct sp,
                   int traction_adaptive,
                   float mu_nominal,
-                  containers::refstruct refs,
-                  float vxref_nominal,
                   uint Nt, // N in planning horizon
-                  uint Ni, // scaling factor in integration
                   uint Nd, // Nr of goal pts in d
                   uint Nvx, // Nr of goal pts in vx
+                  float vxub,
                   float dt)  // dt of planning horizon
 {
 
     // init variables
+    uint Ni = 10; // scaling factor in integration
     uint Nx = 6;
     uint Nu = 3;
     uint Nmisc = 5; // nr of additional traj vars
@@ -292,10 +267,9 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     }
 
     // set vxref_arr
-    float vxlb = 1.0f;
-    float vxub = 20.0f; // todo get dynamically as vmax X^*(t-1)
+    float vxlb = 1.0f; // avoid singulatity at vx = 0
     float vxstep = (vxub-vxlb)/(float(Nvx)-1);
-    std::cout << "Nvx = " << Nvx << std::endl;
+    //std::cout << "Nvx = " << Nvx << std::endl;
     for(uint id=0; id<Nvx; ++id) {
         vx_ref_arr[id] = vxlb+float(id)*vxstep;
         //std::cout << "vx_ref_arr[id] = " << vx_ref_arr[id] << std::endl;
@@ -333,8 +307,6 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                                 Npb,
                                 dt,
                                 traction_adaptive,
-                                refs.ref_mode,
-                                vxref_nominal,
                                 d_ref_arr,
                                 vx_ref_arr);
 

@@ -37,7 +37,9 @@ ref_mode: 1
 # 0: RTI
 # 1: SAA-RTI 
 sampling_augmentation: 1
-Ntrajs_rollout: 32 # default 24 @ 3s
+Nd_rollout: 12 # multiples of 32 to maximize utilization
+Nvx_rollout: 12
+vxub_rollout: 20.0
 
 # Traction adaptation 
 # 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics), static Cr
