@@ -37,8 +37,8 @@ ref_mode: 1
 # 0: RTI
 # 1: SAA-RTI 
 sampling_augmentation: 1
-Nd_rollout: 12 # multiples of 32 to maximize utilization
-Nvx_rollout: 12
+Nd_rollout: 10 # multiples of 32 to maximize gpu utilization
+Nvx_rollout: 15
 vxub_rollout: 20.0
 
 # Traction adaptation 

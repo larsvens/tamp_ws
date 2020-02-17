@@ -14,6 +14,8 @@ __global__ void single_rollout(float *trajset_arr,
                                float *vxref_path,
                                float *kappac_path,
                                float *mu_path,
+                               float *dub_path,
+                               float *dlb_path,
                                float mu_nominal,
                                float m,
                                float Iz,
@@ -62,119 +64,141 @@ __global__ void single_rollout(float *trajset_arr,
     float Fyf = 0.0f;
     float Fxf = 0.0f;
     float Fxr = 0.0f;
+    float Fyr = 0.0f;
+    float Fzf = 0.0f;
+    float Fzr = 0.0f;
+    float kappac = 0.0f;
+    float mu = 0.0f;
+    float Cr = 0.0f;
     uint k = 0; // k is the regular iterator, ki is upsampled
     for (int ki=0; ki<((Nt+1)*Ni); ki++){
 
-        // get kappac at s (perhaps not every si?)
-        int path_idx;
-        for (path_idx = 0; path_idx<Npath; path_idx++) {
-            // break if s - spath is negative, save index
-            if(s-s_path[path_idx] <= 0){
-                break;
+        if(ki % Ni == 0){ // only the euler step is performed every ki
+
+            // init vars for cost eval
+            bool colliding = false;
+            bool exitroad = false;
+            float cost = 0;
+
+            // check if exitroad
+            for (uint id = 0; id<Npath; id++) {
+                if (d < dlb_path[id] || d > dub_path[id]){
+                    exitroad = true;
+                }
             }
-        }
-        float kappac = kappac_path[path_idx];
 
-        // set ax for Fz computation from previous cmd
-        float ax = (Fxf+Fxr)/m;
+            // check collision with obstacle
 
-        // get normal forces front and back and mu
-        float Fzf;
-        float Fzr;
-        float mu;
-        if(traction_adaptive == 1){
-            float theta = 0; // grade angle todo get from pathlocal via traj
-            Fzf = (1.0f/(lf+lr))*(m*ax*h_cg  - m*g*h_cg*sin(theta) + m*g*lr*cos(theta));
-            Fzr = (1.0f/(lf+lr))*(-m*ax*h_cg + m*g*h_cg*sin(theta) + m*g*lf*cos(theta));
-            mu = mu_path[path_idx]; // get mu from pathlocal at s
-        } else { // (traction_adaptive == 0)
-            Fzf = (1.0f/(lf+lr))*(m*g*lr);
-            Fzr = (1.0f/(lf+lr))*(m*g*lf);
-            mu = mu_nominal;
-        }
+            // get path index
+            uint path_idx;
+            for (path_idx = 0; path_idx<Npath; path_idx++) {
+                // break if s - spath is negative, save index
+                if(s-s_path[path_idx] <= 0){
+                    break;
+                }
+            }
 
-        // get rear cornering stiffness
-        float B, C, D; //, E;
-        // todo add case for racing
-        if(0.0f <= mu && mu <0.3f){ // ice
-            B = 4.0f;
-            C = 2.0f;
-            D = mu;
-            //E = 1.0f;
-        } else if (0.3f <= mu && mu <0.5f) { // snow
-            B = 5.0f;
-            C = 2.0f;
-            D = mu;
-            //E = 1.0f;
-        } else if (0.5f <= mu && mu <0.9f) { // wet
-            B = 12.0f;
-            C = 2.3f;
-            D = mu;
-            //E = 1.0f;
-        } else if (0.9f <= mu && mu <2.5f) { // dry
-            B = 10.0f;
-            C = 1.9f;
-            D = mu;
-            //E = 0.97f;
-        } else {
-            // todo Error = nonzero nr - check at host and throw error
-        }
-        float Cr = B*C*D*Fzr; // Rajamani
+            // get kappac
+            kappac = kappac_path[path_idx];
 
-        // set Fyr
-        float Fyr = 2*Cr*atan(lr*psidot-vy)/vx; // help variable
+            // set ax for Fz computation from previous cmd
+            float ax = (Fxf+Fxr)/m;
 
-        // compute maximum tire forces
-        float Ffmax = mu*Fzf;
-        float Frmax = mu*Fzr;
+            // get normal forces front and back and mu
+            if(traction_adaptive == 1){
+                float theta = 0; // grade angle todo get from pathlocal via traj
+                Fzf = (1.0f/(lf+lr))*(m*ax*h_cg  - m*g*h_cg*sin(theta) + m*g*lr*cos(theta));
+                Fzr = (1.0f/(lf+lr))*(-m*ax*h_cg + m*g*h_cg*sin(theta) + m*g*lf*cos(theta));
+                mu = mu_path[path_idx]; // get mu from pathlocal at s
+            } else { // (traction_adaptive == 0)
+                Fzf = (1.0f/(lf+lr))*(m*g*lr);
+                Fzr = (1.0f/(lf+lr))*(m*g*lf);
+                mu = mu_nominal;
+            }
 
-        // get vxerror (one per block)
-        float vxerror = vx_ref_arr[blockIdx.x] - vx;
+            // get rear cornering stiffness
+            float B, C, D; //, E;
+            // todo add case for racing
+            if(0.0f <= mu && mu <0.3f){ // ice
+                B = 4.0f;
+                C = 2.0f;
+                D = mu;
+                //E = 1.0f;
+            } else if (0.3f <= mu && mu <0.5f) { // snow
+                B = 5.0f;
+                C = 2.0f;
+                D = mu;
+                //E = 1.0f;
+            } else if (0.5f <= mu && mu <0.9f) { // wet
+                B = 12.0f;
+                C = 2.3f;
+                D = mu;
+                //E = 1.0f;
+            } else if (0.9f <= mu && mu <2.5f) { // dry
+                B = 10.0f;
+                C = 1.9f;
+                D = mu;
+                //E = 0.97f;
+            } else {
+                // todo Error = nonzero nr - check at host and throw error
+            }
+            Cr = B*C*D*Fzr; // Rajamani
 
-        // get derror (one per thread)
-        float derror = d_ref_arr[threadIdx.x] - d;
+            // compute maximum tire forces
+            float Ffmax = mu*Fzf;
+            float Frmax = mu*Fzr;
 
-        /*
+            // get vxerror (one per block)
+            float vxerror = vx_ref_arr[blockIdx.x] - vx;
+
+            // get derror (one per thread)
+            float derror = d_ref_arr[threadIdx.x] - d;
+
+         /*
          * ROLLOUT CONTROLLER
          */
 
-        // TODO GET PARAMS FOR STARNDARD STATE FEEDBACK
+            // TODO GET PARAMS FOR STARNDARD STATE FEEDBACK
 
-        // select Fyf
-        float feedfwd = 0.5f*m*vx*vx*kappac*cos(deltapsi);
-        float feedback = 3000*derror - 500*deltapsi;
-        Fyf = feedfwd + feedback;
+            // select Fyf
+            float feedfwd = 0.5f*m*vx*vx*kappac*cos(deltapsi);
+            float feedback = 3000*derror - 500*deltapsi;
+            Fyf = feedfwd + feedback;
 
-        // saturate Fyf at Ffmax
-        if(Fyf >= Ffmax){
-            Fyf = Ffmax;
-        }
-        if(Fyf<=-Ffmax){
-            Fyf = -Ffmax;
-        }
+            // saturate Fyf at Ffmax
+            if(Fyf >= Ffmax){
+                Fyf = Ffmax;
+            }
+            if(Fyf<=-Ffmax){
+                Fyf = -Ffmax;
+            }
 
-        // select Fxf
-        float Fxfmax = sqrt(Ffmax*Ffmax-Fyf*Fyf);
-        if(vxerror > 0){ // accelerating
-            Fxf = 0; // rear wheel drive - no drive on front wheel
-        } else { // braking
-            Fxf = 1000*vxerror;
+            // select Fxf
+            float Fxfmax = sqrt(Ffmax*Ffmax-Fyf*Fyf);
+            if(vxerror > 0){ // accelerating
+                Fxf = 0; // rear wheel drive - no drive on front wheel
+            } else { // braking
+                Fxf = 1000*vxerror;
+                // saturate
+                if(Fxf<=-Fxfmax){
+                    Fxf = -Fxfmax;
+                }
+            }
+
+            // select Fxr
+            float Fxrmax = sqrt(Frmax*Frmax-Fyr*Fyr);
+            Fxr = 1000*vxerror;
             // saturate
-            if(Fxf<=-Fxfmax){
-                Fxf = -Fxfmax;
+            if(Fxr >= Fxrmax){
+                Fxr = Fxrmax;
+            }
+            if(Fxr<=-Fxrmax){
+                Fxr = -Fxrmax;
             }
         }
 
-        // select Fxr
-        float Fxrmax = sqrt(Frmax*Frmax-Fyr*Fyr);
-        Fxr = 1000*vxerror;
-        // saturate
-        if(Fxr >= Fxrmax){
-            Fxr = Fxrmax;
-        }
-        if(Fxr<=-Fxrmax){
-            Fxr = -Fxrmax;
-        }
+        // set Fyr
+        float Fyr = 2*Cr*atan(lr*psidot-vy)/vx; // help variable
 
         // euler fwd step
         s        = s + (dt/Ni)*((vx*cos(deltapsi)-vy*sin(deltapsi))/(1-d*kappac));
@@ -184,6 +208,7 @@ __global__ void single_rollout(float *trajset_arr,
         vx       = vx + (dt/Ni)*((1/m)*(Fxf+Fxr));
         vy       = vy + (dt/Ni)*((1/m)*(Fyf+Fyr)-vx*psidot);
 
+        // store data at Nt regular intervals
         if(ki % Ni == 0){
             k = ki/Ni;
             // set x at k+1
@@ -217,7 +242,7 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                   uint Nt, // N in planning horizon
                   uint Nd, // Nr of goal pts in d
                   uint Nvx, // Nr of goal pts in vx
-                  float vxub,
+                  float vxub, // upper bound on sampled vx
                   float dt)  // dt of planning horizon
 {
 
@@ -238,6 +263,9 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     float *vxref_path;
     float *kappac_path;
     float *mu_path;
+    float *dub_path;
+    float *dlb_path;
+
 
     // allocate shared memory
     cudaMallocManaged(&trajset_arr, (Nx+Nu+Nmisc)*Nd*Nt*sizeof(float));
@@ -248,6 +276,9 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     cudaMallocManaged(&vxref_path, Npath*sizeof(float));
     cudaMallocManaged(&kappac_path, Npath*sizeof(float));
     cudaMallocManaged(&mu_path, Npath*sizeof(float));
+    cudaMallocManaged(&dub_path, Npath*sizeof(float));
+    cudaMallocManaged(&dlb_path, Npath*sizeof(float));
+
 
     // set init state
     x_init[0] = initstate.s;
@@ -258,8 +289,8 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     x_init[5] = initstate.vy;
 
     // set dref_arr
-    float dlb = pathlocal.dlb.at(0);
     float dub = pathlocal.dub.at(0);
+    float dlb = pathlocal.dlb.at(0);
     float dstep = (dub-dlb)/(float(Nd)-1);
     for(uint id=0; id<Nd; ++id) {
         d_ref_arr[id] = dlb+float(id)*dstep;
@@ -280,6 +311,8 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
         s_path[id] = pathlocal.s.at(id);
         kappac_path[id] = pathlocal.kappa_c.at(id);
         mu_path[id] = pathlocal.mu.at(id);
+        dub_path[id] = pathlocal.dub.at(id);
+        dlb_path[id] = pathlocal.dlb.at(id);
     }
 
     // run Nd*Nvx rollouts on Ntraj threads on gpu
@@ -290,6 +323,8 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                                 vxref_path,
                                 kappac_path,
                                 mu_path,
+                                dub_path,
+                                dlb_path,
                                 mu_nominal,
                                 sp.m,
                                 sp.Iz,
@@ -346,7 +381,6 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
             trajset_struct.push_back(traj);
         }
     }
-    //std::cout << "reached end of cuda_rollout" << std::endl;
 
     // Free memory
     cudaFree(trajset_arr);

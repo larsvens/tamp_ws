@@ -144,8 +144,15 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                     trajprime = rtisqp_wrapper_.shiftTrajectoryByIntegration(trajstar_last,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_);
                     trajset_.push_back(trajprime);
                 }
+
+
                 // cost eval and select
+                auto t1_costeval = std::chrono::high_resolution_clock::now();
                 int trajhat_idx = trajset_eval_cost(); // error if negative
+                auto t2_costeval = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double, std::milli> t_costeval = t2_costeval - t1_costeval;
+                ROS_INFO_STREAM("costevaltime                 " << t_costeval.count() << " ms " << "(" << Nd_rollout_*Nvx_rollout_ << "trajs)");
+
                 if(trajhat_idx >= 0){
                     trajhat = trajset_.at(uint(trajhat_idx));
                 } else {
@@ -431,7 +438,6 @@ containers::refstruct SAARTI::setRefs(int ref_mode,
     return refs;
 }
 
-
 // cost evaluation and collision checking of trajset
 int SAARTI::trajset_eval_cost(){
     float mincost = float(Wslack_)*10;
@@ -456,6 +462,7 @@ int SAARTI::trajset_eval_cost(){
                     colliding = true;
                 }
             }
+
             // check outside road (in frenet)
             if((d > dub.at(j)) || d < dlb.at(j) ){
                 exitroad = true;
