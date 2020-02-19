@@ -240,7 +240,7 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                   int traction_adaptive,
                   float mu_nominal,
                   uint Nt, // N in planning horizon
-                  uint Nd, // Nr of goal pts in d
+                  uint Nd, // Nr of goal pts in d (multiples of 32 to maximize gpu utilization)
                   uint Nvx, // Nr of goal pts in vx
                   float vxub, // upper bound on sampled vx
                   float dt)  // dt of planning horizon

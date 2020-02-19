@@ -9,7 +9,7 @@ plt.rcParams['figure.figsize'] = 8, 4
 
 # load nonadaptive file and unpack
 filepath = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/"
-filename = "explog_latest_reducedmuturn_nonadaptive.npy"
+filename = "explog_latest_popup_nonadaptive.npy"
 log = np.load(filepath+filename,allow_pickle=True).item()
 pathglobal_nonadapt = log["pathglobal"]
 trajstar_nonadapt = log["trajstar"]
@@ -23,7 +23,7 @@ Fr_nonadapt = np.sqrt(trajstar_nonadapt["Fxr"]**2+trajstar_nonadapt["Fyr"]**2)
 
 # load adaptive file and unpack
 filepath = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/"
-filename = "explog_latest_reducedmuturn_adaptive.npy"
+filename = "explog_latest_popup_adaptive.npy"
 log = np.load(filepath+filename,allow_pickle=True).item()
 pathglobal_adapt = log["pathglobal"]
 trajstar_adapt = log["trajstar"]

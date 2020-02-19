@@ -23,7 +23,7 @@ plt.rcParams['figure.figsize'] = 20, 10
 
 # load file and unpack
 filepath = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/"
-filename = "explog_latest_reducedmuturn_nonadaptive.npy"
+filename = "explog_latest_popup_nonadaptive.npy"
 log = np.load(filepath+filename,allow_pickle=True).item()
 pathglobal = log["pathglobal"]
 trajstar = log["trajstar"]

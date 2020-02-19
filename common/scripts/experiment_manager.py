@@ -110,7 +110,7 @@ class ExperimentManager:
         self.obs.s = [self.s_obs_at_popup]
         self.obs.d = [self.d_obs_at_popup]
         self.obs.R = [0.5]
-        wiggleroom = 0.5
+        wiggleroom = 1.0 # todo param
         self.obs.Rmgn = [0.5*self.obs.R[0] + 0.5*self.vehicle_width + wiggleroom]
         Xobs, Yobs = ptsFrenetToCartesian(np.array(self.obs.s), \
                                           np.array(self.obs.d), \
@@ -184,12 +184,14 @@ class ExperimentManager:
                 # POPUP SCENARIO
                 if (self.scenario_id == 1):
                     self.ctrl_mode = 1 # cruise control
+                    if(self.state.vx > 5):
+                        self.ctrl_mode = 2 # tamp
                     m_obs = self.getobstaclemarker(Xobs,Yobs,self.obs.R[0])
                     m_obs.color.a = 0.3 # transparent before detect
                     if (self.state.s >= self.s_ego_at_popup):
                         self.obspub.publish(self.obs)
                         m_obs.color.a = 1.0 # non-transparent after detect
-                        self.ctrl_mode = 2 # tamp
+                        
                     self.obsvispub.publish(m_obs)
                 
                 # REDUCED MU TURN
