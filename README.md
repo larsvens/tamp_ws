@@ -16,7 +16,8 @@ The TAMP algorithm uses sampling augmented adaptive RTI to allow dynamically set
 
 ## Setup    
 System configuration: ubuntu 16.04 LTS & ROS Kinetic   
-http://wiki.ros.org/kinetic/Installation/Ubuntu
+http://wiki.ros.org/kinetic/Installation/Ubuntu   
+Tested with Python version 2.7.12 and Scipy version 1.2.2
 
 dependencies:   
 `apt-get install ros-kinetic-jsk-rviz-plugins`   
