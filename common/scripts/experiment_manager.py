@@ -326,9 +326,13 @@ class ExperimentManager:
                       "trajcl": self.trajcl_dict,
                     }
                     filepath = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/"
-                    filename = "explog_latest"
+                    filename = "explog"
                     if(self.scenario_id == 1):
                         filename = filename + "_popup"
+                        if(np.min(self.mu_segment_values)>0.8):
+                            filename = filename + "_dry"
+                        else:
+                            filename = filename + "_wet"
                     elif(self.scenario_id == 2):
                         filename = filename + "_reducedmuturn"
                     elif(self.scenario_id == 3):

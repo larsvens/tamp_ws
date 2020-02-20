@@ -63,9 +63,17 @@ class CtrlInterface:
 
         # wait for messages before entering main loop
         while(not self.state_received):
-            print("waiting for state")
+            rospy.loginfo_throttle(1, "waiting for state")
             self.rate.sleep()
 
+        while(not self.pathlocal_received):
+            rospy.loginfo_throttle(1, "waiting for pathlocal")
+            self.rate.sleep()
+
+        while(self.ctrl_mode == 0):
+            rospy.loginfo_throttle(1, "waiting for activation from exp manager")
+            self.rate.sleep
+            
         # main loop
         while not rospy.is_shutdown(): 
             
@@ -78,9 +86,6 @@ class CtrlInterface:
                     delta_out = 0
                     dc_out = 0
             elif(self.ctrl_mode == 1):   # CRUISE CTRL             
-                while(not self.pathlocal_received):
-                    print("waiting for pathlocal")
-                    self.rate.sleep()
                 delta_out, dc_out, Xlh,Ylh = self.cc_ctrl()           
                            
             elif(self.ctrl_mode == 2):   # TAMP   
@@ -163,8 +168,8 @@ class CtrlInterface:
 
         # kin + dyn feedforward        
         kin_ff_term = rho_pp*(self.lf + self.lr)         
-        dyn_ff_term = 0.5*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
-        if(self.robot_name == "gotthard"):
+        dyn_ff_term = 0.9*self.trajstar.Fyf[0]/self.trajstar.Cf[0] # 0.5
+        if(self.robot_name == "gotthard"): 
             dyn_ff_term = 0.1*dyn_ff_term
         delta_out = kin_ff_term + dyn_ff_term
 

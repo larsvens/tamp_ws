@@ -22,7 +22,7 @@ plt.rcParams['figure.dpi'] = 100 # default 100
 plt.rcParams['figure.figsize'] = 15, 5
 
 # params
-la = 300 # back of L shape (200)
+la = 400 # back of L shape (200)
 lc = 70  # base of L shape
 Rb  = 22  # radius of curve at experiment turn
 R = 30   # radius at other turns 
