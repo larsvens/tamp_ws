@@ -3,12 +3,15 @@ import copy
 
 # returns interval representation of angle ( [-pi pi] by default )
 def angleToInterval(psi):
-    for i in range(psi.size):
-        while(psi[i] > np.pi):
-            psi[i] = psi[i] -2*np.pi
-        while(psi[i] <= -np.pi):
-            psi[i] = psi[i] +2*np.pi
-    return psi
+    try:         
+        for i in range(psi.size):
+            while(psi[i] > np.pi):
+                psi[i] = psi[i] -2*np.pi
+            while(psi[i] <= -np.pi):
+                psi[i] = psi[i] +2*np.pi
+        return psi
+    except ValueError:
+        print("Error in angleToInterval, psi.size = %i", psi.size)
 
 # returns continous representation of discontinous angle (e.g. heading)
 def angleToContinous(psi):

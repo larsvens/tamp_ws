@@ -1,8 +1,15 @@
 #!/usr/bin/env python
 
-# Node description:
-# translate trajstar into specific control inputs for the vehicle
-# runs at 100 Hz
+# Descrition: Translates trajstar into vehicle specific control inputs 
+
+# subscribes:
+# state from stateestimation node (topic /state)
+# local path from perception (topic /pathlocal)
+# trajstar from saarti node (topic /trajstar)
+# ctrl_mode from experiment manager (topic /ctrl_mode)
+
+# publishes: 
+# vehicle specific ctrl command (topic /fssim/cmd for sim, topic **** for real opendlv)
 
 import numpy as np
 import rospy
@@ -10,10 +17,8 @@ from common.msg import Trajectory
 from common.msg import Path
 from common.msg import State
 from fssim_common.msg import Cmd
-from fssim_common.msg import State as fssimState
 from visualization_msgs.msg import Marker
 from std_msgs.msg import Float32
-from coordinate_transforms import ptsCartesianToFrenet
 from coordinate_transforms import ptsFrenetToCartesian
 from std_msgs.msg import Int16
 
@@ -27,7 +32,7 @@ class CtrlInterface:
         rospy.init_node('ctrl_interface', anonymous=True)
         self.trajstarsub = rospy.Subscriber("trajstar", Trajectory, self.trajstar_callback)
         self.pathlocalsub = rospy.Subscriber("pathlocal", Path, self.pathlocal_callback)
-        self.vehicle_out_sub = rospy.Subscriber("/fssim/base_pose_ground_truth", fssimState, self.vehicle_out_callback)
+        self.state_sub = rospy.Subscriber("/state", State, self.state_callback)
         self.ctrlmodesub = rospy.Subscriber("ctrl_mode", Int16, self.ctrl_mode_callback)
         self.vehicleinpub = rospy.Publisher('/fssim/cmd', Cmd, queue_size=10)
         self.lhptpub = rospy.Publisher('/lhpt_vis', Marker, queue_size=1)
@@ -78,7 +83,7 @@ class CtrlInterface:
         while not rospy.is_shutdown(): 
             
             if(self.ctrl_mode == 0):     # STOP (set by exp manager if outside of track)
-                if (self.state.vx > 0.05):
+                if (self.state.vx > 0.1):
                     rospy.loginfo_throttle(1,"in stop mode")
                     delta_out = self.delta_out_last
                     dc_out = -200000 #self.dc_out_last
@@ -118,20 +123,26 @@ class CtrlInterface:
     
     def cc_ctrl(self):
         rospy.loginfo_throttle(1, "Running CC control")
-        # get lhpt
-        lhdist = 7 # todo determine from velocity
-        s_lh = self.state.s + lhdist
-        d_lh = self.cc_dref
         
-        Xlh, Ylh = ptsFrenetToCartesian(np.array(s_lh), \
-                                        np.array(d_lh), \
-                                        np.array(self.pathlocal.X), \
-                                        np.array(self.pathlocal.Y), \
-                                        np.array(self.pathlocal.psi_c), \
-                                        np.array(self.pathlocal.s))
-        
-        rho_pp = self.pp_curvature(self.state.X,self.state.Y,self.state.psi,Xlh,Ylh)
-        delta_out = rho_pp*(self.lf + self.lr) # kinematic feed fwd
+        if(self.state.vx > 0.0):
+            # get lhpt
+            lhdist = 7 # todo determine from velocity
+            s_lh = self.state.s + lhdist
+            d_lh = self.cc_dref
+            
+            Xlh, Ylh = ptsFrenetToCartesian(np.array([s_lh]), \
+                                            np.array([d_lh]), \
+                                            np.array(self.pathlocal.X), \
+                                            np.array(self.pathlocal.Y), \
+                                            np.array(self.pathlocal.psi_c), \
+                                            np.array(self.pathlocal.s))
+            
+            rho_pp = self.pp_curvature(self.state.X,self.state.Y,self.state.psi,Xlh[0],Ylh[0])
+            delta_out = rho_pp*(self.lf + self.lr) # kinematic feed fwd
+        else:
+            Xlh = 0.0
+            Ylh = 0.0
+            delta_out = 0.0
         
         self.vx_error = self.cc_vxref - self.state.vx
         if(self.robot_name == "gotthard"):
@@ -159,13 +170,6 @@ class CtrlInterface:
                                    Xlh,
                                    Ylh)
 
-        # stanford control
-        #K = self.trajstar.Fzf[0]/self.trajstar.Cf[0] - self.trajstar.Fzr[0]/self.trajstar.Cr[0]
-        #dyn_ff_term = rho_pp*(K*self.state.vx**2/self.g)
-        
-        # yawrate feedback
-        #yr_feedback = 0.05*(self.trajstar.psidot[1]-self.state.psidot)
-
         # kin + dyn feedforward        
         kin_ff_term = rho_pp*(self.lf + self.lr)         
         dyn_ff_term = 0.9*self.trajstar.Fyf[0]/self.trajstar.Cf[0] # 0.5
@@ -177,8 +181,6 @@ class CtrlInterface:
         # LONGITUDINAL CTRL
         # feedfwd
         Fx_request = self.trajstar.Fxf[0] + self.trajstar.Fxr[0]
-        #delta_comp_Fx = self.trajstar.Fyf[0]*np.tan(delta_out)
-        #print "delta_comp_Fx = ", delta_comp_Fx
         
         if(self.robot_name == "gotthard"):
             # feedfwd 
@@ -253,25 +255,12 @@ class CtrlInterface:
     def pathlocal_callback(self, msg):
         self.pathlocal = msg
         self.pathlocal_received = True
-    
-    def vehicle_out_callback(self, msg):
-        if(self.pathlocal_received and (self.ctrl_mode in [1,2])):
-            self.state.X = msg.x
-            self.state.Y = msg.y
-            self.state.psi = msg.yaw
-            self.state.psidot = msg.r
-            self.state.vx = msg.vx
-            self.state.vy = msg.vy
-            self.state.s,self.state.d = ptsCartesianToFrenet(np.array(self.state.X), \
-                                                             np.array(self.state.Y), \
-                                                             np.array(self.pathlocal.X), \
-                                                             np.array(self.pathlocal.Y), \
-                                                             np.array(self.pathlocal.psi_c), \
-                                                             np.array(self.pathlocal.s))      
 
-        
+    def state_callback(self, msg):
+        self.state = msg 
+        #print "self.state.s = " , self.state.s
         self.state_received = True
-
+        
     def ctrl_mode_callback(self, msg):
         self.ctrl_mode = msg.data
 
@@ -281,7 +270,7 @@ class CtrlInterface:
         self.lr = rospy.get_param('/car/kinematics/b_R')
 
 if __name__ == '__main__':
-    vm = CtrlInterface()
+    ci = CtrlInterface()
     try:
         rospy.spin()
     except KeyboardInterrupt:

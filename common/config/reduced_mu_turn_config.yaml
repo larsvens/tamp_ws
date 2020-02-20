@@ -1,6 +1,6 @@
 # Experiment configuration
 
-t_activate: 15.0
+t_activate: 5.0
 t_final: 500.0
 scenario_id: 2 # 1: pop-up, 2: reduced mu turn, 3: racing
 s_begin_log: 180

@@ -22,7 +22,7 @@ plt.rcParams['figure.dpi'] = 100 # default 100
 plt.rcParams['figure.figsize'] = 15, 5
 
 # params
-la = 400 # back of L shape (200)
+la = 200 # back of L shape (200)
 lc = 70  # base of L shape
 Rb  = 22  # radius of curve at experiment turn
 R = 30   # radius at other turns 
@@ -35,7 +35,7 @@ cones_orange_big_X = np.array([4.7, 4.7, 7.3, 7.3])
 cones_orange_big_Y = np.array([4.0, -4.0, 4.0, -4.0])
 tk_device_X = np.array([6.0, 6.0])
 tk_device_Y = np.array([4.5, -4.5])
-starting_pose_front_wing = np.array([0.01, 0.0, 0.0]) # small adjust to avoid negative s
+starting_pose_front_wing = np.array([0.1, 0.0, 0.0]) # small adjust to avoid negative s
 
 # section a 
 Na = la # default 1 node per meter
@@ -72,7 +72,8 @@ Xf = R*np.cos(t) + Xe[-1] - R
 Yf = R*np.sin(t) + Ye[-1]
 
 # section g
-lg = la+Rb-3*R
+li = 5
+lg = la+Rb-3*R + li
 Ng = lg
 Xg = np.linspace(Xf[-1],Xf[-1]-lg,Ng)
 Yg = np.zeros(Ng)+Yf[-1]
@@ -83,9 +84,14 @@ t = np.linspace(-np.pi/2,-3*np.pi/2,Nh)
 Xh = R*np.cos(t) + Xg[-1]
 Yh = R*np.sin(t) + Yg[-1]+R
 
+# section i
+Ni = li
+Xi = np.linspace(-li,0,Ni)
+Yi = np.zeros(Ni)
+
 # concatenate vectors
-X_cl_tmp = np.concatenate((Xa, Xb, Xc, Xd, Xe, Xf, Xg, Xh), axis=0)
-Y_cl_tmp = np.concatenate((Ya, Yb, Yc, Yd, Ye, Yf, Yg, Yh), axis=0)
+X_cl_tmp = np.concatenate((Xa, Xb, Xc, Xd, Xe, Xf, Xg, Xh, Xi), axis=0)
+Y_cl_tmp = np.concatenate((Ya, Yb, Yc, Yd, Ye, Yf, Yg, Yh, Yi), axis=0)
 
 # remove duplicate points
 threshold_dist = 0.1
