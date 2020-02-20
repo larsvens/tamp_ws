@@ -193,7 +193,6 @@ void planning_util::get_additional_traj_variables(containers::trajstruct &traj, 
 // linearizes paceica magic formula
 float planning_util::get_cornering_stiffness(float mu, float Fz){
     float B, C, D; //, E;
-    // todo add case for racing
 
     if(0.0f <= mu && mu <0.3f){ // ice
         B = 4.0f;
@@ -210,11 +209,16 @@ float planning_util::get_cornering_stiffness(float mu, float Fz){
         C = 2.3f;
         D = mu;
         //E = 1.0f;
-    } else if (0.9f <= mu && mu <2.5f) { // dry
+    } else if (0.9f <= mu && mu <1.5f) { // dry
         B = 10.0f;
         C = 1.9f;
         D = mu;
         //E = 0.97f;
+    } else if (1.5f <= mu && mu <2.5f) { // dry + racing tires (gotthard default)
+        B = 12.56f;
+        C = 1.38f;
+        D = mu;
+        //E = 1.00f;
     } else {
         throw std::invalid_argument("faulty mu value in get_cornering_stiffness");
     }

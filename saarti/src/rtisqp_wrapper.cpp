@@ -146,7 +146,7 @@ void RtisqpWrapper::setInputConstraints(containers::trajstruct traj){
     vector<float> Ffmax;
     vector<float> Frmax;
     for (uint k = 0; k < N ; ++k){
-        Ffmax.push_back(traj.mu.at(k)*traj.Fzf.at(k)*0.95f); // tmp adjust with some margin (todo just put on lateral)
+        Ffmax.push_back(traj.mu.at(k)*traj.Fzf.at(k)*0.90f); // 0.95 tmp adjust with some margin (todo just put on lateral)
         Frmax.push_back(traj.mu.at(k)*traj.Fzr.at(k));
     }
 
@@ -201,7 +201,7 @@ containers::posconstrstruct RtisqpWrapper::setStateConstraints(containers::trajs
             float sobs = obs.s.at(i);
             float dobs = obs.d.at(i);
             float Rmgn = obs.Rmgn.at(i);
-            if (slb - Rmgn <= sobs && sobs <= sub + Rmgn){
+            if (slb - Rmgn - 8.0f <= sobs && sobs <= sub + Rmgn + 3.0f){ // open up after obstacle for evasive man todo length based on vx
                 if(dobs >= traj.d.at(k)){ // obs left of vehicle, adjust dub
                     dub = std::min(dub, dobs-Rmgn);
                     if(dub-dlb < sp.l_width){ // open up lane boundary constraint to fit the vehicle

@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
 # Descrition: Publishes local path along with estimated friction along it
-# inputs:
-# state from fssim (topic /fssim/base_pose_ground_truth)
-# global path from track interface (topic pathglobal)
-# outputs: 
-# /pathlocal
-# + rviz visualizations
+
+# subscribes:
+# state from stateestimation node (topic /state)
+# global path from track interface (topic /pathglobal)
+
+# publishes: 
+# local path (topic /pathlocal)
+# visualization of local path (/pathlocal_vis)
 
 import numpy as np
 import rospy
@@ -114,7 +116,8 @@ class Perception:
     def updateLocalPath(self):
        
         stot_local = self.N*self.ds
-        self.smin_local = max(self.state.s - 1,0)
+        #self.smin_local = max(self.state.s-1, 0.0)
+        self.smin_local = self.state.s
         #print "smin_local = ", self.smin_local
         smax_local = self.smin_local+stot_local
         

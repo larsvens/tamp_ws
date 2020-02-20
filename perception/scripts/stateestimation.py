@@ -1,5 +1,14 @@
 #!/usr/bin/env python
 
+# Descrition: Publishes state in cartesian and frenet coordinates
+
+# subscribes:
+# state from platform (for sim: /fssim/base_pose_ground_truth, for opendlv: /**********)
+# global path from track interface (topic /pathglobal)
+
+# publishes: 
+# state (topic /state)
+
 import numpy as np
 import rospy
 from common.msg import Path
@@ -74,7 +83,6 @@ class StateEst:
         self.state_out.vy = self.state_in.vy
 
         # get s, d and deltapsi
-        
         s,d = ptsCartesianToFrenet(np.array(self.state_out.X), \
                                    np.array(self.state_out.Y), \
                                    np.array(self.pathglobal.X), \

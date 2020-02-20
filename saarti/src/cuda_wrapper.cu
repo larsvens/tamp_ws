@@ -118,7 +118,7 @@ __global__ void single_rollout(float *trajset_arr,
 
             // get rear cornering stiffness
             float B, C, D; //, E;
-            // todo add case for racing
+
             if(0.0f <= mu && mu <0.3f){ // ice
                 B = 4.0f;
                 C = 2.0f;
@@ -134,11 +134,16 @@ __global__ void single_rollout(float *trajset_arr,
                 C = 2.3f;
                 D = mu;
                 //E = 1.0f;
-            } else if (0.9f <= mu && mu <2.5f) { // dry
+            } else if (0.9f <= mu && mu <1.5f) { // dry
                 B = 10.0f;
                 C = 1.9f;
                 D = mu;
                 //E = 0.97f;
+            } else if (1.5f <= mu && mu <2.5f) { // dry + racing tires (gotthard default)
+                B = 12.56f;
+                C = 1.38f;
+                D = mu;
+                //E = 1.00f;
             } else {
                 // todo Error = nonzero nr - check at host and throw error
             }
