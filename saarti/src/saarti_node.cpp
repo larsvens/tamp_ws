@@ -7,6 +7,7 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                   containers::staticparamstruct sp,
                   int traction_adaptive,
                   float mu_nominal,
+                  std::vector<float> Kctrl,
                   uint Nt,
                   uint Nd,
                   uint Nvx,
@@ -127,12 +128,14 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                 // rtisqp_wrapper_.computeTrajset(trajset_,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_,vxref_cc_,refs_,uint(Nd_rollout_));
 
                 // gpu rollout
+                std::vector<float> Kctrl{0, 2995.31424f, 88891.6532f, 2605.49879f, 0, 5836.44588f, 0.688413603f, 0, 0, 0, 2178.30923f, 0, 0.688413603f, 0, 0, 0, 2178.30923f, 0} ;
                 cuda_rollout(trajset_,
                              state_,
                              pathlocal_,
                              sp_,
                              traction_adaptive_,
                              mu_nominal_,
+                             Kctrl,
                              N,
                              uint(Nd_rollout_),
                              uint(Nvx_rollout_),

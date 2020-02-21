@@ -34,7 +34,8 @@ __global__ void single_rollout(float *trajset_arr,
                                float dt,
                                int traction_adaptive,
                                float *d_ref_arr,
-                               float *vx_ref_arr)
+                               float *vx_ref_arr,
+                               float *Kctrl)
 {
     // notes on indexing:
     // trajset_arr:
@@ -154,21 +155,31 @@ __global__ void single_rollout(float *trajset_arr,
             float Frmax = mu*Fzr;
 
             // get vxerror (one per block)
-            float vxerror = vx_ref_arr[blockIdx.x] - vx;
+            //float vxerror = vx_ref_arr[blockIdx.x] - vx;
 
             // get derror (one per thread)
-            float derror = d_ref_arr[threadIdx.x] - d;
+            //float derror = d_ref_arr[threadIdx.x] - d;
 
          /*
          * ROLLOUT CONTROLLER
          */
+            float s_ref        = x_init[0];
+            float d_ref        = d_ref_arr[threadIdx.x];
+            float deltapsi_ref = 0.0f;
+            float psidot_ref   = 0.0f;
+            float vx_ref       = vx_ref_arr[blockIdx.x];
+            float vy_ref       = 0.0f;
 
-            // TODO GET PARAMS FOR STARNDARD STATE FEEDBACK
+            // LQR
+            Fyf = -(Kctrl[0+0   ]*(s-s_ref) + Kctrl[1+0   ]*(d-d_ref) + Kctrl[2+0   ]*(deltapsi-deltapsi_ref) + Kctrl[3+0   ]*(psidot-psidot_ref) + Kctrl[4+0   ]*(vx-vx_ref) + Kctrl[5+0   ]*(vy-vy_ref));
+            Fxf = -(Kctrl[0+Nx  ]*(s-s_ref) + Kctrl[1+Nx  ]*(d-d_ref) + Kctrl[2+Nx  ]*(deltapsi-deltapsi_ref) + Kctrl[3+Nx  ]*(psidot-psidot_ref) + Kctrl[4+Nx  ]*(vx-vx_ref) + Kctrl[5+Nx  ]*(vy-vy_ref));
+            Fxf = -(Kctrl[0+2*Nx]*(s-s_ref) + Kctrl[1+2*Nx]*(d-d_ref) + Kctrl[2+2*Nx]*(deltapsi-deltapsi_ref) + Kctrl[3+2*Nx]*(psidot-psidot_ref) + Kctrl[4+2*Nx]*(vx-vx_ref) + Kctrl[5+2*Nx]*(vy-vy_ref));
+            Fyf += 0.5f*m*vx*vx*kappac*cos(deltapsi); // feedfwd term for Fyf
 
             // select Fyf
-            float feedfwd = 0.5f*m*vx*vx*kappac*cos(deltapsi);
-            float feedback = 3000*derror - 500*deltapsi;
-            Fyf = feedfwd + feedback;
+            //float feedfwd = 0.5f*m*vx*vx*kappac*cos(deltapsi);
+            //float feedback = 3000*derror - 500*deltapsi;
+            //Fyf = feedfwd + feedback;
 
             // saturate Fyf at Ffmax
             if(Fyf >= Ffmax){
@@ -180,10 +191,10 @@ __global__ void single_rollout(float *trajset_arr,
 
             // select Fxf
             float Fxfmax = sqrt(Ffmax*Ffmax-Fyf*Fyf);
-            if(vxerror > 0){ // accelerating
+            if(Fxf > 0){ // accelerating
                 Fxf = 0; // rear wheel drive - no drive on front wheel
             } else { // braking
-                Fxf = 1000*vxerror;
+                //Fxf = 1000*vxerror;
                 // saturate
                 if(Fxf<=-Fxfmax){
                     Fxf = -Fxfmax;
@@ -192,7 +203,7 @@ __global__ void single_rollout(float *trajset_arr,
 
             // select Fxr
             float Fxrmax = sqrt(Frmax*Frmax-Fyr*Fyr);
-            Fxr = 1000*vxerror;
+            //Fxr = 1000*vxerror;
             // saturate
             if(Fxr >= Fxrmax){
                 Fxr = Fxrmax;
@@ -204,6 +215,13 @@ __global__ void single_rollout(float *trajset_arr,
 
         // set Fyr
         float Fyr = 2*Cr*atan(lr*psidot-vy)/vx; // help variable
+        // saturate Fyr at Frmax
+//        if(Fyr >= Frmax){
+//            Fyr = Frmax;
+//        }
+//        if(Fyr<=-Frmax){
+//            Fyr = -Frmax;
+//        }
 
         // euler fwd step
         s        = s + (dt/Ni)*((vx*cos(deltapsi)-vy*sin(deltapsi))/(1-d*kappac));
@@ -244,6 +262,7 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                   containers::staticparamstruct sp,
                   int traction_adaptive,
                   float mu_nominal,
+                  std::vector<float> Kctrl_,
                   uint Nt, // N in planning horizon
                   uint Nd, // Nr of goal pts in d (multiples of 32 to maximize gpu utilization)
                   uint Nvx, // Nr of goal pts in vx
@@ -262,6 +281,7 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     float *x_init;
     float *d_ref_arr;
     float *vx_ref_arr;
+    float *Kctrl;
 
     uint Npath = pathlocal.s.size();
     float *s_path;
@@ -270,7 +290,6 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     float *mu_path;
     float *dub_path;
     float *dlb_path;
-
 
     // allocate shared memory
     cudaMallocManaged(&trajset_arr, (Nx+Nu+Nmisc)*Nd*Nt*sizeof(float));
@@ -283,7 +302,7 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     cudaMallocManaged(&mu_path, Npath*sizeof(float));
     cudaMallocManaged(&dub_path, Npath*sizeof(float));
     cudaMallocManaged(&dlb_path, Npath*sizeof(float));
-
+    cudaMallocManaged(&Kctrl, Nu*Nx*sizeof(float));
 
     // set init state
     x_init[0] = initstate.s;
@@ -310,6 +329,12 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
         vx_ref_arr[id] = vxlb+float(id)*vxstep;
         //std::cout << "vx_ref_arr[id] = " << vx_ref_arr[id] << std::endl;
     }
+
+    // set control matrix K
+    for (int id=0; id<(Nu+Nx); id++){
+        Kctrl[id] = Kctrl_.at(id);
+    }
+
 
     // set path variables
     for(uint id=0; id<Npath; ++id) {
@@ -348,7 +373,8 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                                 dt,
                                 traction_adaptive,
                                 d_ref_arr,
-                                vx_ref_arr);
+                                vx_ref_arr,
+                                Kctrl);
 
     // wait for GPU to finish before accessing on host
     cudaDeviceSynchronize();
