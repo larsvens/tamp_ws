@@ -68,6 +68,7 @@ private:
     vector<float> WNx_;
     vector<float> Wu_;
     float Wslack_;
+    vector<float> K_;
 
     // internal variables
     ros::NodeHandle nh_;

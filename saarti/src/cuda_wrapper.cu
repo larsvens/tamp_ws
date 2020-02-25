@@ -154,12 +154,6 @@ __global__ void single_rollout(float *trajset_arr,
             float Ffmax = mu*Fzf;
             float Frmax = mu*Fzr;
 
-            // get vxerror (one per block)
-            //float vxerror = vx_ref_arr[blockIdx.x] - vx;
-
-            // get derror (one per thread)
-            //float derror = d_ref_arr[threadIdx.x] - d;
-
          /*
          * ROLLOUT CONTROLLER
          */
@@ -173,13 +167,8 @@ __global__ void single_rollout(float *trajset_arr,
             // LQR
             Fyf = -(Kctrl[0+0   ]*(s-s_ref) + Kctrl[1+0   ]*(d-d_ref) + Kctrl[2+0   ]*(deltapsi-deltapsi_ref) + Kctrl[3+0   ]*(psidot-psidot_ref) + Kctrl[4+0   ]*(vx-vx_ref) + Kctrl[5+0   ]*(vy-vy_ref));
             Fxf = -(Kctrl[0+Nx  ]*(s-s_ref) + Kctrl[1+Nx  ]*(d-d_ref) + Kctrl[2+Nx  ]*(deltapsi-deltapsi_ref) + Kctrl[3+Nx  ]*(psidot-psidot_ref) + Kctrl[4+Nx  ]*(vx-vx_ref) + Kctrl[5+Nx  ]*(vy-vy_ref));
-            Fxf = -(Kctrl[0+2*Nx]*(s-s_ref) + Kctrl[1+2*Nx]*(d-d_ref) + Kctrl[2+2*Nx]*(deltapsi-deltapsi_ref) + Kctrl[3+2*Nx]*(psidot-psidot_ref) + Kctrl[4+2*Nx]*(vx-vx_ref) + Kctrl[5+2*Nx]*(vy-vy_ref));
+            Fxr = -(Kctrl[0+2*Nx]*(s-s_ref) + Kctrl[1+2*Nx]*(d-d_ref) + Kctrl[2+2*Nx]*(deltapsi-deltapsi_ref) + Kctrl[3+2*Nx]*(psidot-psidot_ref) + Kctrl[4+2*Nx]*(vx-vx_ref) + Kctrl[5+2*Nx]*(vy-vy_ref));
             Fyf += 0.5f*m*vx*vx*kappac*cos(deltapsi); // feedfwd term for Fyf
-
-            // select Fyf
-            //float feedfwd = 0.5f*m*vx*vx*kappac*cos(deltapsi);
-            //float feedback = 3000*derror - 500*deltapsi;
-            //Fyf = feedfwd + feedback;
 
             // saturate Fyf at Ffmax
             if(Fyf >= Ffmax){
@@ -188,23 +177,17 @@ __global__ void single_rollout(float *trajset_arr,
             if(Fyf<=-Ffmax){
                 Fyf = -Ffmax;
             }
-
-            // select Fxf
+            // saturate Fxf
             float Fxfmax = sqrt(Ffmax*Ffmax-Fyf*Fyf);
             if(Fxf > 0){ // accelerating
                 Fxf = 0; // rear wheel drive - no drive on front wheel
             } else { // braking
-                //Fxf = 1000*vxerror;
-                // saturate
                 if(Fxf<=-Fxfmax){
                     Fxf = -Fxfmax;
                 }
             }
-
-            // select Fxr
+            // saturate Fxr
             float Fxrmax = sqrt(Frmax*Frmax-Fyr*Fyr);
-            //Fxr = 1000*vxerror;
-            // saturate
             if(Fxr >= Fxrmax){
                 Fxr = Fxrmax;
             }
@@ -331,7 +314,7 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     }
 
     // set control matrix K
-    for (int id=0; id<(Nu+Nx); id++){
+    for (int id=0; id<(Nu*Nx); id++){
         Kctrl[id] = Kctrl_.at(id);
     }
 
