@@ -19,11 +19,12 @@
 #include "containers.h"
 #include "saarti/rtisqp_wrapper.h"
 
-// messages
+// custom messages
 #include <common/Path.h>
 #include <common/Obstacles.h>
 #include <common/Trajectory.h>
 #include <common/State.h>
+#include <common/SaartiStatus.h>
 
 // timing and threads
 #include <chrono>
@@ -84,6 +85,7 @@ private:
     ros::Publisher trajstar_polarr_vis_pub_;
     ros::Publisher posconstr_vis_pub_;
     ros::Publisher vectordebug_pub_;
+    ros::Publisher status_pub_;
     containers::statestruct state_;
     int ctrlmode_;
     containers::pathstruct pathlocal_;

@@ -28,6 +28,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     // pubs & subs
     trajhat_pub_ = nh.advertise<common::Trajectory>("trajhat",1);
     trajstar_pub_ = nh.advertise<common::Trajectory>("trajstar",1);
+    status_pub_ = nh.advertise<common::SaartiStatus>("saarti_status",1);
     pathlocal_sub_ = nh.subscribe("pathlocal", 1, &SAARTI::pathlocal_callback,this);
     obstacles_sub_ = nh.subscribe("obs", 1, &SAARTI::obstacles_callback,this);
     state_sub_ = nh.subscribe("state", 1,  &SAARTI::state_callback,this);
@@ -73,6 +74,9 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         ROS_INFO_STREAM("main_ loop_");
         auto t1_loop = std::chrono::high_resolution_clock::now();
 
+        // initiate status message
+        common::SaartiStatus status_msg;
+
         // check deactivate conditions
         vector<float> dubv = cpp_utils::interp({state_.s},pathlocal_.s,pathlocal_.dub,false);
         float dub = dubv.at(0);
@@ -81,6 +85,8 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         if(state_.d > dub+2.0f || state_.d < dlb-2.0f){ // todo from param
             planner_activated_ = false; // && ref == track_speed
         }
+        status_msg.planner_activated = planner_activated_;
+
 
         if(planner_activated_){
 
@@ -122,6 +128,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             }
 
             // SAARTI
+            bool rollout_selected;
             if(sampling_augmentation_ == 1){
                 ROS_INFO_STREAM("generating trajectory set");
                 // cpu rollout
@@ -155,8 +162,15 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                 std::chrono::duration<double, std::milli> t_costeval = t2_costeval - t1_costeval;
                 ROS_INFO_STREAM("costevaltime                 " << t_costeval.count() << " ms " << "(" << Nd_rollout_*Nvx_rollout_ << "trajs)");
 
+                // check if trajstar_last was selected
                 if(trajhat_idx >= 0){
                     trajhat = trajset_.at(uint(trajhat_idx));
+                    if (trajhat_idx == Nd_rollout_*Nvx_rollout_){
+                        status_msg.rollout_selected = false;
+                        //cout << "trajstar_last selected" << endl;
+                    } else {
+                        status_msg.rollout_selected = true;
+                    }
                 } else {
                     ROS_ERROR_STREAM("saarti traj select; no traj selected, idx negative");
                 }
@@ -181,9 +195,10 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             planning_util::trajset2cart(trajset_,pathlocal_);
             visualization_msgs::Marker trajset_cubelist = trajset2cubelist();
 
-            // timing
+            // timing rollout
             auto t2_rollout = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double, std::milli> t_rollout = t2_rollout - t1_rollout;
+            std::chrono::duration<double, std::milli> t_rollout_ = t2_rollout - t1_rollout;
+            float t_rollout = float(t_rollout_.count());
 
             // checks on trajhat
             float vmax = 50; // m/s todo get from param
@@ -200,11 +215,10 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
             //ROS_INFO_STREAM("trajhat.cost = " << trajhat.cost);
             nav_msgs::Path p_trajhat = traj2navpath(trajhat);
-
-            if(trajhat.s.back() > 0.95f*pathlocal_.s.back()){
+            if((trajhat.s.back()-state_.s) > 0.95f*(pathlocal_.s.back()-state_.s)){
                 ROS_ERROR_STREAM("Running out of path!");
-                ROS_ERROR_STREAM("trajhat.s.back() = " << trajhat.s.back());
-                ROS_ERROR_STREAM("pathlocal_.s.back() = " << pathlocal_.s.back());
+                ROS_ERROR_STREAM("trajhat.s.back()-state_.s = " << trajhat.s.back());
+                ROS_ERROR_STREAM("pathlocal_.s.back()-state_.s = " << pathlocal_.s.back()-state_.s);
             }
             for (uint k=0; k<trajhat.s.size(); k++){
                 if (std::abs(1.0f - trajhat.d.at(k)*trajhat.kappac.at(k)) < 0.1f){
@@ -254,7 +268,8 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                 break; // todo, reinitialize instead
             }
             auto t2_opt = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double, std::milli> t_opt = t2_opt - t1_opt;
+            std::chrono::duration<double, std::milli> t_opt_ = t2_opt - t1_opt;
+            float t_opt = float(t_opt_.count());
 
             // extract trajstar from solver
             // todo extract force constraints too?
@@ -320,19 +335,35 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             pd.type = jsk_recognition_msgs::PlotData::SCATTER;
             vectordebug_pub_.publish(pd);
 
-            // print timings
+            // timing: iteration time budget
+            float iteration_time_budget = dt_*1000;
             ROS_INFO_STREAM("planning iteration complete, Timings: ");
-            ROS_INFO_STREAM("iteration time budget:       " << dt_*1000 << " ms ");
+            ROS_INFO_STREAM("iteration time budget:       " << iteration_time_budget << " ms ");
+            status_msg.iteration_time_budget = iteration_time_budget;
 
+            // timing: total planning time
             auto t2_loop = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double, std::milli> t_loop = t2_loop - t1_loop;
-            if(t_loop.count() > double(dt_)*1000.0 ){
-                ROS_WARN_STREAM("planning time exceeding dt! looptime is " << t_loop.count() << " ms ");
+            std::chrono::duration<double, std::milli> total_planning_time_ = t2_loop - t1_loop;
+            float total_planning_time = float(total_planning_time_.count());
+            status_msg.total_planning_time = total_planning_time;
+            if(total_planning_time > dt_*1000.0f ){
+                ROS_WARN_STREAM("planning time exceeding dt! looptime is " << total_planning_time << " ms ");
             } else{
-                ROS_INFO_STREAM("planning time:               " << t_loop.count() << " ms ");
+                ROS_INFO_STREAM("planning time:               " << total_planning_time << " ms ");
             }
-            ROS_INFO_STREAM("rollout time                 " << t_rollout.count() << " ms " << "(" << Nd_rollout_*Nvx_rollout_ << "trajs)");
-            ROS_INFO_STREAM("optimization time            " << t_opt.count() << " ms ");
+
+            // timing: rollout and opt
+            ROS_INFO_STREAM("rollout time                 " << t_rollout << " ms " << "(" << Nd_rollout_*Nvx_rollout_ << "trajs)");
+            ROS_INFO_STREAM("optimization time            " << t_opt << " ms ");
+            status_msg.rollout_time = t_rollout;
+            status_msg.optimization_time = t_opt;
+
+            // publish status message
+            status_msg.header.stamp = ros::Time::now();
+            status_msg.sampling_aug_activated = bool(sampling_augmentation_);
+            status_msg.N_rollouts = Nd_rollout_*Nvx_rollout_;
+            // todo: nr_of_collision_free_candidates
+            status_pub_.publish(status_msg);
 
         } else {
             ROS_INFO_STREAM("planner deactivated");

@@ -59,6 +59,7 @@ catkin_python_setup()
    StaticVehicleParams.msg
    DynamicVehicleParams.msg
    Obstacles.msg
+   SaartiStatus.msg
  )
 
 ## Generate services in the 'srv' folder

@@ -1,0 +1,10 @@
+Header  header
+bool planner_activated
+bool sampling_aug_activated
+int32 N_rollouts
+bool rollout_selected
+int32 nr_of_collision_free_candidates
+float32 iteration_time_budget
+float32 total_planning_time
+float32 rollout_time
+float32 optimization_time
