@@ -17,7 +17,9 @@ scenario = 3
 
 # 0 plot stored run
 # 1 plot latest run
-plot_latest = 0
+plot_latest = 1
+
+plot_sa_analysis = 1
 
 
 # load nonadaptive file and unpack
@@ -103,11 +105,23 @@ plt.show()
 # save as pdf
 filepath = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/plots/"
 if(scenario == 1):
-    filename = "reduced_mu_turn_plots.pdf"
+    filename_fig = "reduced_mu_turn_plots.pdf"
 if(scenario == 2):
-    filename = "reduced_mu_obs_avoid_plots.pdf"
+    filename_fig = "reduced_mu_obs_avoid_plots.pdf"
 if(scenario == 3):  
-    filename = "increased_mu_obs_avoid_plots.pdf"
-plt.savefig(filepath + filename) 
+    filename_fig = "increased_mu_obs_avoid_plots.pdf"
+plt.savefig(filepath + filename_fig) 
 
 
+# plot sampling aug analysis (only available if adaptive)
+if(plot_sa_analysis):
+    saartistatus = log["saartistatus"]
+    f2, ax0 = plt.subplots()
+    ax0.plot(trajcl_adapt["s"],saartistatus["rollout_selected"],'*')
+    plt.show()
+
+
+
+
+    
+    

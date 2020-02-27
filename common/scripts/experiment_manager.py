@@ -18,6 +18,7 @@ from common.msg import Path
 from common.msg import Obstacles
 from common.msg import State
 from common.msg import Trajectory
+from common.msg import SaartiStatus
 from fssim_common.msg import TireParams
 from fssim_common.msg import CarInfo
 from std_msgs.msg import Int16
@@ -48,9 +49,7 @@ class ExperimentManager:
         
         # vehicle params
         self.robot_name = rospy.get_param('/robot_name') 
-        self.vehicle_width = rospy.get_param('/car/kinematics/l_width')
-        
-        
+        self.vehicle_width = rospy.get_param('/car/kinematics/l_width')    
         
         # algo params (from acado)
         N = 40 
@@ -72,6 +71,7 @@ class ExperimentManager:
         self.statesub = rospy.Subscriber("state", State, self.state_callback)
         self.carinfosub = rospy.Subscriber("/fssim/car_info", CarInfo, self.fssim_carinfo_callback)
         self.trajstarsub = rospy.Subscriber("trajstar", Trajectory, self.trajstar_callback)
+        self.statussub = rospy.Subscriber("saarti_status", SaartiStatus, self.status_callback)
         self.obspub = rospy.Publisher('/obs', Obstacles, queue_size=1)
         self.obsvispub = rospy.Publisher('/obs_vis', Marker, queue_size=1)
         self.tireparampub = rospy.Publisher('/tire_params', TireParams, queue_size=1)
@@ -86,6 +86,7 @@ class ExperimentManager:
         self.stored_pathglobal = False
         self.stored_trajstar = False
         self.stored_trajcl = False
+        self.stored_saartistatus = False
         self.explog_saved = False
         
         # init misc internal variables
@@ -93,6 +94,8 @@ class ExperimentManager:
         self.received_pathglobal = False
         self.state = State()
         self.received_state = False
+        self.saarti_status = SaartiStatus()
+        self.received_saartistatus = False
         self.trajstar = Trajectory()
         self.received_trajstar = False
         self.fssim_carinfo = CarInfo()
@@ -277,6 +280,12 @@ class ExperimentManager:
                     self.Fyr_cl = []
                     self.Fx_cl = []
                     
+                    # and saarti status
+                    self.rollout_selected = []
+                    self.total_planning_time = []
+                    self.rollout_time = []
+                    self.optimization_time = []
+                    
                 if (self.state.s >= self.s_begin_log and self.explog_activated and self.exptime >= t_start_explog + self.explog_iterationcounter*dt_algo):
                     # build CL traj       
                     self.X_cl.append(self.state.X)
@@ -294,38 +303,53 @@ class ExperimentManager:
                     self.Fyf_cl.append(self.fssim_carinfo.Fy_f_l+self.fssim_carinfo.Fy_f_r)
                     self.Fyr_cl.append(self.fssim_carinfo.Fy_r)
                     self.Fx_cl.append(self.fssim_carinfo.Fx)
+
+                    # and saarti status
+                    self.rollout_selected.append(self.saarti_status.rollout_selected)
+                    self.total_planning_time.append(self.saarti_status.total_planning_time)
+                    self.rollout_time.append(self.saarti_status.rollout_time)
+                    self.optimization_time.append(self.saarti_status.optimization_time)
                     
                     # store CL traj as dict
                     if (self.explog_iterationcounter == N): # store N+1 values, same as trajstar
                         self.trajcl_dict = {
-                          "X": np.array(self.X_cl),
-                          "Y": np.array(self.Y_cl),
-                          "psi": np.array(self.psi_cl),
-                          "s": np.array(self.s_cl),
-                          "d": np.array(self.d_cl),
-                          "deltapsi": np.array(self.deltapsi_cl),
-                          "psidot": np.array(self.psidot_cl),
-                          "vx": np.array(self.vx_cl),
-                          "vy": np.array(self.vy_cl),
-                          "ax": np.array(self.ax_cl),
-                          "ay": np.array(self.ay_cl),
-                          "t": np.array(self.t_cl),
-                          "Fyf": np.array(self.Fyf_cl),
-                          "Fyr": np.array(self.Fyr_cl),
-                          "Fx": np.array(self.Fx_cl),
+                            "X": np.array(self.X_cl),
+                            "Y": np.array(self.Y_cl),
+                            "psi": np.array(self.psi_cl),
+                            "s": np.array(self.s_cl),
+                            "d": np.array(self.d_cl),
+                            "deltapsi": np.array(self.deltapsi_cl),
+                            "psidot": np.array(self.psidot_cl),
+                            "vx": np.array(self.vx_cl),
+                            "vy": np.array(self.vy_cl),
+                            "ax": np.array(self.ax_cl),
+                            "ay": np.array(self.ay_cl),
+                            "t": np.array(self.t_cl),
+                            "Fyf": np.array(self.Fyf_cl),
+                            "Fyr": np.array(self.Fyr_cl),
+                            "Fx": np.array(self.Fx_cl),
                         }
                         self.stored_trajcl = True
+                        
+                        self.sarti_status_dict = {
+                            "rollout_selected": np.array(self.rollout_selected),
+                            "total_planning_time": np.array(self.total_planning_time),
+                            "rollout_time": np.array(self.rollout_time),
+                            "optimization_time": np.array(self.optimization_time),
+                        }
+                        self.stored_saartistatus = True
                     
                     self.explog_iterationcounter +=1
                 
                 # save explog               
-                if (self.stored_pathglobal and self.stored_trajstar and self.stored_trajcl and not self.explog_saved):  
+                if (self.stored_pathglobal and self.stored_trajstar and self.stored_trajcl and self.stored_saartistatus and not self.explog_saved):  
                     explog = {
                       "pathglobal": self.pathglobal_dict,
                       "trajstar": self.trajstar_dict,
                       "trajcl": self.trajcl_dict,
+                      "saartistatus": self.sarti_status_dict,
                     }
-                    filepath = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/"
+                    filepath = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/data_latest/"
                     filename = "explog"
                     if(self.scenario_id == 1):
                         filename = filename + "_popup"
@@ -431,6 +455,10 @@ class ExperimentManager:
     def state_callback(self, msg):
         self.state = msg
         self.received_state = True
+    
+    def status_callback(self, msg):
+        self.saarti_status = msg
+        self.received_saartistatus = True
 
     def fssim_carinfo_callback(self,msg):
         self.fssim_carinfo = msg

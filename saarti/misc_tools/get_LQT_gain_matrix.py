@@ -13,7 +13,7 @@ import control
 from scipy.linalg import expm
 
 # define tuning matrices
-Q = np.diag(np.array([1,10000000,1,1,10000000,1]))
+Q = np.diag(np.array([1,100000000,1,1,10000000,1]))
 R = np.diag(np.array([1,1,1]))
 
 # misc system vars
@@ -107,7 +107,7 @@ delta_x = np.array([s-s_ref,d-d_ref,deltapsi-deltapsi_ref,psidot-psidot_ref,vx-v
 u = np.dot(-K,delta_x)
 
 # print K
-np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
+np.set_printoptions(formatter={'float': lambda x: "{0:0.3f},".format(x)})
 print "K:  ", K
 
 

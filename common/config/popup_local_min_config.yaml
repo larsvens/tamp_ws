@@ -9,9 +9,9 @@ s_pause_gazebo: []
 #s_pause_gazebo: [144, 150.5, 185, 215]
 
 # pop-up obstacle config
-s_ego_at_popup:  140
-s_obs_at_popup: 153
-d_obs_at_popup: -0.6 #-1.75 
+s_ego_at_popup:  200
+s_obs_at_popup: 220
+d_obs_at_popup: -0.3 
 
 ### track config 
 track_name: "asta_zero" # todo pipe through at "simulation.cfg"
@@ -46,7 +46,7 @@ vxub_rollout: 20.0
 # 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics)
 # 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics
 traction_adaptive: 1
-mu_nominal: 0.6 # used only when traction_adaptive = 0
+mu_nominal: 1.0 # used only when traction_adaptive = 0
 
 # optimization config
 Wx:  [1000.0, 10000000.0, 1.0, 0.1, 1000000.0, 0.1]
@@ -55,9 +55,9 @@ Wu: [0.001, 0.1, 0.1]
 Wslack: 1000000000
 
 # rollout controller config
-K:   [0.000, 2954.774, 87597.099, 2566.325, 0.000, 5751.643,
-      0.688, 0.000, 0.000, 0.000, 2178.309, 0.000,
-      0.688, 0.000, 0.000, 0.000, 2178.309, 0.000]
+K:  [0.000, 9079.818, 157611.809, 4559.989, 0.000, 10237.468,
+     0.688, 0.000, 0.000, 0.000, 2178.309, 0.000,
+     0.688, 0.000, 0.000, 0.000, 2178.309, 0.000]
 
 # optimization config
 #Wx:  [100.0, 1.0, 1.0, 0.1, 0.1, 0.1]
