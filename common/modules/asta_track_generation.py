@@ -10,6 +10,7 @@ Todo
 """
 
 import os 
+import utm
 import numpy as np
 import matplotlib.pyplot as plt
 from coordinate_transforms import ptsFrenetToCartesian
@@ -20,6 +21,12 @@ import yaml
 # adjust for high dpi screen
 plt.rcParams['figure.dpi'] = 100 # default 100
 plt.rcParams['figure.figsize'] = 15, 5
+
+# set origin pose in UTM
+# ASTAZERO: zone 33, 'V' X:~367570, Y~6406553
+X0_utm = 367570
+Y0_utm = 6406553
+psi0_utm = 0
 
 # params
 la = 200 # back of L shape (200)
@@ -190,9 +197,9 @@ plt.show()
 #    print "- - ", cones_right_X[i]
 #    print "  - ", cones_right_Y[i]
 
-
-
-
+# get gps positions of cones
+# todo rotate
+cones_left_lat, cones_left_lon = utm.to_latlon(cones_left_X+X0_utm, cones_left_Y+Y0_utm, 33, 'V')
 
 
 ### EXPORT TRACK
