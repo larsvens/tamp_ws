@@ -1,0 +1,49 @@
+# Experiment configuration
+
+t_activate: 15.0
+t_final: 500.0
+scenario_id: 3 # 1: pop-up, 2: reduced mu turn, 3: racing
+
+# pop-up obstacle config
+s_ego_at_popup:  50
+s_obs_at_popup: 75
+d_obs_at_popup: -2.25 #-1.75 
+
+### track config 
+track_name: "FSG" # todo pipe through at "simulation.cfg"
+s_begin_mu_segments:  [0.0]
+mu_segment_values:  [1.6] # 1.6 gotthard default
+
+# cc config
+cc_vxref: 15
+cc_dref: 0
+
+
+
+
+
+### saarti algorithm config		
+
+# Reference mode, 
+# 0: minimize s
+# 1: cc @ cc_vxref
+# 2: maximize s
+ref_mode: 2
+
+# Algorithm mode, 
+# 0: RTI
+# 1: SAA-RTI 
+sampling_augmentation: 0
+Ntrajs_rollout: 24 # default 24
+
+# Traction adaptation 
+# 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics)
+# 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics
+traction_adaptive: 0
+mu_nominal: 1.2 # used only when traction_adaptive = 0
+
+# optimization config (ok for ref_mode 2)
+Wx:  [1000000.0, 1.0, 1.0, 0.1, 0.1, 0.1]
+WNx: [1000000.0, 100000000.0, 1.0, 0.1, 0.1, 0.1]
+Wu: [0.01, 0.1, 0.1]
+Wslack: 100000000

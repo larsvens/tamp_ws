@@ -3,7 +3,7 @@
 <launch>
      <!-- take experiment config file as argument --> 
      <arg name="exp_config" default="popup_nonadapt_config.yaml"/>
-     <rosparam command="load" file="$(find common)/config/$(arg exp_config)" />
+     <rosparam command="load" file="$(find common)/config/exp_config/$(arg exp_config)" />
 
      <!-- experiment manager -->
      <node pkg="common" type="experiment_manager.py" name="experiment_manager"  required="true" output="screen"> </node>
