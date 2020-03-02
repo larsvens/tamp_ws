@@ -1,16 +1,21 @@
-    #!/usr/bin/env python2
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python
 """
-Todo 
-- put in notebook with picture for documentation (and paper)
-- overlay on asta track import
-- export gps coordinates
-- export cone positions in asta coordinate system
-@author: larsvens
+Description: 
+    Standalone script for generating evaluation tracks
+    Saves track in 3 formats:
+        .yaml
+        .sdf - for gazebo simulation
+        .kml - for vizualization in google earth
+Usage:
+    Specify params
+        track_name
+        utm start pose:  X0_utm, Y0_utm, psi0_utm
+        track params: la, Rb etc... 
+    Run and examine
 """
 
-import os 
 import utm
+import simplekml
 import numpy as np
 import matplotlib.pyplot as plt
 from coordinate_transforms import ptsFrenetToCartesian
@@ -22,17 +27,21 @@ import yaml
 plt.rcParams['figure.dpi'] = 100 # default 100
 plt.rcParams['figure.figsize'] = 15, 5
 
+# export params
+track_name = "asta_zero_hsa"
+export_path = "/home/larsvens/ros/tamp__ws/src/fssim/fssim_gazebo/models/track"
+
 # set origin pose in UTM
-# ASTAZERO: zone 33, 'V' X:~367570, Y~6406553
-X0_utm = 367570
-Y0_utm = 6406553
-psi0_utm = 0
+# AstaZero HSA
+X0_utm = 367498
+Y0_utm = 6406767
+psi0_utm = -1.1949329177828036
 
 # params
 la = 200 # back of L shape (200)
 lc = 70  # base of L shape
 Rb  = 22  # radius of curve at experiment turn
-R = 30   # radius at other turns 
+R = 20  # radius at other turns (30) 
 lanewidth = 2.3 # 3.5
 
 # additional track info
@@ -134,10 +143,7 @@ psic = np.arctan2(dY,dX)
 psic_final = np.arctan2(Y_cl[0]-Y_cl[-1],X_cl[0]-X_cl[-1])  # assuming closed track
 psic = np.append(psic,psic_final) 
 
-## get left and right boundaries
-#dlb = (-lanewidth/2.0)*np.ones(s.size)
-#dub = (3.0*lanewidth/2.0)*np.ones(s.size)
-
+# set left and right boundaries
 dlb = -lanewidth*np.ones(s.size)
 dub =  lanewidth*np.ones(s.size)
 
@@ -168,8 +174,6 @@ cones_right_Y = np.array(cones_right_Y)
 
 
 # plot things
-#plt.plot(X_cl_tmp,Y_cl_tmp,'.')
-
 plt.plot(X_cl,Y_cl,'.')
 
 # lane limits
@@ -187,27 +191,10 @@ plt.plot(cones_orange_big_X,cones_orange_big_Y,'y*')
 plt.gca().set_aspect('equal', adjustable='box')
 plt.show()
 
-#print "cones_left:"
-#for i in range(cones_left_X.size):
-#    print "- - ", cones_left_X[i]
-#    print "  - ", cones_left_Y[i]
-#
-#print "cones_right:"
-#for i in range(cones_right_X.size):
-#    print "- - ", cones_right_X[i]
-#    print "  - ", cones_right_Y[i]
-
-# get gps positions of cones
-# todo rotate
-cones_left_lat, cones_left_lon = utm.to_latlon(cones_left_X+X0_utm, cones_left_Y+Y0_utm, 33, 'V')
 
 
-### EXPORT TRACK
-name = "asta_zero"
-#export_path = os.path.dirname(os.path.realpath(__file__))
-export_path = "/home/larsvens/ros/tamp__ws/src/fssim/fssim_gazebo/models/track"
 
-#### EXPORT AS YAML 
+# export as .yaml
 cones_left = np.column_stack((cones_left_X,cones_left_Y))
 cones_right = np.column_stack((cones_right_X,cones_right_Y))
 cones_orange = np.column_stack((cones_orange_X,cones_orange_Y))
@@ -219,29 +206,16 @@ dict_track = {"cones_left": np.array(cones_left).tolist(),
               "cones_orange": np.array(cones_orange).tolist(),
               "cones_orange_big": np.array(cones_orange_big).tolist(),
               "tk_device": np.array(tk_device).tolist(),
-#              "middle_points":np.array(self.middle).tolist(),
               "starting_pose_front_wing": starting_pose_front_wing.tolist()}
 
-
-file_path = export_path + '/tracks_yaml/' + name + ".yaml"
+file_path = export_path + '/tracks_yaml/' + track_name + ".yaml"
 with open(file_path, 'w') as outfile:
     yaml.dump(dict_track, outfile, default_flow_style = False)
 print "[INFO] Saving track to: ",file_path
 
-
-### EXPORT AS SDF
-
-#def export_model(self, path, name):
-#root = etree.Element("model")
-#etree.SubElement(root, "name").text = "track"
-#etree.SubElement(root, "version").text = "1.0"
-#etree.SubElement(root, "sdf", version="1.4").text = name + ".sdf"
-#etree.SubElement(root, "description").text = "random track"
-#tree = etree.ElementTree(root)
-#tree.write(self.model_path + "/track/model.config", pretty_print=True, xml_declaration=True, encoding='UTF-8')
-
+# export as .sdf for gazebo
 root = etree.Element("sdf", version="1.4")
-model = etree.SubElement(root, "model", name="some track")
+model = etree.SubElement(root, "model", name=track_name)
 
 for i in range(0, cones_right_X.size):
     include = etree.SubElement(model, "include")
@@ -274,21 +248,34 @@ for i in range(0, tk_device_X.size):
     etree.SubElement(include, "name").text = "tk_device_" + str(i)
 
 tree = etree.ElementTree(root)
-#gazebo_models = self.model_path + "/track/" + name
-#tree.write(gazebo_models + ".sdf", pretty_print=True, xml_declaration=True, encoding='UTF-8')
 
-file_path = export_path + '/' + name + ".sdf"
+
+file_path = export_path + '/' + track_name + ".sdf"
 tree.write(file_path, pretty_print=True, xml_declaration=True, encoding='UTF-8')
-#self.track.export_to_yaml(self.model_path + "/track/tracks_yaml", name,create_dir=False)
-
-print "[INFO] Saving track to: ",export_path + name + ".sdf"
-#print "[INFO] Saving track to: ",gazebo_models + ".sdf"
+print "[INFO] Saving track to: ",file_path
 
 
+# store gps coordinates of centerline
+X_cl_utm = X0_utm + X_cl*np.cos(psi0_utm)-Y_cl*np.sin(psi0_utm)
+Y_cl_utm = Y0_utm + Y_cl*np.cos(psi0_utm)+X_cl*np.sin(psi0_utm)
 
+lat_cl, lon_cl = utm.to_latlon(X_cl_utm, Y_cl_utm, 33, 'V')
+kml = simplekml.Kml()
+ls = kml.newlinestring(name=track_name)
+#ls.coords = [(18.333868,-34.038274,10.0), (18.370618,-34.034421,10.0)]
+pointlist = []
+for i in range(X_cl.size):
+    point_as_tuple = (lon_cl[i],lat_cl[i],0.5) # set fixed height above gnd
+    pointlist.append(point_as_tuple)    
+ls.coords = pointlist
+ls.extrude = 1
+ls.altitudemode = simplekml.AltitudeMode.relativetoground
+ls.style.linestyle.width = 5
+ls.style.linestyle.color = simplekml.Color.blue
 
-
-
-
+file_path = export_path + '/' + track_name + ".kml"
+kml.save(file_path)
+print "[INFO] Saving track to: ",file_path
+print "[INFO] Track generation completed"
 
 
