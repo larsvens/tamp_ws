@@ -50,7 +50,6 @@ private:
     // general
     float dt_;
     float dt_integrator_ = 0.1; // todo get from param
-    float cutoff_speed_;
     bool planner_activated_;
 
     // modes

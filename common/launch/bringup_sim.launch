@@ -1,0 +1,7 @@
+<!-- Run single simulation with fssim. Takes sim config file as argument--> 
+
+<launch>
+    <!-- simulation manager node -->
+    <arg name="sim_config" default="rhino_asta_long.yaml"/>
+    <node pkg="fssim" name="fssim_manager" type="fssim_manager.py" output="screen" args="--config $(find common)/config/sim_config/$(arg sim_config)">  </node>    
+</launch>

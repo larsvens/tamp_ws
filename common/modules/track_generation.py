@@ -35,9 +35,11 @@ if not os.path.exists(export_path_saarti):
 
 # set origin pose in UTM
 # AstaZero HSA
-X0_utm = 367498
-Y0_utm = 6406767
-psi0_utm = -1.1949329177828036
+origin_pose_utm =	{
+  "X0_utm": 367498,
+  "Y0_utm": 6406767,
+  "psi0_utm": -1.1949329177828036
+}
 
 # params
 la = 200 # back of L shape (200 short 300 long)
@@ -205,10 +207,16 @@ dict_track = {"cones_left": np.array(cones_left).tolist(),
               "cones_orange": np.array(cones_orange).tolist(),
               "cones_orange_big": np.array(cones_orange_big).tolist(),
               "tk_device": np.array(tk_device).tolist(),
-              "starting_pose_front_wing": starting_pose_front_wing.tolist()}
+              "starting_pose_front_wing": starting_pose_front_wing.tolist(),
+              "origin_pose_utm": origin_pose_utm
+              }
 
-file_path = export_path_fssim + '/tracks_yaml/' + track_name + ".yaml"
-#file_path = export_path_saarti + '/' + track_name + ".yaml"
+#file_path = export_path_fssim + '/tracks_yaml/' + track_name + ".yaml"
+#with open(file_path, 'w') as outfile:
+#    yaml.dump(dict_track, outfile, default_flow_style = False)
+#print "[INFO] Saving track to: ",file_path
+
+file_path = export_path_saarti + '/' + track_name + ".yaml"
 with open(file_path, 'w') as outfile:
     yaml.dump(dict_track, outfile, default_flow_style = False)
 print "[INFO] Saving track to: ",file_path
@@ -258,8 +266,8 @@ print "[INFO] Saving track to: ",file_path
 
 
 # store gps coordinates of centerline
-X_cl_utm = X0_utm + X_cl*np.cos(psi0_utm)-Y_cl*np.sin(psi0_utm)
-Y_cl_utm = Y0_utm + Y_cl*np.cos(psi0_utm)+X_cl*np.sin(psi0_utm)
+X_cl_utm = origin_pose_utm["X0_utm"] + X_cl*np.cos(origin_pose_utm["psi0_utm"])-Y_cl*np.sin(origin_pose_utm["psi0_utm"])
+Y_cl_utm = origin_pose_utm["Y0_utm"] + Y_cl*np.cos(origin_pose_utm["psi0_utm"])+X_cl*np.sin(origin_pose_utm["psi0_utm"])
 
 lat_cl, lon_cl = utm.to_latlon(X_cl_utm, Y_cl_utm, 33, 'V')
 kml = simplekml.Kml()

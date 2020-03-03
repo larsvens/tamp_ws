@@ -1,0 +1,13 @@
+<!-- starts saarti node with params -->
+
+<launch>
+    <!-- load params -->
+    <rosparam command="load" file="$(find saarti)/config/planning_and_ctrl_config.yaml" /> 
+
+    <!-- saarti node -->
+    <node pkg="saarti" type="saarti_node" name="saarti_node" output="screen"> </node>
+
+    <!-- ctrl interface -->
+    <node pkg="saarti" type="ctrl_interface.py" name="ctrl_interface" output="screen"> </node>
+
+</launch>

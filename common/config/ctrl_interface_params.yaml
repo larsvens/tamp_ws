@@ -1,7 +1,0 @@
-#
-# ctrl interface configuration
-#
-# general
-dt: 0.01 # timestep in ctrl loop
-cutoff_speed: 0.5
-

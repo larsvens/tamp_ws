@@ -720,11 +720,8 @@ void SAARTI::obstacles_callback(const common::Obstacles::ConstPtr& msg){
 void SAARTI::get_rosparams(){
 
     // general
-    if(!nh_.getParam("/dt", dt_)){
+    if(!nh_.getParam("/dt_saarti", dt_)){
         ROS_ERROR_STREAM("failed to load param /dt");
-    }
-    if(!nh_.getParam("/cutoff_speed", cutoff_speed_)){
-        ROS_ERROR_STREAM("failed to load param /cutoff_speed");
     }
 
     // modes

@@ -27,6 +27,7 @@ class CtrlInterface:
         
         # params
         self.robot_name = rospy.get_param('/robot_name')
+        self.dt = rospy.get_param('/dt_ctrl')
         
         # init node subs pubs
         rospy.init_node('ctrl_interface', anonymous=True)
@@ -37,7 +38,7 @@ class CtrlInterface:
         self.vehicleinpub = rospy.Publisher('/fssim/cmd', Cmd, queue_size=10)
         self.lhptpub = rospy.Publisher('/lhpt_vis', Marker, queue_size=1)
         self.vx_errorpub = rospy.Publisher('/vx_error_vis', Float32, queue_size=1)
-        self.rate = rospy.Rate(100)
+        self.rate = rospy.Rate(1/self.dt)
 
         # set static vehicle params
         self.setStaticParams()
