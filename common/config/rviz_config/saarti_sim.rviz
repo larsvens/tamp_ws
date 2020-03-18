@@ -3,7 +3,9 @@ Panels:
     Help Height: 93
     Name: Displays
     Property Tree Widget:
-      Expanded: ~
+      Expanded:
+        - /TAMP Map1
+        - /TAMP Map1/Status1
       Splitter Ratio: 0.663888872
     Tree Height: 1692
   - Class: rviz/Selection
@@ -58,9 +60,9 @@ Visualization Manager:
     - Class: rviz/Axes
       Enabled: true
       Length: 1
-      Name: FSSIM Map
+      Name: TAMP Map
       Radius: 0.100000001
-      Reference Frame: fssim_map
+      Reference Frame: tamp_map
       Value: true
     - Alpha: 1
       Class: rviz/RobotModel
@@ -150,9 +152,9 @@ Visualization Manager:
           Value: true
         fssim/vehicle/right_steering_hinge:
           Value: true
-        fssim_map:
-          Value: true
         map:
+          Value: true
+        tamp_map:
           Value: true
       Marker Scale: 0.5
       Name: TF
@@ -160,7 +162,7 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        fssim_map:
+        tamp_map:
           fssim/vehicle/base_link:
             fssim/vehicle/cog:
               fssim/vehicle/chassis:
@@ -506,10 +508,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.279797554
+      Pitch: 0.319797516
       Target Frame: fssim/vehicle/base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.11859179
+      Yaw: 3.05859089
     Saved: ~
 Window Geometry:
   Displays:

@@ -198,8 +198,6 @@ def export_as_sdf(track_name, export_path, dict_track):
     cones_right_Y = np.array(dict_track["cones_right"])[:,1]
     cones_left_X  = np.array(dict_track["cones_left"])[:,0]
     cones_left_Y  = np.array(dict_track["cones_left"])[:,1] 
-    #cones_orange_X  = np.array(dict_track["cones_orange"])[:,0]
-    #cones_orange_Y  = np.array(dict_track["cones_orange"])[:,1]   
     cones_orange_big_X  = np.array(dict_track["cones_orange_big"])[:,0]
     cones_orange_big_Y  = np.array(dict_track["cones_orange_big"])[:,1]     
     tk_device_X = np.array(dict_track["tk_device"])[:,0]
@@ -219,12 +217,6 @@ def export_as_sdf(track_name, export_path, dict_track):
         etree.SubElement(include, "uri").text = "model://fssim_gazebo/models/cone_yellow"
         etree.SubElement(include, "pose").text = str(cones_left_X[i]) + " " + str(cones_left_Y[i]) + " 0 0 0 0"
         etree.SubElement(include, "name").text = "cone_left"
-    
-#    for i in range(0, cones_orange_X.size):
-#        include = etree.SubElement(model, "include")
-#        etree.SubElement(include, "uri").text = "model://fssim_gazebo/models/cone_orange"
-#        etree.SubElement(include, "pose").text = ""
-#        etree.SubElement(include, "name").text = "cone_orange"
     
     for i in range(0, cones_orange_big_X.size):
         include = etree.SubElement(model, "include")
@@ -277,7 +269,7 @@ def export_as_kml(track_name, export_path, X_cl,Y_cl,origin_pose_utm):
 # Track Generation
 #
 plt.close('all')
-track_name = "frihamnen"
+track_name = "asta_local_min"
 
 # export params
 export_path_fssim = "/home/larsvens/ros/tamp__ws/src/fssim/fssim_gazebo/models/track"
@@ -357,7 +349,7 @@ s_tmp = np.cumsum(ds)
 s_tmp = np.append(0, s_tmp)
 
 # resample with equidistant points
-s = np.arange(0,s_tmp[-1],)
+s = np.arange(0,s_tmp[-1],1)
 X_cl = np.interp(s,s_tmp,X_cl)
 Y_cl = np.interp(s,s_tmp,Y_cl)
 centerline = np.column_stack((np.array(X_cl),np.array(Y_cl)))
@@ -371,11 +363,10 @@ psic = np.append(psic,psic_final)
 
 # compute curvature
 psic_cont = angleToContinous(psic)
-step = 9 #11
-s_ds = s[0::step] # downsample for smoother curve
-s_ds = np.append(s_ds,s[-1]) # append final value for closed circuit
-psic_ds = psic_cont[0::step]
-psic_ds = np.append(psic_ds,psic_cont[-1]) # append final value for closed circuit
+ds_factor = 0.8
+s_ds = np.linspace(0,s[-1],int(ds_factor*s.size))
+psic_ds = np.interp(s_ds,s,psic_cont)
+
 t, c, k = interpolate.splrep(s_ds, psic_ds, s=0, k=4)
 psic_spl = interpolate.BSpline(t, c, k, extrapolate=False)
 kappac_spl = psic_spl.derivative(nu=1)

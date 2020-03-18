@@ -1,21 +1,20 @@
 <!-- Run single experiment. Takes exp config file as argument-->
 
 <launch>
-    
+
     <!-- load config --> 
     <arg name="exp_config" default="popup_nonadapt_config.yaml"/>
     <rosparam command="load" file="$(find common)/config/exp_config/$(arg exp_config)" />
-
+    
     <!-- experiment manager node -->
     <node pkg="common" type="experiment_manager.py" name="experiment_manager"  required="true" output="screen"> </node>
 
-    <!-- inputs to saarti -->
+    <!-- perception nodes -->
     <node pkg="perception" type="track_iface.py" name="track_iface" output="screen" > </node>
     <node pkg="perception" type="stateestimation.py" name="stateestimation"> </node>
     <node pkg="perception" type="perception.py" name="perception" > </node>
 
-    <!-- outputs from saarti -->     
-    <!-- <node pkg="common" type="ctrl_interface.py" name="ctrl_interface"> </node> -->
+    <!-- planning & ctrl nodes -->
 
     <!-- visualization -->
     <node name="rviz_" pkg="rviz" type="rviz" args="-d $(find common)/config/rviz_config/saarti_sim.rviz "/>

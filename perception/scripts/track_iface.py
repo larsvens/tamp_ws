@@ -7,6 +7,8 @@ import numpy as np
 import rospy
 import rospkg
 import tf
+import tf2_ros
+from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import Path as navPath
 from geometry_msgs.msg import PoseStamped
 from common.msg import Path
@@ -21,6 +23,7 @@ class TrackInterface:
         self.dubvispub = rospy.Publisher('dubglobal_vis', navPath, queue_size=10)
         self.dlbvispub = rospy.Publisher('dlbglobal_vis', navPath, queue_size=10)
         self.pathglobal = Path()
+        self.tf_broadcaster = tf2_ros.StaticTransformBroadcaster()
         self.rate = rospy.Rate(1)
         
         # set params
@@ -77,8 +80,21 @@ class TrackInterface:
         self.pathglobal.dub = dub
         self.pathglobal.dlb = dlb
         
-        print "TRACK INTERFACE: publishing pathglobal"
+        rospy.logwarn("track_iface: publishing pathglobal")
         self.pathglobalpub.publish(self.pathglobal)
+
+        # set map transform in TF
+        rospy.logwarn("track_iface: setting initial pose in TF")
+        t = TransformStamped()
+        t.header.stamp = rospy.Time.now()
+        t.header.frame_id = "tamp_map"
+        t.child_frame_id = 'map'
+        t.transform.translation.z = 0.0
+        t.transform.translation.x = 0.0
+        t.transform.translation.y = 0.0
+        t.transform.rotation.w = 1.0
+        self.tf_broadcaster.sendTransform(t)
+
 
         # wait for rviz to launch
         count = 3
@@ -103,7 +119,7 @@ class TrackInterface:
             pathglobalvis.poses.append(pose)
         pathglobalvis.header.stamp = rospy.Time.now()
         pathglobalvis.header.frame_id = "map"
-        print "TRACK INTERFACE: publishing pathglobal visualization"
+        rospy.logwarn("track_iface: publishing pathglobal visualization")
         self.pathglobalvispub.publish(pathglobalvis)
 
         # test correctness of dub and dlb in rviz
@@ -132,6 +148,9 @@ class TrackInterface:
             pose.pose.position.y = Yright[i]            
             pathright.poses.append(pose)
         self.dlbvispub.publish(pathright)    
+
+
+
 
 
 if __name__ == '__main__':

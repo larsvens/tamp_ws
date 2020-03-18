@@ -9,6 +9,8 @@
 # publishes: 
 # state (topic /state)
 
+# broadcasts TF tamp_map -> base_link
+
 import numpy as np
 import rospy
 from common.msg import Path
@@ -18,6 +20,7 @@ from coordinate_transforms import ptsCartesianToFrenet
 from util import angleToInterval
 from util import angleToContinous
 from std_msgs.msg import Float32
+import tf
 
 class StateEst:
     # constructor
@@ -27,7 +30,8 @@ class StateEst:
         self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
         self.vehicle_out_sub = rospy.Subscriber("/fssim/base_pose_ground_truth", fssimState, self.vehicle_out_callback)
         self.statepub = rospy.Publisher('state', saartiState, queue_size=10)
-
+        self.tfbr = tf.TransformBroadcaster()
+        
         # rqt debug
         self.debugpub = rospy.Publisher('/state_est_debug', Float32, queue_size=1)
         self.debug_val = Float32()
@@ -64,9 +68,13 @@ class StateEst:
 
         # Main loop
         while not rospy.is_shutdown():
+            # state est
             self.updateState()
             self.statepub.publish(self.state_out)
             
+            # broadcast tf
+            self.broadcast_tf()            
+               
             # rqt debug
             self.debug_val = self.state_out.deltapsi
             self.debugpub.publish(self.debug_val)
@@ -117,7 +125,14 @@ class StateEst:
         self.state_out.deltapsi = self.state_out.deltapsi[0]
         #print "state est, deltapsi = ", self.state_out.deltapsi
         #print "state est, psi      = ", self.state_out.psi
-        
+
+    def broadcast_tf(self):
+        self.tfbr.sendTransform((self.state_in.x, self.state_in.y, 0),
+                                tf.transformations.quaternion_from_euler(0, 0, self.state_in.yaw),
+                                rospy.Time.now(),
+                                "/fssim/vehicle/base_link",
+                                "tamp_map")
+         
     def vehicle_out_callback(self, msg):
         self.state_in = msg
         self.received_vehicle_out = True
