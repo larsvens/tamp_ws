@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
 # Descrition: 
-# Subscribes to fssim topics
-# Publishes state, local path and dynamic params
+# load and publish global path
 
 import numpy as np
 import rospy
@@ -10,7 +9,6 @@ import rospkg
 import tf
 from nav_msgs.msg import Path as navPath
 from geometry_msgs.msg import PoseStamped
-from fssim_common.msg import Track
 from common.msg import Path
 from coordinate_transforms import ptsFrenetToCartesian
 import yaml
@@ -22,10 +20,7 @@ class TrackInterface:
         self.pathglobalvispub = rospy.Publisher('pathglobal_vis', navPath, queue_size=10)
         self.dubvispub = rospy.Publisher('dubglobal_vis', navPath, queue_size=10)
         self.dlbvispub = rospy.Publisher('dlbglobal_vis', navPath, queue_size=10)
-        self.track_sub = rospy.Subscriber("/fssim/track", Track, self.track_callback)
-        self.track = Track()
         self.pathglobal = Path()
-        self.received_track = False
         self.rate = rospy.Rate(1)
         
         # set params
@@ -33,11 +28,6 @@ class TrackInterface:
         self.s_begin_mu_segments = rospy.get_param('/s_begin_mu_segments')
         self.mu_segment_values = rospy.get_param('/mu_segment_values')
         self.N_mu_segments = len(self.s_begin_mu_segments)
-        
-        # wait for track
-        while(not self.received_track):
-            print "waiting for track"
-            self.rate.sleep()      
 
         trackyaml = rospkg.RosPack().get_path('common') + '/config/tracks/' + self.track_name + '/' + self.track_name + '.yaml'
         #trackyaml = "/home/larsvens/ros/tamp__ws/src/saarti/common/config/tracks/frihamnen/frihamnen.yaml"
@@ -68,6 +58,13 @@ class TrackInterface:
             mu.append(mu_ele)
         mu = np.array(mu)
 
+
+        # wait for receiving nodes to launch
+        count = 2
+        while(count > 0):
+            self.rate.sleep()
+            count = count - 1
+
         # put all in message and publish
         self.pathglobal.X = fcl_X
         self.pathglobal.Y = fcl_Y
@@ -80,9 +77,16 @@ class TrackInterface:
         self.pathglobal.dub = dub
         self.pathglobal.dlb = dlb
         
-        print "publishing pathglobal"
+        print "TRACK INTERFACE: publishing pathglobal"
         self.pathglobalpub.publish(self.pathglobal)
 
+        # wait for rviz to launch
+        count = 3
+        while(count > 0):
+            #print "publish pathglobal in " + str(count)
+            self.rate.sleep()
+            count = count - 1
+        
         # publish paths for rviz
         pathglobalvis = navPath()
         for i in range(N):
@@ -99,7 +103,7 @@ class TrackInterface:
             pathglobalvis.poses.append(pose)
         pathglobalvis.header.stamp = rospy.Time.now()
         pathglobalvis.header.frame_id = "map"
-        print "publishing pathglobal visualization"
+        print "TRACK INTERFACE: publishing pathglobal visualization"
         self.pathglobalvispub.publish(pathglobalvis)
 
         # test correctness of dub and dlb in rviz
@@ -129,9 +133,6 @@ class TrackInterface:
             pathright.poses.append(pose)
         self.dlbvispub.publish(pathright)    
 
-    def track_callback(self, msg):
-        self.track = msg
-        self.received_track = True
 
 if __name__ == '__main__':
     ti = TrackInterface()
