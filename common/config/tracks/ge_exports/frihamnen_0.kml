@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>frihamnen_0</name>
+	<gx:CascadingStyle kml:id="__managed_style_2DC7BABD31121CF910B8">
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://earth.google.com/earth/rpc/cc/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<displayMode>hide</displayMode>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_1F6D21ADAC121CF910B8">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://earth.google.com/earth/rpc/cc/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<displayMode>hide</displayMode>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_0884C35EFD121CF910B8">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_1F6D21ADAC121CF910B8</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_2DC7BABD31121CF910B8</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Placemark id="0948B4AD19121CF910B8">
+		<name>frihamnen_0</name>
+		<LookAt>
+			<longitude>11.95776723376136</longitude>
+			<latitude>57.71911829452016</latitude>
+			<altitude>1.97377788916248</altitude>
+			<heading>18.06911333902005</heading>
+			<tilt>0.1532867964733308</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>224.5060846049091</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0884C35EFD121CF910B8</styleUrl>
+		<LineString>
+			<coordinates>
+				11.9571890092055,57.7194321766808,2.138069032971757 11.95746666354828,57.71938379883643,2.138059411947999 11.95771413245834,57.7193381381782,2.138071449191221 11.95802238504104,57.71928649144873,0 11.95826304767259,57.71924390111122,2.12007028032362 11.95850809541387,57.71920131341021,2.005395575114111 11.95862205314094,57.71917452876516,1.974952640070851 11.958695395151,57.71913253979934,1.962674767985391 11.95872252624522,57.71907363769026,1.809522489274287 11.95869022463621,57.71901662375764,1.809491637207365 11.95862087863177,57.71897999225116,1.809476798960314 11.95852386696383,57.71896627870547,1.809481151833436 11.95841433269542,57.71897981295415,1.973778176336105 11.95825271775442,57.71900936470908,1.973757946864008 11.95800561108502,57.71905242201791,1.973808349371795 11.9577451512041,57.71909919609463,1.973781039584463 11.95749976826673,57.71914474365514,2.135585344681183 11.95724578689875,57.71918899722213,2.138055124148703 11.95699803695869,57.71923494352698,2.138041902844772 11.95688646637334,57.71927383827139,2.138039707310457 11.95683403152032,57.7193246753066,2.102809872284777 11.95683375365087,57.71938036741048,2.023364744634939 11.95688444315568,57.71942847783451,2.138049527799639 11.95700452577873,57.71945899776268,2.138063634673468 11.95709933494662,57.71944804042768,2.138094499472225 
+			</coordinates>
+		</LineString>
+	</Placemark>
+</Document>
+</kml>

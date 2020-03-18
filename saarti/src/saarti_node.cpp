@@ -123,12 +123,14 @@ SAARTI::SAARTI(ros::NodeHandle nh){
                     ROS_INFO_STREAM("setting trajstar last as initial guess for RTI");
                     trajprime = rtisqp_wrapper_.shiftTrajectoryByIntegration(trajstar_last,state_,pathlocal_,sp_,traction_adaptive_,mu_nominal_);
                     trajset_.push_back(trajprime);
+                    auto eval_out = trajset_eval_cost(); // check collision
+                    int n_collfree = std::get<1>(eval_out);
+                    status_msg.nr_of_collision_free_candidates = n_collfree-Nd_rollout_*Nvx_rollout_;
                 }
                 trajhat = trajprime;
             }
 
             // SAARTI
-            bool rollout_selected;
             if(sampling_augmentation_ == 1){
                 ROS_INFO_STREAM("generating trajectory set");
                 // cpu rollout
@@ -157,7 +159,10 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
                 // cost eval and select
                 auto t1_costeval = std::chrono::high_resolution_clock::now();
-                int trajhat_idx = trajset_eval_cost(); // error if negative
+                auto eval_out = trajset_eval_cost(); // error if negative
+                int trajhat_idx = std::get<0>(eval_out);
+                int n_collfree = std::get<1>(eval_out);
+                status_msg.nr_of_collision_free_candidates = n_collfree;
                 auto t2_costeval = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double, std::milli> t_costeval = t2_costeval - t1_costeval;
                 ROS_INFO_STREAM("costevaltime                 " << t_costeval.count() << " ms " << "(" << Nd_rollout_*Nvx_rollout_ << "trajs)");
@@ -472,8 +477,9 @@ containers::refstruct SAARTI::setRefs(int ref_mode,
 }
 
 // cost evaluation and collision checking of trajset
-int SAARTI::trajset_eval_cost(){
+std::tuple<int, int> SAARTI::trajset_eval_cost(){
     float mincost = float(Wslack_)*10;
+    int n_collfree = Nd_rollout_*Nvx_rollout_+1;
     int trajhat_idx = -1;
     for (uint i=0;i<trajset_.size();i++) {
         containers::trajstruct traj = trajset_.at(i);
@@ -491,13 +497,13 @@ int SAARTI::trajset_eval_cost(){
             float dist;
             for (uint k=0; k<obst_.s.size();k++){
                 dist = std::sqrt( (s-obst_.s.at(k))*(s-obst_.s.at(k)) + (d-obst_.d.at(k))*(d-obst_.d.at(k)) );
-                if(dist < obst_.Rmgn.at(k)){
+                if(dist < obst_.Rmgn.at(k)-1.5f){ // tmp compensate for wiggleroom
                     colliding = true;
                 }
             }
 
             // check outside road (in frenet)
-            if((d > dub.at(j)) || d < dlb.at(j) ){
+            if((d > dub.at(j)+1.0f) || d < dlb.at(j) -1.0f){
                 exitroad = true;
             }
             // running cost
@@ -515,14 +521,16 @@ int SAARTI::trajset_eval_cost(){
 
             //cout << "cost after rc add = " << cost << endl;
         }
-        if(colliding){
+        if(colliding || exitroad){
             cost += float(Wslack_);
             //cost = float(Wslack);
+            n_collfree -=1;
         }
-        if(exitroad){
-            cost += float(Wslack_);
-            //cost = float(Wslack);
-        }
+//        if(exitroad){
+//            cost += float(Wslack_);
+//            //cost = float(Wslack);
+//            n_collfree -=1;
+//        }
         traj.cost = cost;
         //cout << "cost of traj nr " << i << ": " << cost << endl;
         traj.colliding = colliding;
@@ -534,7 +542,7 @@ int SAARTI::trajset_eval_cost(){
             trajhat_idx = int(i);
         }
     }
-    return trajhat_idx;
+    return std::make_tuple(trajhat_idx, n_collfree);
 }
 
 // builds trajectry message from traj struct
@@ -628,8 +636,8 @@ jsk_recognition_msgs::PolygonArray SAARTI::traj2polarr(containers::trajstruct tr
 visualization_msgs::Marker SAARTI::trajset2cubelist(){
     visualization_msgs::Marker m;
     m.type = visualization_msgs::Marker::CUBE_LIST;
-    m.scale.x = 0.1;
-    m.scale.y = 0.1;
+    m.scale.x = 0.15;
+    m.scale.y = 0.15;
     m.scale.z = 0.05;
     m.color.a = 1.0;
     m.color.r = 0.0;
@@ -638,13 +646,24 @@ visualization_msgs::Marker SAARTI::trajset2cubelist(){
     m.header.stamp = ros::Time::now();
     m.header.frame_id = "map";
     m.pose.orientation.w = 1.0;
+
+    //m.points.clear();
+   // m.colors.clear();
     for (uint i=0; i<trajset_.size(); i++) {
         containers::trajstruct traj = trajset_.at(i);
         for (uint j=0; j<traj.s.size();j++) {
             geometry_msgs::Point pt;
             pt.x = double(traj.X.at(j));
             pt.y = double(traj.Y.at(j));
+            pt.z = 0.06;
             m.points.push_back(pt);
+
+//            std_msgs::ColorRGBA c;
+//            c.r = traj.vx.at(i)/20.0f; // todo set dynamic max
+//            c.g = 0.0;
+//            c.b = 1.0;
+//            c.a = 1.0;
+//            m.colors.push_back(c);
         }
     }
     return m;

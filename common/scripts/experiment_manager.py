@@ -185,7 +185,7 @@ class ExperimentManager:
                 self.tireparampub.publish(self.tireparams)
                 
                 # POPUP SCENARIO
-                if (self.scenario_id == 1):
+                if (self.scenario_id in [1,4] ):
                     self.ctrl_mode = 1 # cruise control
                     if(self.state.vx > 5):
                         self.ctrl_mode = 2 # tamp
@@ -282,6 +282,7 @@ class ExperimentManager:
                     
                     # and saarti status
                     self.rollout_selected = []
+                    self.n_coll_free = []
                     self.total_planning_time = []
                     self.rollout_time = []
                     self.optimization_time = []
@@ -306,6 +307,7 @@ class ExperimentManager:
 
                     # and saarti status
                     self.rollout_selected.append(self.saarti_status.rollout_selected)
+                    self.n_coll_free.append(self.saarti_status.nr_of_collision_free_candidates)
                     self.total_planning_time.append(self.saarti_status.total_planning_time)
                     self.rollout_time.append(self.saarti_status.rollout_time)
                     self.optimization_time.append(self.saarti_status.optimization_time)
@@ -333,6 +335,7 @@ class ExperimentManager:
                         
                         self.sarti_status_dict = {
                             "rollout_selected": np.array(self.rollout_selected),
+                            "n_coll_free": np.array(self.n_coll_free),
                             "total_planning_time": np.array(self.total_planning_time),
                             "rollout_time": np.array(self.rollout_time),
                             "optimization_time": np.array(self.optimization_time),
@@ -361,6 +364,9 @@ class ExperimentManager:
                         filename = filename + "_reducedmuturn"
                     elif(self.scenario_id == 3):
                         filename = filename + "_racing"
+                    elif(self.scenario_id == 4):
+                        filename = filename + "_localmin"
+                    # separate adaptive (SA) and nonadaptive (RTI)
                     if(self.traction_adaptive):
                         filename = filename + "_adaptive"
                     else:

@@ -7,6 +7,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include "std_msgs/String.h"
 #include "std_msgs/Int16.h"
+//#include "std_msgs/ColorRGBA.h"
 
 // visualization
 #include "visualization_msgs/MarkerArray.h"
@@ -106,7 +107,7 @@ private:
 
     // keep
     containers::refstruct setRefs(int ref_mode_, int traction_adaptive_, float mu_nominal_, float vxref_cc, float dref_cc, containers::staticparamstruct sp_, containers::pathstruct pathlocal_);
-    int trajset_eval_cost();
+    std::tuple<int, int> trajset_eval_cost();
     void state_callback(const common::State::ConstPtr& msg);
     void ctrlmode_callback(const std_msgs::Int16::ConstPtr& msg);
     void pathlocal_callback(const common::Path::ConstPtr& msg);

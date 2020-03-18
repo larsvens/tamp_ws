@@ -426,7 +426,7 @@ Visualization Manager:
       Marker Topic: /trajset_vis
       Name: trajset
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -442,25 +442,25 @@ Visualization Manager:
       Marker Topic: /obs_vis
       Name: obstacle
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /state_text_marker
       Name: state_text
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Alpha: 0.5
       Class: jsk_rviz_plugin/PolygonArray
       Color: 149; 149; 149
-      Enabled: false
+      Enabled: true
       Name: trajstar_poly
       Topic: /trajstar_polarr_vis
       Unreliable: false
-      Value: false
+      Value: true
       coloring: Flat color
       enable lighting: true
       normal length: 0.100000001
@@ -491,25 +491,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 26.9425373
+      Distance: 52.8924637
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.704416275
-        Y: -0.295932591
+        X: 0.0527238846
+        Y: -0.0116038322
         Z: 4.38690186e-05
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.204797268
+      Pitch: 0.279797554
       Target Frame: fssim/vehicle/base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.14042664
+      Yaw: 3.11859179
     Saved: ~
 Window Geometry:
   Displays:
