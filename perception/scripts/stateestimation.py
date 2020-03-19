@@ -21,6 +21,9 @@ from util import angleToInterval
 from util import angleToContinous
 from std_msgs.msg import Float32
 import tf
+import rospkg
+import yaml
+import time
 
 class StateEst:
     # constructor
@@ -49,6 +52,13 @@ class StateEst:
         self.received_vehicle_out = False
         self.received_pathglobal = False
     
+        # load vehicle dimensions 
+        self.robot_name = rospy.get_param('/robot_name')
+        dimsyaml = rospkg.RosPack().get_path('common') + '/config/vehicles/' + self.robot_name + '/config/distances.yaml'
+        #dimsyaml = "/home/larsvens/ros/tamp__ws/src/saarti/common/config/vehicles/rhino/config/distances.yaml"
+        with open(dimsyaml, 'r') as f:
+            self.dims = yaml.load(f,Loader=yaml.SafeLoader)               
+    
         # wait for messages before entering main loop
         while(not self.received_pathglobal):
             print "state est: waiting for pathglobal"
@@ -68,16 +78,26 @@ class StateEst:
 
         # Main loop
         while not rospy.is_shutdown():
+            
+            # check time wrt dt
+            start = time.time()
+            
             # state est
             self.updateState()
             self.statepub.publish(self.state_out)
             
             # broadcast tf
-            self.broadcast_tf()            
-               
+            self.broadcast_dyn_tfs()
+            self.broadcast_static_tfs()
+                
             # rqt debug
             self.debug_val = self.state_out.deltapsi
             self.debugpub.publish(self.debug_val)
+
+            end = time.time()
+            comptime = end-start
+            if (comptime > self.dt):
+                rospy.logwarn("state_est: compute time exceeding dt! comptime = " + str(comptime))
             
             self.rate.sleep()   
             
@@ -126,13 +146,62 @@ class StateEst:
         #print "state est, deltapsi = ", self.state_out.deltapsi
         #print "state est, psi      = ", self.state_out.psi
 
-    def broadcast_tf(self):
+    def broadcast_dyn_tfs(self):
         self.tfbr.sendTransform((self.state_in.x, self.state_in.y, 0),
                                 tf.transformations.quaternion_from_euler(0, 0, self.state_in.yaw),
                                 rospy.Time.now(),
-                                "/fssim/vehicle/base_link",
+                                "base_link",
                                 "tamp_map")
-         
+        
+        self.tfbr.sendTransform((self.dims["left_steering_hinge"]["left_front_wheel"]["x"], self.dims["left_steering_hinge"]["left_front_wheel"]["y"], self.dims["left_steering_hinge"]["left_front_wheel"]["z"]),
+                                tf.transformations.quaternion_from_euler(0, 0, 1.0),
+                                rospy.Time.now(),
+                                "left_front_wheel",
+                                "left_steering_hinge") 
+
+        self.tfbr.sendTransform((self.dims["right_steering_hinge"]["right_front_wheel"]["x"], self.dims["right_steering_hinge"]["right_front_wheel"]["y"], self.dims["right_steering_hinge"]["right_front_wheel"]["z"]),
+                                tf.transformations.quaternion_from_euler(0, 0, 1.0),
+                                rospy.Time.now(),
+                                "right_front_wheel",
+                                "right_steering_hinge") 
+
+    def broadcast_static_tfs(self):
+        self.tfbr.sendTransform((self.dims["base_link"]["cog"]["x"], self.dims["base_link"]["cog"]["y"], self.dims["base_link"]["cog"]["z"]),
+                                (0, 0, 0, 1), 
+                                rospy.Time.now(),
+                                "cog",
+                                "base_link")         
+
+        self.tfbr.sendTransform((self.dims["cog"]["chassis"]["x"], self.dims["cog"]["chassis"]["y"], self.dims["cog"]["chassis"]["z"]),
+                                (0, 0, 0, 1), 
+                                rospy.Time.now(),
+                                "chassis",
+                                "cog")  
+
+        self.tfbr.sendTransform((self.dims["chassis"]["left_rear_wheel_joint"]["x"], self.dims["chassis"]["left_rear_wheel_joint"]["y"], self.dims["chassis"]["left_rear_wheel_joint"]["z"]),
+                                (0, 0, 0, 1), 
+                                rospy.Time.now(),
+                                "left_rear_wheel_joint",
+                                "chassis") 
+
+        self.tfbr.sendTransform((self.dims["chassis"]["right_rear_wheel_joint"]["x"], self.dims["chassis"]["right_rear_wheel_joint"]["y"], self.dims["chassis"]["right_rear_wheel_joint"]["z"]),
+                                (0, 0, 0, 1), 
+                                rospy.Time.now(),
+                                "right_rear_wheel_joint",
+                                "chassis") 
+
+        self.tfbr.sendTransform((self.dims["chassis"]["left_steering_hinge_joint"]["x"], self.dims["chassis"]["left_steering_hinge_joint"]["y"], self.dims["chassis"]["left_steering_hinge_joint"]["z"]),
+                                (0, 0, 0, 1), 
+                                rospy.Time.now(),
+                                "left_steering_hinge",
+                                "chassis") 
+
+        self.tfbr.sendTransform((self.dims["chassis"]["right_steering_hinge"]["x"], self.dims["chassis"]["right_steering_hinge"]["y"], self.dims["chassis"]["right_steering_hinge"]["z"]),
+                                (0, 0, 0, 1), 
+                                rospy.Time.now(),
+                                "right_steering_hinge",
+                                "chassis") 
+        
     def vehicle_out_callback(self, msg):
         self.state_in = msg
         self.received_vehicle_out = True

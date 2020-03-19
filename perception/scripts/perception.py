@@ -37,8 +37,8 @@ class Perception:
         self.pathlocalvispub = rospy.Publisher('pathlocal_vis', PolygonArray, queue_size=1)
 
         # node params
-        self.dt = 0.1
-        self.rate = rospy.Rate(1/self.dt) # 10hz
+        self.dt = 0.25
+        self.rate = rospy.Rate(1/self.dt)
         
         # params of local path
         self.N = 100
@@ -98,15 +98,12 @@ class Perception:
                 pose.pose.position.x = self.pathlocal.X[i]
                 pose.pose.position.y = self.pathlocal.Y[i]       
                 pathlocal_vis.poses.append(pose)
-            #self.pathlocalvispub_old.publish(pathlocal_vis)
-
 
             pa = self.pathLocalToPolArr()
             self.pathlocalvispub.publish(pa)
 
             end = time.time()
             comptime = end-start
-            #print("perception: compute took ", comptime)
             if (comptime > self.dt):
                 rospy.logwarn("perception: compute time exceeding dt!")
 
