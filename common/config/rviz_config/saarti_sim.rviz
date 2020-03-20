@@ -65,7 +65,7 @@ Visualization Manager:
       Radius: 0.100000001
       Reference Frame: tamp_map
       Value: true
-    - Alpha: 0.200000003
+    - Alpha: 0.400000006
       Class: rviz/RobotModel
       Collision Enabled: false
       Enabled: true

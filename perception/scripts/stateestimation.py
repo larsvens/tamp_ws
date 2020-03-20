@@ -47,8 +47,8 @@ class StateEst:
         self.lapcounter = 0
         
         # node params
-        self.dt = 0.01
-        self.rate = rospy.Rate(1/self.dt) # 100hz
+        self.dt = 0.02
+        self.rate = rospy.Rate(1/self.dt) # 50hz
         self.received_vehicle_out = False
         self.received_pathglobal = False
     
@@ -83,12 +83,18 @@ class StateEst:
             start = time.time()
             
             # state est
+            start_statest = time.time()
             self.updateState()
             self.statepub.publish(self.state_out)
+            end_statest = time.time()
+            comptime_statest = end_statest-start_statest
             
             # broadcast tf
+            start_tfbc = time.time()
             self.broadcast_dyn_tfs()
             self.broadcast_static_tfs()
+            end_tfbc = time.time()
+            comptime_tfbc = end_tfbc-start_tfbc
                 
             # rqt debug
             self.debug_val = self.state_out.deltapsi
@@ -97,7 +103,10 @@ class StateEst:
             end = time.time()
             comptime = end-start
             if (comptime > self.dt):
-                rospy.logwarn("state_est: compute time exceeding dt! comptime = " + str(comptime))
+                rospy.logwarn("state_est: compute time exceeding dt!")
+                rospy.logwarn("state_est: total comptime =        " + str(comptime))
+                rospy.logwarn("state_est: comptime statest =      " + str(comptime_statest))
+                rospy.logwarn("state_est: comptime tf broadcast = " + str(comptime_tfbc))
             
             self.rate.sleep()   
             
@@ -111,8 +120,9 @@ class StateEst:
         self.state_out.vy = self.state_in.vy
 
         # get s, d and deltapsi
-        s,d = ptsCartesianToFrenet(np.array(self.state_out.X), \
-                                   np.array(self.state_out.Y), \
+
+        s,d = ptsCartesianToFrenet(np.array([self.state_out.X]), \
+                                   np.array([self.state_out.Y]), \
                                    np.array(self.pathglobal.X), \
                                    np.array(self.pathglobal.Y), \
                                    np.array(self.pathglobal.psi_c), \

@@ -1,10 +1,16 @@
 <?xml version="1.0"?>
 <robot name="rhino">
+
+  <material name="white">
+    <color rgba="1 1 1 1"/>
+  </material>
+
   <link name="chassis">
     <visual>
       <geometry>
         <mesh filename="package://common/config/vehicles/rhino/meshes/whole_car.stl" scale="0.001 0.001 0.001" />
       </geometry>
+      <material name="white"/>
     </visual>
   </link>
 </robot>

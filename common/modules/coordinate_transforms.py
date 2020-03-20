@@ -17,7 +17,7 @@ def ptsFrenetToCartesian(s,d,Xpath,Ypath,psipath,spath):
 
 def ptsCartesianToFrenet(X,Y,Xpath,Ypath,psipath,spath):
     # inputs and outputs are np.array([x])
-    Npath = spath.size
+
     Npts = X.size
     s = np.zeros(Npts);
     d = np.zeros(Npts);
@@ -26,17 +26,14 @@ def ptsCartesianToFrenet(X,Y,Xpath,Ypath,psipath,spath):
     for k in range(Npts):
     
         # find closest pt on centerline
-        mindist = 1000000
-        idx = 0
-        for i in range(Npath):
-            dist = np.sqrt((X-Xpath[i])**2 + (Y-Ypath[i])**2 )
-            if (dist<mindist):
-                mindist = dist
-                idx = i
-        
+        dist = np.sqrt((X[k]-Xpath)**2 + (Y[k]-Ypath)**2 )
+        idx = np.argmin(dist)
+
         # make sure deltas is positive
         deltas = -1
-        while(deltas < 0):
+        maxiters = 5
+        iters = 0
+        while(deltas < 0 and iters <= maxiters):
         
             Xc = Xpath[idx] 
             Yc = Ypath[idx] 
@@ -53,6 +50,7 @@ def ptsCartesianToFrenet(X,Y,Xpath,Ypath,psipath,spath):
             
             # iteratively reduce idx until deltas positive
             idx = idx - 1
+            iters = iters + 1
             
         d[k] = M*np.cos(alpha2)
         s[k] = sc + deltas
