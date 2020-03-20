@@ -13,12 +13,12 @@ s_obs_at_popup: 75
 d_obs_at_popup: -1.75 
 
 ### track config 
-track_name: "frihamnen" # todo pipe through at "simulation.cfg"
+track_name: "frihamnen" 
 s_begin_mu_segments:  [0.0, 200.0]
 mu_segment_values:  [1.0, 0.5]
 
 # cc config
-cc_vxref: 15
+cc_vxref: 7
 cc_dref: 0
 
 # pcs refs

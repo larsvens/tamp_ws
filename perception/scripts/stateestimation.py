@@ -31,7 +31,7 @@ class StateEst:
         # init node subs pubs
         rospy.init_node('state_est', anonymous=True)
         self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
-        self.vehicle_out_sub = rospy.Subscriber("/fssim/base_pose_ground_truth", fssimState, self.vehicle_out_callback)
+        self.fssim_state_sub = rospy.Subscriber("/fssim/base_pose_ground_truth", fssimState, self.fssim_state_callback)
         self.statepub = rospy.Publisher('state', saartiState, queue_size=10)
         self.tfbr = tf.TransformBroadcaster()
         
@@ -42,14 +42,14 @@ class StateEst:
         # init local vars
         self.pathglobal = Path()
         self.state_out = saartiState()
-        self.state_in = fssimState()
+        self.fssim_state_msg = fssimState()
         self.passed_halfway = False
         self.lapcounter = 0
         
         # node params
         self.dt = 0.02
         self.rate = rospy.Rate(1/self.dt) # 50hz
-        self.received_vehicle_out = False
+        self.received_fssim_state = False
         self.received_pathglobal = False
     
         # load vehicle dimensions 
@@ -69,10 +69,10 @@ class StateEst:
         dist_sf = np.sqrt( (self.pathglobal.X[0]-self.pathglobal.X[-1])**2 + (self.pathglobal.Y[0]-self.pathglobal.Y[-1])**2)
         self.s_lap = stot_global + dist_sf  
         
-        while(not self.received_vehicle_out):
-            print "state est: waiting for vehicle_out"
+        while(not self.received_fssim_state):
+            print "state est: waiting for fssim_state"
             self.rate.sleep()
-    
+            
         print "state est: running main "
         print "state est: lap count = ", self.lapcounter
 
@@ -112,12 +112,12 @@ class StateEst:
             
     def updateState(self):
       
-        self.state_out.X = self.state_in.x
-        self.state_out.Y = self.state_in.y
-        self.state_out.psi = self.state_in.yaw
-        self.state_out.psidot = self.state_in.r
-        self.state_out.vx = self.state_in.vx
-        self.state_out.vy = self.state_in.vy
+        self.state_out.X = self.fssim_state_msg.x
+        self.state_out.Y = self.fssim_state_msg.y
+        self.state_out.psi = self.fssim_state_msg.yaw
+        self.state_out.psidot = self.fssim_state_msg.r
+        self.state_out.vx = self.fssim_state_msg.vx
+        self.state_out.vy = self.fssim_state_msg.vy
 
         # get s, d and deltapsi
 
@@ -157,23 +157,24 @@ class StateEst:
         #print "state est, psi      = ", self.state_out.psi
 
     def broadcast_dyn_tfs(self):
-        self.tfbr.sendTransform((self.state_in.x, self.state_in.y, 0),
-                                tf.transformations.quaternion_from_euler(0, 0, self.state_in.yaw),
+        self.tfbr.sendTransform((self.state_out.X, self.state_out.Y, 0),
+                                tf.transformations.quaternion_from_euler(0, 0, self.state_out.psi),
                                 rospy.Time.now(),
                                 "base_link",
                                 "tamp_map")
         
-        self.tfbr.sendTransform((self.dims["left_steering_hinge"]["left_front_wheel"]["x"], self.dims["left_steering_hinge"]["left_front_wheel"]["y"], self.dims["left_steering_hinge"]["left_front_wheel"]["z"]),
-                                tf.transformations.quaternion_from_euler(0, 0, 1.0),
-                                rospy.Time.now(),
-                                "left_front_wheel",
-                                "left_steering_hinge") 
-
-        self.tfbr.sendTransform((self.dims["right_steering_hinge"]["right_front_wheel"]["x"], self.dims["right_steering_hinge"]["right_front_wheel"]["y"], self.dims["right_steering_hinge"]["right_front_wheel"]["z"]),
-                                tf.transformations.quaternion_from_euler(0, 0, 1.0),
-                                rospy.Time.now(),
-                                "right_front_wheel",
-                                "right_steering_hinge") 
+        # todo - steering angle here
+#        self.tfbr.sendTransform((self.dims["left_steering_hinge"]["left_front_wheel"]["x"], self.dims["left_steering_hinge"]["left_front_wheel"]["y"], self.dims["left_steering_hinge"]["left_front_wheel"]["z"]),
+#                                tf.transformations.quaternion_from_euler(0, 0, 1.0),
+#                                rospy.Time.now(),
+#                                "left_front_wheel",
+#                                "left_steering_hinge") 
+#
+#        self.tfbr.sendTransform((self.dims["right_steering_hinge"]["right_front_wheel"]["x"], self.dims["right_steering_hinge"]["right_front_wheel"]["y"], self.dims["right_steering_hinge"]["right_front_wheel"]["z"]),
+#                                tf.transformations.quaternion_from_euler(0, 0, 1.0),
+#                                rospy.Time.now(),
+#                                "right_front_wheel",
+#                                "right_steering_hinge") 
 
     def broadcast_static_tfs(self):
         self.tfbr.sendTransform((self.dims["base_link"]["cog"]["x"], self.dims["base_link"]["cog"]["y"], self.dims["base_link"]["cog"]["z"]),
@@ -212,9 +213,9 @@ class StateEst:
                                 "right_steering_hinge",
                                 "chassis") 
         
-    def vehicle_out_callback(self, msg):
-        self.state_in = msg
-        self.received_vehicle_out = True
+    def fssim_state_callback(self, msg):
+        self.fssim_state_msg = msg
+        self.received_fssim_state = True
         
     def pathglobal_callback(self, msg):
         self.pathglobal = msg      

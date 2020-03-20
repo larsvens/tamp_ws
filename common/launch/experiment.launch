@@ -2,7 +2,7 @@
 
 <launch>
 
-    <!-- load config --> 
+    <!-- load rosparams --> 
     <arg name="exp_config" default="popup_nonadapt_config.yaml"/>
     <rosparam command="load" file="$(find common)/config/exp_config/$(arg exp_config)" />
     

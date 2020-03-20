@@ -1,8 +1,11 @@
-# Experiment configuration
+# Experiment configuration (NOT TUNED FOR GOTTHARD AT ALL)
 
 t_activate: 15.0
 t_final: 500.0
 scenario_id: 3 # 1: pop-up, 2: reduced mu turn, 3: racing
+s_begin_log: 180
+s_pause_gazebo: []
+
 
 # pop-up obstacle config
 s_ego_at_popup:  50
@@ -34,7 +37,9 @@ ref_mode: 2
 # 0: RTI
 # 1: SAA-RTI 
 sampling_augmentation: 0
-Ntrajs_rollout: 24 # default 24
+Nd_rollout: 10 # multiples of 32 to maximize gpu utilization
+Nvx_rollout: 15
+vxub_rollout: 20.0
 
 # Traction adaptation 
 # 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics)
@@ -47,3 +52,8 @@ Wx:  [1000000.0, 1.0, 1.0, 0.1, 0.1, 0.1]
 WNx: [1000000.0, 100000000.0, 1.0, 0.1, 0.1, 0.1]
 Wu: [0.01, 0.1, 0.1]
 Wslack: 100000000
+
+# rollout controller config
+K:   [0.000, 2954.774, 87597.099, 2566.325, 0.000, 5751.643,
+      0.688, 0.000, 0.000, 0.000, 2178.309, 0.000,
+      0.688, 0.000, 0.000, 0.000, 2178.309, 0.000]
