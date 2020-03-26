@@ -209,7 +209,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             float vmax = 50; // m/s todo get from param
             for (uint k=0; k<trajhat.s.size()-1;k++) {
                 if (trajhat.s.at(k+1)-trajhat.s.at(k) <= 0 ) {
-                    ROS_ERROR_STREAM("trajhat.s is not monotonically increasing");
+                    ROS_ERROR_STREAM("trajhat.s is not monotonically increasing at index: " << k);
                     break;
                     // todo dump pathlocal here to see if it has errors
                 }

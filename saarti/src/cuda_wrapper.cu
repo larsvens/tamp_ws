@@ -53,14 +53,6 @@ __global__ void single_rollout(float *trajset_arr,
     float vx       = x_init[4];
     float vy       = x_init[5];
 
-    // set init state in trajset_arr
-    trajset_arr[threadIdx.x + 0*Nd + 0*Npp + blockIdx.x*Npb] = s;
-    trajset_arr[threadIdx.x + 1*Nd + 0*Npp + blockIdx.x*Npb] = d;
-    trajset_arr[threadIdx.x + 2*Nd + 0*Npp + blockIdx.x*Npb] = deltapsi;
-    trajset_arr[threadIdx.x + 3*Nd + 0*Npp + blockIdx.x*Npb] = psidot;
-    trajset_arr[threadIdx.x + 4*Nd + 0*Npp + blockIdx.x*Npb] = vx;
-    trajset_arr[threadIdx.x + 5*Nd + 0*Npp + blockIdx.x*Npb] = vy;
-
     // rollout loop
     float Fyf = 0.0f;
     float Fxf = 0.0f;
@@ -72,7 +64,7 @@ __global__ void single_rollout(float *trajset_arr,
     float mu = 0.0f;
     float Cr = 0.0f;
     uint k = 0; // k is the regular iterator, ki is upsampled
-    for (int ki=0; ki<((Nt+1)*Ni); ki++){
+    for (int ki=0; ki<((Nt + 1)*Ni); ki++){
 
         if(ki % Ni == 0){ // only the euler step is performed every ki
 
@@ -218,12 +210,21 @@ __global__ void single_rollout(float *trajset_arr,
         if(ki % Ni == 0){
             k = ki/Ni;
             // set x at k+1
-            trajset_arr[threadIdx.x + 0*Nd + (k+1)*Npp + blockIdx.x*Npb] = s;
-            trajset_arr[threadIdx.x + 1*Nd + (k+1)*Npp + blockIdx.x*Npb] = d;
-            trajset_arr[threadIdx.x + 2*Nd + (k+1)*Npp + blockIdx.x*Npb] = deltapsi;
-            trajset_arr[threadIdx.x + 3*Nd + (k+1)*Npp + blockIdx.x*Npb] = psidot;
-            trajset_arr[threadIdx.x + 4*Nd + (k+1)*Npp + blockIdx.x*Npb] = vx;
-            trajset_arr[threadIdx.x + 5*Nd + (k+1)*Npp + blockIdx.x*Npb] = vy;
+            if(ki==0){
+                trajset_arr[threadIdx.x + 0*Nd + (k)*Npp + blockIdx.x*Npb] = x_init[0];
+                trajset_arr[threadIdx.x + 1*Nd + (k)*Npp + blockIdx.x*Npb] = x_init[1];
+                trajset_arr[threadIdx.x + 2*Nd + (k)*Npp + blockIdx.x*Npb] = x_init[2];
+                trajset_arr[threadIdx.x + 3*Nd + (k)*Npp + blockIdx.x*Npb] = x_init[3];
+                trajset_arr[threadIdx.x + 4*Nd + (k)*Npp + blockIdx.x*Npb] = x_init[4];
+                trajset_arr[threadIdx.x + 5*Nd + (k)*Npp + blockIdx.x*Npb] = x_init[5];
+            } else {
+                trajset_arr[threadIdx.x + 0*Nd + (k)*Npp + blockIdx.x*Npb] = s;
+                trajset_arr[threadIdx.x + 1*Nd + (k)*Npp + blockIdx.x*Npb] = d;
+                trajset_arr[threadIdx.x + 2*Nd + (k)*Npp + blockIdx.x*Npb] = deltapsi;
+                trajset_arr[threadIdx.x + 3*Nd + (k)*Npp + blockIdx.x*Npb] = psidot;
+                trajset_arr[threadIdx.x + 4*Nd + (k)*Npp + blockIdx.x*Npb] = vx;
+                trajset_arr[threadIdx.x + 5*Nd + (k)*Npp + blockIdx.x*Npb] = vy;
+            }
             // set u at k
             trajset_arr[threadIdx.x + 6*Nd + (k)*Npp + blockIdx.x*Npb] = Fyf;
             trajset_arr[threadIdx.x + 7*Nd + (k)*Npp + blockIdx.x*Npb] = Fxf;
@@ -247,8 +248,8 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                   float mu_nominal,
                   std::vector<float> Kctrl_,
                   uint Nt, // N in planning horizon
-                  uint Nd, // Nr of goal pts in d (multiples of 32 to maximize gpu utilization)
-                  uint Nvx, // Nr of goal pts in vx
+                  uint Nd, // Nr of goal pts in d (also nr of threads, multiples of 32 to maximize gpu utilization)
+                  uint Nvx, // Nr of goal pts in vx (also nr of blocks)
                   float vxub, // upper bound on sampled vx
                   float dt)  // dt of planning horizon
 {
@@ -259,7 +260,7 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     uint Nu = 3;
     uint Nmisc = 5; // nr of additional traj vars
     uint Npp = (Nx+Nu+Nmisc)*Nd; // elements_per_page
-    uint Npb = Npp*Nt;
+    uint Npb = Npp*(Nt+1); // elements per block (state traj has Nt+1 elements and control has Nt)
     float *trajset_arr;
     float *x_init;
     float *d_ref_arr;
@@ -275,7 +276,7 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     float *dlb_path;
 
     // allocate shared memory
-    cudaMallocManaged(&trajset_arr, (Nx+Nu+Nmisc)*Nd*Nt*sizeof(float));
+    cudaMallocManaged(&trajset_arr, Npb*Nvx*sizeof(float));
     cudaMallocManaged(&x_init, Nx*sizeof(float));
     cudaMallocManaged(&d_ref_arr, Nd*sizeof(float));
     cudaMallocManaged(&vx_ref_arr, Nvx*sizeof(float));
@@ -314,7 +315,7 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
     }
 
     // set control matrix K
-    for (int id=0; id<(Nu*Nx); id++){
+    for (uint id=0; id<(Nu*Nx); id++){
         Kctrl[id] = Kctrl_.at(id);
     }
 
@@ -368,22 +369,22 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
             containers::trajstruct traj;
             for (size_t k=0;k<Nt+1;k++) {
                 // std::cout << "s = " << trajset_arr[j + 0*Nd + k*Npp] << std::endl;
-                traj.s.push_back(trajset_arr[j + 0*Nd + k*Npp + l*Npb]);
-                traj.d.push_back(trajset_arr[j + 1*Nd + k*Npp + l*Npb]);
+                traj.s.push_back(       trajset_arr[j + 0*Nd + k*Npp + l*Npb]);
+                traj.d.push_back(       trajset_arr[j + 1*Nd + k*Npp + l*Npb]);
                 traj.deltapsi.push_back(trajset_arr[j + 2*Nd + k*Npp + l*Npb]);
-                traj.psidot.push_back(trajset_arr[j + 3*Nd + k*Npp + l*Npb]);
-                traj.vx.push_back(trajset_arr[j + 4*Nd + k*Npp + l*Npb]);
-                traj.vy.push_back(trajset_arr[j + 5*Nd + k*Npp + l*Npb]);
+                traj.psidot.push_back(  trajset_arr[j + 3*Nd + k*Npp + l*Npb]);
+                traj.vx.push_back(      trajset_arr[j + 4*Nd + k*Npp + l*Npb]);
+                traj.vy.push_back(      trajset_arr[j + 5*Nd + k*Npp + l*Npb]);
                 if(k<Nt){ // N+1 states and N ctrls
-                    traj.Fyf.push_back(trajset_arr[j + 6*Nd + k*Npp + l*Npb]);
-                    traj.Fxf.push_back(trajset_arr[j + 7*Nd + k*Npp + l*Npb]);
-                    traj.Fxr.push_back(trajset_arr[j + 8*Nd + k*Npp + l*Npb]);
+                    traj.Fyf.push_back( trajset_arr[j + 6*Nd + k*Npp + l*Npb]);
+                    traj.Fxf.push_back( trajset_arr[j + 7*Nd + k*Npp + l*Npb]);
+                    traj.Fxr.push_back( trajset_arr[j + 8*Nd + k*Npp + l*Npb]);
                     // miscvars
-                    traj.Fzf.push_back(trajset_arr[j + 9*Nd + k*Npp + l*Npb]);
-                    traj.Fzr.push_back(trajset_arr[j + 10*Nd + k*Npp + l*Npb]);
+                    traj.Fzf.push_back( trajset_arr[j + 9*Nd + k*Npp + l*Npb]);
+                    traj.Fzr.push_back( trajset_arr[j + 10*Nd + k*Npp + l*Npb]);
                     traj.kappac.push_back(trajset_arr[j + 11*Nd + k*Npp + l*Npb]);
-                    traj.mu.push_back(trajset_arr[j + 12*Nd + k*Npp + l*Npb]);
-                    traj.Cr.push_back(trajset_arr[j + 13*Nd + k*Npp + l*Npb]);
+                    traj.mu.push_back(  trajset_arr[j + 12*Nd + k*Npp + l*Npb]);
+                    traj.Cr.push_back(  trajset_arr[j + 13*Nd + k*Npp + l*Npb]);
                 }
             }
             // add last element of misc vars
@@ -398,5 +399,15 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
 
     // Free memory
     cudaFree(trajset_arr);
+    cudaFree(x_init);
+    cudaFree(d_ref_arr);
+    cudaFree(vx_ref_arr);
+    cudaFree(s_path);
+    cudaFree(vxref_path);
+    cudaFree(kappac_path);
+    cudaFree(mu_path);
+    cudaFree(dub_path);
+    cudaFree(dlb_path);
+    cudaFree(Kctrl);
 
 }
