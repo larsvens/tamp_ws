@@ -8,7 +8,7 @@ Description: This node
     - save or plot run data 
     - all other nodes shut down when this shuts down
 '''
-
+import os
 import time
 import copy 
 import numpy as np
@@ -352,8 +352,9 @@ class ExperimentManager:
                       "trajcl": self.trajcl_dict,
                       "saartistatus": self.sarti_status_dict,
                     }
-                    filepath = "/home/larsvens/ros/tamp__ws/src/saarti/common/logs/data_latest/"
-                    filename = "explog"
+                    
+                    filepath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '../../../', 'tamp_logs/logs/data_latest'))
+                    filename = "/explog"
                     if(self.scenario_id == 1):
                         filename = filename + "_popup"
                         if(np.min(self.mu_segment_values)>0.8):
