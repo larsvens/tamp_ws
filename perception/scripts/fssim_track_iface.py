@@ -13,6 +13,7 @@ from nav_msgs.msg import Path as navPath
 from geometry_msgs.msg import PoseStamped
 from fssim_common.msg import Track
 from common.msg import Path
+
 from coordinate_transforms import ptsFrenetToCartesian
 from util import angleToInterval
 import yaml
@@ -26,13 +27,15 @@ plt.rcParams['figure.figsize'] = 10, 10
 class TrackInterface:
     def __init__(self):
         rospy.init_node('track_interface', anonymous=True)
-        self.pathglobalpub = rospy.Publisher('pathglobal', Path, queue_size=10)
-        self.pathglobalvispub = rospy.Publisher('pathglobal_vis', navPath, queue_size=10)
-        self.dubvispub = rospy.Publisher('dubglobal_vis', navPath, queue_size=10)
-        self.dlbvispub = rospy.Publisher('dlbglobal_vis', navPath, queue_size=10)
+        self.pathglobalpub = rospy.Publisher('pathglobal', Path, queue_size=1)
+        self.pathglobalvispub = rospy.Publisher('pathglobal_vis', navPath, queue_size=1)
+        
+        self.dubvispub = rospy.Publisher('dubglobal_vis', navPath, queue_size=1)
+        self.dlbvispub = rospy.Publisher('dlbglobal_vis', navPath, queue_size=1)
         self.track_sub = rospy.Subscriber("/fssim/track", Track, self.track_callback)
         self.track = Track()
         self.pathglobal = Path()
+
         self.received_track = False
         self.rate = rospy.Rate(1)
         
@@ -229,7 +232,6 @@ class TrackInterface:
 
         elif(self.track_iface_mode == "get_track_from_yaml"):
             trackyaml = rospkg.RosPack().get_path('common') + '/config/tracks/' + self.track_name + '/' + self.track_name + '.yaml'
-            #trackyaml = "/home/larsvens/ros/tamp__ws/src/saarti/common/config/tracks/frihamnen/frihamnen.yaml"
             with open(trackyaml, 'r') as f:
                 track_ = yaml.load(f,Loader=yaml.SafeLoader)
             fcl_X = np.array(track_["centerline"])[:,0]

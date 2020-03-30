@@ -1,67 +1,66 @@
 #!/usr/bin/env python
 
-# Descrition: Publishes state in cartesian and frenet coordinates
+# Descrition: Adds frenet coordinates to state and broadcasts tf
 
 # subscribes:
-# state from platform (for sim: /fssim/base_pose_ground_truth, for opendlv: /**********)
+# cartesian state from state_est_cart
 # global path from track interface (topic /pathglobal)
 
 # publishes: 
-# state (topic /state)
-
+# state (topic /state) - full state containing both frenet and cartesian coordinates
 # broadcasts TF tamp_map -> base_link
 
 import numpy as np
 import rospy
 from common.msg import Path
-from fssim_common.msg import State as fssimState
-from common.msg import State as saartiState
+#from fssim_common.msg import State as fssimState
+#from opendlv_ros.msg import SensorMsgGPS
+#from opendlv_ros.msg import SensorMsgCAN 
+from common.msg import State
 from coordinate_transforms import ptsCartesianToFrenet
 from util import angleToInterval
 from util import angleToContinous
-from std_msgs.msg import Float32
 import tf
 import rospkg
 import yaml
 import time
 
-class StateEst:
+class StateEstFrenet:
     # constructor
     def __init__(self):
-        # init node subs pubs
-        rospy.init_node('state_est', anonymous=True)
-        self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
-        self.fssim_state_sub = rospy.Subscriber("/fssim/base_pose_ground_truth", fssimState, self.fssim_state_callback)
-        self.statepub = rospy.Publisher('state', saartiState, queue_size=10)
-        self.tfbr = tf.TransformBroadcaster()
+        # init node
+        rospy.init_node('state_est_frenet', anonymous=True)
+        self.dt = 0.02
+        self.rate = rospy.Rate(1/self.dt) # 50hz   
         
-        # rqt debug
-        self.debugpub = rospy.Publisher('/state_est_debug', Float32, queue_size=1)
-        self.debug_val = Float32()
-   
-        # init local vars
+        # load rosparams
+        self.robot_name = rospy.get_param('/robot_name')
+        
+        # init subs
+        self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
         self.pathglobal = Path()
-        self.state_out = saartiState()
-        self.fssim_state_msg = fssimState()
+        self.received_pathglobal = False
+        self.state_cart_sub = rospy.Subscriber("/state_cart", State, self.state_cart_callback)
+        self.state_cart = State()
+        self.received_state_cart = False
+        
+        # init pubs
+        self.statepub = rospy.Publisher('state', State, queue_size=10)
+        self.state_out = State()        
+        self.tfbr = tf.TransformBroadcaster()
+           
+        # init local vars
         self.passed_halfway = False
         self.lapcounter = 0
         
-        # node params
-        self.dt = 0.02
-        self.rate = rospy.Rate(1/self.dt) # 50hz
-        self.received_fssim_state = False
-        self.received_pathglobal = False
-    
         # load vehicle dimensions 
-        self.robot_name = rospy.get_param('/robot_name')
         dimsyaml = rospkg.RosPack().get_path('common') + '/config/vehicles/' + self.robot_name + '/config/distances.yaml'
-        #dimsyaml = "/home/larsvens/ros/tamp__ws/src/saarti/common/config/vehicles/rhino/config/distances.yaml"
         with open(dimsyaml, 'r') as f:
             self.dims = yaml.load(f,Loader=yaml.SafeLoader)               
     
         # wait for messages before entering main loop
         while(not self.received_pathglobal):
-            print "state est: waiting for pathglobal"
+            rospy.loginfo_throttle(1, "state_est_frenet: waiting for pathglobal")
             self.rate.sleep()
         
         # compute length of track
@@ -69,22 +68,22 @@ class StateEst:
         dist_sf = np.sqrt( (self.pathglobal.X[0]-self.pathglobal.X[-1])**2 + (self.pathglobal.Y[0]-self.pathglobal.Y[-1])**2)
         self.s_lap = stot_global + dist_sf  
         
-        while(not self.received_fssim_state):
-            print "state est: waiting for fssim_state"
-            self.rate.sleep()
+        # wait for cartesian state
+        while(not self.received_state_cart):
+            rospy.loginfo_throttle(1, "state_est_frenet: waiting for state_cart")
+            self.rate.sleep()            
             
-        print "state est: running main "
-        print "state est: lap count = ", self.lapcounter
+        rospy.logwarn("state_est_frenet: started")
 
         # Main loop
         while not rospy.is_shutdown():
             
-            # check time wrt dt
+            # timing
             start = time.time()
             
             # state est
             start_statest = time.time()
-            self.updateState()
+            self.update_frenet_state()
             self.statepub.publish(self.state_out)
             end_statest = time.time()
             comptime_statest = end_statest-start_statest
@@ -95,11 +94,8 @@ class StateEst:
             self.broadcast_static_tfs()
             end_tfbc = time.time()
             comptime_tfbc = end_tfbc-start_tfbc
-                
-            # rqt debug
-            self.debug_val = self.state_out.deltapsi
-            self.debugpub.publish(self.debug_val)
 
+            # timing: check wrt dt
             end = time.time()
             comptime = end-start
             if (comptime > self.dt):
@@ -110,17 +106,16 @@ class StateEst:
             
             self.rate.sleep()   
             
-    def updateState(self):
+    def update_frenet_state(self):
       
-        self.state_out.X = self.fssim_state_msg.x
-        self.state_out.Y = self.fssim_state_msg.y
-        self.state_out.psi = self.fssim_state_msg.yaw
-        self.state_out.psidot = self.fssim_state_msg.r
-        self.state_out.vx = self.fssim_state_msg.vx
-        self.state_out.vy = self.fssim_state_msg.vy
+        self.state_out.X = self.state_cart.X
+        self.state_out.Y = self.state_cart.Y
+        self.state_out.psi = self.state_cart.psi
+        self.state_out.psidot = self.state_cart.psidot
+        self.state_out.vx = self.state_cart.vx
+        self.state_out.vy = self.state_cart.vy
 
         # get s, d and deltapsi
-
         s,d = ptsCartesianToFrenet(np.array([self.state_out.X]), \
                                    np.array([self.state_out.Y]), \
                                    np.array(self.pathglobal.X), \
@@ -142,8 +137,7 @@ class StateEst:
         if(self.lapcounter == 0 and s_this_lap > 0.75*self.s_lap and not self.passed_halfway):
             s_this_lap = 0.0
         
-        self.state_out.s = s_this_lap + self.lapcounter*self.s_lap    
-                    
+        self.state_out.s = s_this_lap + self.lapcounter*self.s_lap                     
         self.state_out.d = d[0]
         
         psi_c = np.interp(s,self.pathglobal.s,self.pathglobal_psic_cont)
@@ -153,8 +147,7 @@ class StateEst:
         # correction of detapsi @ psi flips
         self.state_out.deltapsi = angleToInterval(self.state_out.deltapsi)
         self.state_out.deltapsi = self.state_out.deltapsi[0]
-        #print "state est, deltapsi = ", self.state_out.deltapsi
-        #print "state est, psi      = ", self.state_out.psi
+        self.state_out.header.stamp = rospy.Time.now()
 
     def broadcast_dyn_tfs(self):
         self.tfbr.sendTransform((self.state_out.X, self.state_out.Y, 0),
@@ -213,17 +206,17 @@ class StateEst:
                                 "right_steering_hinge",
                                 "chassis") 
         
-    def fssim_state_callback(self, msg):
-        self.fssim_state_msg = msg
-        self.received_fssim_state = True
-        
+    def state_cart_callback(self, msg):
+        self.state_cart = msg
+        self.received_state_cart = True
+    
     def pathglobal_callback(self, msg):
         self.pathglobal = msg      
         self.pathglobal_psic_cont = angleToContinous(np.array(self.pathglobal.psi_c))
         self.received_pathglobal = True
 
 if __name__ == '__main__':
-    lse = StateEst()
+    sef = StateEstFrenet()
     try:
         rospy.spin()
     except KeyboardInterrupt:

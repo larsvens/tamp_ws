@@ -1,6 +1,0 @@
-<!-- Run single simulation with fssim. Takes sim config file as argument--> 
-
-<launch>
-    <rosparam file="$(find common)/config/vehicles/rhino/config/car.yaml" />
-    <rosparam file="$(find common)/config/sim_config/opendlv_rhino_asta_short.yaml" />
-</launch>

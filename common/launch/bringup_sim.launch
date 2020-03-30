@@ -4,8 +4,12 @@
     <!-- load simple robot description for vis -->
     <arg name="urdf_model" default="$(find common)/config/vehicles/rhino/urdf/car.urdf" />
     <param name="robot_description_simple" command="$(find xacro)/xacro --inorder $(arg urdf_model)" />
+    
+    <!-- param for perception mode -->
+    <param name="sensor_setup" type="string" value="rhino_sim" />
 
     <!-- simulation manager node (sets rosparams "robot_name and car params")-->
     <arg name="sim_config" default="rhino_asta_long.yaml"/>
-    <node pkg="fssim" name="fssim_manager" type="fssim_manager.py" output="screen" args="--config $(find common)/config/sim_config/$(arg sim_config)">  </node>    
+    <node pkg="fssim" name="fssim_manager" type="fssim_manager.py" output="screen" args="--config $(find common)/config/sim_config/$(arg sim_config)">  </node> 
+  
 </launch>

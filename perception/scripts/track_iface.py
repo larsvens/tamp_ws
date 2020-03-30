@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
 # Descrition: 
-# load and publish global path
+# load and publish global path 
+# publish utm origin
+# broadcast static tf tamp_map -> map
 
 import numpy as np
 import rospy
@@ -12,17 +14,20 @@ from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import Path as navPath
 from geometry_msgs.msg import PoseStamped
 from common.msg import Path
+from common.msg import OriginPoseUTM
 from coordinate_transforms import ptsFrenetToCartesian
 import yaml
 
 class TrackInterface:
     def __init__(self):
         rospy.init_node('track_interface', anonymous=True)
-        self.pathglobalpub = rospy.Publisher('pathglobal', Path, queue_size=10)
-        self.pathglobalvispub = rospy.Publisher('pathglobal_vis', navPath, queue_size=10)
-        self.dubvispub = rospy.Publisher('dubglobal_vis', navPath, queue_size=10)
-        self.dlbvispub = rospy.Publisher('dlbglobal_vis', navPath, queue_size=10)
+        self.pathglobalpub = rospy.Publisher('pathglobal', Path, queue_size=1)
+        self.pathglobalvispub = rospy.Publisher('pathglobal_vis', navPath, queue_size=1)
+        self.originposeutmpub = rospy.Publisher('origin_pose_utm', OriginPoseUTM, queue_size=1)
+        self.dubvispub = rospy.Publisher('dubglobal_vis', navPath, queue_size=1)
+        self.dlbvispub = rospy.Publisher('dlbglobal_vis', navPath, queue_size=1)
         self.pathglobal = Path()
+        self.originposeUTM = OriginPoseUTM()
         self.tf_broadcaster = tf2_ros.StaticTransformBroadcaster()
         self.rate = rospy.Rate(1)
         
@@ -83,6 +88,16 @@ class TrackInterface:
         rospy.logwarn("track_iface: publishing pathglobal")
         self.pathglobalpub.publish(self.pathglobal)
 
+        # build utm origin message
+        self.originposeUTM.X0_utm = track_["origin_pose_utm"]["X0_utm"]
+        self.originposeUTM.Y0_utm = track_["origin_pose_utm"]["Y0_utm"]
+        self.originposeUTM.psi0_utm = track_["origin_pose_utm"]["psi0_utm"]
+        self.originposeUTM.utm_nr = track_["origin_pose_utm"]["utm_nr"]
+        self.originposeUTM.utm_letter = ord(track_["origin_pose_utm"]["utm_letter"])
+
+        rospy.logwarn("track_iface: publishing origin pose UTM")
+        self.originposeutmpub.publish(self.originposeUTM)
+
         # set map transform in TF
         rospy.logwarn("track_iface: setting initial pose in TF")
         t = TransformStamped()
@@ -119,7 +134,7 @@ class TrackInterface:
             pathglobalvis.poses.append(pose)
         pathglobalvis.header.stamp = rospy.Time.now()
         pathglobalvis.header.frame_id = "map"
-        rospy.logwarn("track_iface: publishing pathglobal visualization")
+        #rospy.logwarn("track_iface: publishing pathglobal visualization")
         self.pathglobalvispub.publish(pathglobalvis)
 
         # test correctness of dub and dlb in rviz
