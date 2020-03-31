@@ -56,27 +56,21 @@ def get_cl_from_kml(filepath):
     
     # convert to utm
     X_utm,Y_utm,utm_nr,utm_letter = utm.from_latlon(lat, lon)
-    X0_utm = float(X_utm[0])
-    Y0_utm = float(Y_utm[0])
-    psi0_utm = float(np.arctan2(Y_utm[1]-Y_utm[0],X_utm[1]-X_utm[0]))
-    
-    X = X_utm - X0_utm
-    Y = Y_utm - Y0_utm
     
     # interpolate 
     ds = 1.0 # want approx 1 m between pts
     # approximate stot
     stot = 0
-    for i in range(X.size-1):
-        stot += np.sqrt((X[i+1]-X[i])**2 + (Y[i+1]-Y[i])**2)
+    for i in range(X_utm.size-1):
+        stot += np.sqrt((X_utm[i+1]-X_utm[i])**2 + (Y_utm[i+1]-Y_utm[i])**2)
     N = int(stot/ds)
     unew = np.arange(0, 1.0, 1.0/N) # N equidistant pts
-    tck, u = interpolate.splprep([X, Y], s=0)
+    tck, u = interpolate.splprep([X_utm, Y_utm], s=0)
     out = interpolate.splev(unew, tck)
-    Xcl = out[0]
-    Ycl = out[1]
+    X_utm_out = out[0]
+    Y_utm_out = out[1]    
 
-    return Xcl,Ycl, X0_utm, Y0_utm, psi0_utm, utm_nr, utm_letter 
+    return X_utm_out, Y_utm_out, utm_nr, utm_letter 
 
 #def get_oval_cl(l_long,R_curve,lanewidth):
 #    # section a 
@@ -269,7 +263,7 @@ def export_as_kml(track_name, export_path, X_cl,Y_cl,origin_pose_utm):
 # Track Generation
 #
 plt.close('all')
-track_name = "asta_local_min"
+track_name = "rural_test_route_1"
 
 # export params
 export_path_fssim = "/home/larsvens/ros/tamp__ws/src/fssim/fssim_gazebo/models/track"
@@ -338,6 +332,34 @@ if(track_name == "frihamnen"):
       "utm_nr": utm_nr, 
       "utm_letter": utm_letter
     }
+
+if(track_name == "rural_test_route_1"):
+    filepath = path.join('../config/tracks/ge_exports/rural_test_route_1.kml')
+    lanewidth = 2.3
+    X_utm, Y_utm, utm_nr, utm_letter = get_cl_from_kml(filepath)           
+
+    # adjust offset for this route
+    Xoffs = -90
+    Yoffs = -150
+    X_utm = X_utm+Xoffs
+    Y_utm = Y_utm+Yoffs
+ 
+    # set utm origin pose
+    X0_utm = float(X_utm[0])
+    Y0_utm = float(Y_utm[0])
+    psi0_utm = float(np.arctan2(Y_utm[1]-Y_utm[0],X_utm[1]-X_utm[0]))
+            
+    origin_pose_utm =	{
+      "X0_utm": X0_utm,
+      "Y0_utm": Y0_utm,
+      "psi0_utm": psi0_utm,
+      "utm_nr": utm_nr, 
+      "utm_letter": utm_letter
+    }
+
+    # set centerline in map coord sys
+    X_cl = X_utm - X0_utm
+    Y_cl = Y_utm - Y0_utm
     
 # compute s
 X_cl = np.append(X_cl, X_cl[0])

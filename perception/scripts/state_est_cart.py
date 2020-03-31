@@ -6,7 +6,7 @@
 # sensor_setup = "fssim": /fssim/base_pose_ground_truth
 
 
-#import numpy as np
+import numpy as np
 import time
 import utm
 import yaml
@@ -30,6 +30,7 @@ class StateEstCart:
         # load rosparams
         self.robot_name = rospy.get_param('/robot_name')
         self.sensor_setup = rospy.get_param('/sensor_setup')
+        self.lr = rospy.get_param('/car/kinematics/b_R')
 
         # init local vars
         self.state_out = State()
@@ -62,7 +63,7 @@ class StateEstCart:
             while((not self.received_odlv_gps) or (not self.received_odlv_can)):
                 rospy.loginfo_throttle(1, "state_est_cart: waiting opendlv messages")
                 self.rate.sleep()
-            while(self.received_origin_pose_utm):
+            while(not self.received_origin_pose_utm):
                 rospy.loginfo_throttle(1, "state_est_cart: waiting origin pose utm")
                 self.rate.sleep()
         else:
@@ -81,7 +82,8 @@ class StateEstCart:
             # state estimation
             if (self.sensor_setup == "rhino_real"):
                 self.update_rhino_state()
-
+                self.statepub.publish(self.state_out)
+                
             # broadcast tf
             start_tfbc = time.time()
             self.broadcast_dyn_tfs()
@@ -104,13 +106,28 @@ class StateEstCart:
 
 
     def update_rhino_state(self):
-        X, Y, utm_nr, utm_letter = utm.from_latlon(self.odlv_gps_msg.lat, self.odlv_gps_msg.long)
+        X_utm, Y_utm, utm_nr, utm_letter = utm.from_latlon(self.odlv_gps_msg.lat, self.odlv_gps_msg.long)
         
         # check utm zone
         if(utm_nr != self.origin_pose_utm.utm_nr):
             rospy.logerr("UTM zone mismatch: GPS measurement utm_nr =     " + str(utm_nr) + ", origin_pose utm_nr =     " + str(self.origin_pose_utm.utm_nr))
             rospy.logerr("UTM zone mismatch: GPS measurement utm_letter = " + utm_letter + ", origin_pose utm_letter = " + str(chr(self.origin_pose_utm.utm_letter)))
-
+        
+        # set pose
+        psi_offset = -22*(np.pi/180)
+        self.state_out.X = X_utm - self.origin_pose_utm.X0_utm
+        self.state_out.Y = Y_utm - self.origin_pose_utm.Y0_utm
+        self.state_out.psi = -self.odlv_gps_msg.yawangle + psi_offset
+        
+        # set velocities
+        self.state_out.psidot = self.odlv_can_msg.yawrate
+        self.state_out.vx = np.sqrt(self.odlv_gps_msg.vx**2 + self.odlv_gps_msg.vy**2)
+        self.state_out.vy = self.state_out.psidot*self.lr
+        
+        #self.state_out.vx = self.odlv_gps_msg.vx*np.cos(-self.odlv_gps_msg.yawangle) - self.odlv_gps_msg.vy*np.sin(-self.odlv_gps_msg.yawangle)
+        #self.state_out.vy = self.odlv_gps_msg.vx*np.sin(-self.odlv_gps_msg.yawangle) + self.odlv_gps_msg.vy*np.cos(-self.odlv_gps_msg.yawangle)
+        
+        
 
     def broadcast_dyn_tfs(self):
         self.tfbr.sendTransform((self.state_out.X, self.state_out.Y, 0),
@@ -192,6 +209,8 @@ class StateEstCart:
     def origin_pose_utm_callback(self, msg):
         self.origin_pose_utm = msg
         self.received_origin_pose_utm = True
+        
+        # TMP FOR TESTING 
 
 if __name__ == '__main__':
     sec = StateEstCart()

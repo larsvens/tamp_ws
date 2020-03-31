@@ -4,12 +4,17 @@
     <!-- rosparams -->
     <param name="robot_name" type="string" value="rhino" />
     <param name="sensor_setup" type="string" value="rhino_real" />
-    <rosparam command="load" file="$(find common)/config/exp_config/frihamnen_tests_config.yaml" />
+    <rosparam command="load" file="$(find common)/config/exp_config/rural_test_route_1_config.yaml" />
+    <rosparam command="load" file="$(find common)/config/vehicles/rhino/config/car.yaml" />
 
     <!-- perception nodes -->
     <node pkg="perception" type="track_iface.py" name="track_iface" output="screen" > </node>
     <node pkg="perception" type="state_est_cart.py" name="state_est_cart" output="screen"> </node>
     <node pkg="perception" type="state_est_frenet.py" name="state_est_frenet" output="screen"> </node>
+    <node pkg="perception" type="perception.py" name="perception" > </node>
 
-    <!-- <node pkg="perception" type="perception.py" name="perception" > </node> -->
+    <!-- visualization -->
+    <arg name="urdf_model" default="$(find common)/config/vehicles/rhino/urdf/car.urdf" />
+    <param name="robot_description_simple" command="$(find xacro)/xacro --inorder $(arg urdf_model)" />
+    <node name="rviz_" pkg="rviz" type="rviz" args="-d $(find common)/config/rviz_config/saarti_real.rviz "/>
 </launch>
