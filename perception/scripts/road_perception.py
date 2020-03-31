@@ -29,7 +29,7 @@ class Perception:
     # constructor
     def __init__(self):
         # init node subs pubs
-        rospy.init_node('perception', anonymous=True)
+        rospy.init_node('road_perception', anonymous=True)
         self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
         self.state_sub = rospy.Subscriber("state", State, self.state_callback)
         self.pathlocalpub = rospy.Publisher('pathlocal', Path, queue_size=10)
