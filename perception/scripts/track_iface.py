@@ -164,8 +164,11 @@ class TrackInterface:
             pathright.poses.append(pose)
         self.dlbvispub.publish(pathright)    
 
-
-
+        while not rospy.is_shutdown():
+            # republish pathglobal every 5 seconds
+            for i in range(5): 
+                self.rate.sleep()
+            self.pathglobalpub.publish(self.pathglobal)
 
 
 if __name__ == '__main__':

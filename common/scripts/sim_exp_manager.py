@@ -30,6 +30,9 @@ class ExperimentManager:
     # constructor
     def __init__(self):
         
+        # init node
+        rospy.init_node('experiment_manager')
+        
         # timing params
         self.dt_sim = 0.01 # timestep of the simulation
         self.t_activate = rospy.get_param('/t_activate')
@@ -64,8 +67,7 @@ class ExperimentManager:
         n_pauses = len(self.s_pause_gazebo) 
         i_pauses = 0
         
-        # init node subs pubs
-        rospy.init_node('experiment_manager', anonymous=True)
+        # init subs pubs
         #self.clockpub = rospy.Publisher('/clock', Clock, queue_size=10)   
         self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
         self.statesub = rospy.Subscriber("state", State, self.state_callback)
@@ -138,49 +140,11 @@ class ExperimentManager:
                 if(s_ego >= self.s_begin_mu_segments[-1]):
                     self.mu_segment_idx = self.N_mu_segments-1
                 mu = self.mu_segment_values[self.mu_segment_idx] 
-
-                #print "s_ego =              ", s_ego
-                #print "state.s =            ", self.state.s
-                #print "self.N_mu_segments = ", self.N_mu_segments
-                #print "mu_segment_idx =     ", self.mu_segment_idx
-                #print "mu in this section = ", self.mu_segment_values[self.mu_segment_idx] 
                 
                 # set tire params of sim vehicle
-                
-                
-                if (0.0 <= mu <0.3): # ice
-                    B = 4.0
-                    C = 2.0
-                    D = mu
-                    E = 1.0
-                elif (0.3 <= mu < 0.5): # snow
-                    B = 5.0
-                    C = 2.0
-                    D = mu
-                    E = 1.0
-                elif (0.5 <= mu < 0.9): # wet
-                    B = 12.0
-                    C = 2.3
-                    D = mu
-                    E = 1.0
-                elif (0.9 <= mu < 1.5): # dry
-                    B = 10.0
-                    C = 1.9
-                    D = mu
-                    E = 0.97
-                elif (1.5 <= mu < 2.5): # dry + racing tires (gotthard default)
-                    B = 12.56;
-                    C = 1.38; 
-                    D = mu;
-                    E = 1.0               
-                else: 
-                    rospy.loginfo_throttle(1, "Faulty mu value in exp manager")
-                                
+                self.tireparams.B, self.tireparams.C, self.tireparams.D, self.tireparams.E = self.get_tire_params(mu)
+                self.tireparams.D = - self.tireparams.D # fssim sign convention             
                 self.tireparams.tire_coefficient = 1.0        
-                self.tireparams.B = B
-                self.tireparams.C = C
-                self.tireparams.D = -D
-                self.tireparams.E = E    
                 self.tireparams.header.stamp = rospy.Time.now()
                 self.tireparampub.publish(self.tireparams)
                 
@@ -397,6 +361,37 @@ class ExperimentManager:
         message = 'run finished, shutting down'
         print message
         rospy.signal_shutdown(message)
+
+    def get_tire_params(self,mu):
+        if (0.0 <= mu <0.3): # ice
+            B = 4.0
+            C = 2.0
+            D = mu
+            E = 1.0
+        elif (0.3 <= mu < 0.5): # snow
+            B = 5.0
+            C = 2.0
+            D = mu
+            E = 1.0
+        elif (0.5 <= mu < 0.9): # wet
+            B = 12.0
+            C = 2.3
+            D = mu
+            E = 1.0
+        elif (0.9 <= mu < 1.5): # dry
+            B = 10.0
+            C = 1.9
+            D = mu
+            E = 0.97
+        elif (1.5 <= mu < 2.5): # dry + racing tires (gotthard default)
+            B = 12.56;
+            C = 1.38; 
+            D = mu;
+            E = 1.0               
+        else: 
+            rospy.logerr("Faulty mu value in exp manager")
+        
+        return B,C,D,E
 
     def getobstaclemarker(self,X,Y,R):
         m = Marker()

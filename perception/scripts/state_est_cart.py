@@ -100,7 +100,7 @@ class StateEstCart:
                 rospy.logwarn("state_est_cart: total comptime =        " + str(comptime))
                 rospy.logwarn("state_est_cart: comptime tf broadcast = " + str(comptime_tfbc))
             
-            self.rate.sleep() 
+            self.rate.sleep()
 
 
 
@@ -114,7 +114,7 @@ class StateEstCart:
             rospy.logerr("UTM zone mismatch: GPS measurement utm_letter = " + utm_letter + ", origin_pose utm_letter = " + str(chr(self.origin_pose_utm.utm_letter)))
         
         # set pose
-        psi_offset = -22*(np.pi/180)
+        psi_offset = -27*(np.pi/180)
         self.state_out.X = X_utm - self.origin_pose_utm.X0_utm
         self.state_out.Y = Y_utm - self.origin_pose_utm.Y0_utm
         self.state_out.psi = -self.odlv_gps_msg.yawangle + psi_offset

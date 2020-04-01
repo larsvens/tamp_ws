@@ -7,7 +7,7 @@
     <rosparam command="load" file="$(find common)/config/exp_config/$(arg exp_config)" />
     
     <!-- experiment manager node -->
-    <node pkg="common" type="experiment_manager.py" name="experiment_manager"  required="true" output="screen"> </node>
+    <node pkg="common" type="sim_exp_manager.py" name="experiment_manager"  required="true" output="screen"> </node>
 
     <!-- perception nodes -->
     <node pkg="perception" type="track_iface.py" name="track_iface" output="screen" > </node>
@@ -19,6 +19,11 @@
 
     <!-- visualization -->
     <node name="rviz_" pkg="rviz" type="rviz" args="-d $(find common)/config/rviz_config/saarti_sim.rviz "/>
+
+    <!-- logging -->
+    <arg name="record_rosbag" default="false" />
+    <node pkg="rosbag" type="record" name="rosbag_record_exp" args="record -a -O  $(find tamp_logs)/bags/sim_exp/latest_bag" if="$(arg record_rosbag)" />
+
 
 </launch>
 

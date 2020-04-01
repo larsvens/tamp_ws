@@ -17,4 +17,5 @@
     <arg name="urdf_model" default="$(find common)/config/vehicles/rhino/urdf/car.urdf" />
     <param name="robot_description_simple" command="$(find xacro)/xacro --inorder $(arg urdf_model)" />
     <node name="rviz_" pkg="rviz" type="rviz" args="-d $(find common)/config/rviz_config/saarti_real.rviz "/>
+
 </launch>

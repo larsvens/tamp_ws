@@ -2,19 +2,19 @@
 
 t_activate: 5.0
 t_final: 500.0
-scenario_id: 2 # 1: pop-up, 2: reduced mu turn, 3: racing
+scenario_id: 1 # 1: pop-up, 2: reduced mu turn, 3: racing
 s_begin_log: 180
 s_pause_gazebo: []
 #s_pause_gazebo: [180, 195, 210, 225, 240] # snapshots
 
 # pop-up obstacle config
-s_ego_at_popup:  50
-s_obs_at_popup: 75
+s_ego_at_popup:  600
+s_obs_at_popup: 650
 d_obs_at_popup: -1.75 
 
 ### track config 
 track_name: "rural_test_route_1" 
-s_begin_mu_segments:  [0.0, 200.0]
+s_begin_mu_segments:  [0.0, 700.0]
 mu_segment_values:  [1.0, 0.5]
 
 # cc config

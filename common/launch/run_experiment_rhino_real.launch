@@ -1,0 +1,31 @@
+<!-- launch rhino real time experiment --> 
+
+<launch>
+    <!-- experiment manager node -->
+    <node pkg="common" type="real_exp_manager.py" name="experiment_manager"  required="true" output="screen"> </node>
+
+    <!-- planning & ctrl nodes -->
+
+
+    <!-- logging -->
+    <arg name="record_rosbag" default="true" />
+    <node pkg="rosbag" type="record" name="rosbag_record_exp" if="$(arg record_rosbag)"     
+		args="record -O  $(find tamp_logs)/bags/real_exp/latest_bag
+			/OpenDLV/SensorMsgGPS_
+			/OpenDLV/SensorMsgCAN_
+			/pathglobal
+			/pathglobal_vis
+			/dlbglobal_vis
+			/dubglobal_vis
+			/origin_pose_utm
+			/tf
+			/tf_static
+			/state_cart
+			/state
+			/pathlocal
+			/pathlocal_vis"> 
+		<remap from="/OpenDLV/SensorMsgGPS" to="/OpenDLV/SensorMsgGPS_"/>
+		<remap from="/OpenDLV/SensorMsgCAN" to="/OpenDLV/SensorMsgCAN_"/>
+	</node>
+
+</launch>
