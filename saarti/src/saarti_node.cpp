@@ -67,7 +67,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
     containers::trajstruct trajstar_last;
 
     // main loop
-    planner_activated_ = true;
+    //planner_activated_ = true;
     while (ros::ok())
     {
         ROS_INFO_STREAM(" ");
@@ -78,12 +78,19 @@ SAARTI::SAARTI(ros::NodeHandle nh){
         common::SaartiStatus status_msg;
 
         // check deactivate conditions
-        vector<float> dubv = cpp_utils::interp({state_.s},pathlocal_.s,pathlocal_.dub,false);
-        float dub = dubv.at(0);
-        vector<float> dlbv = cpp_utils::interp({state_.s},pathlocal_.s,pathlocal_.dlb,false);
-        float dlb = dlbv.at(0);
-        if(state_.d > dub+2.0f || state_.d < dlb-2.0f){ // todo from param
-            planner_activated_ = false; // && ref == track_speed
+
+//        vector<float> dubv = cpp_utils::interp({state_.s},pathlocal_.s,pathlocal_.dub,false);
+//        float dub = dubv.at(0);
+//        vector<float> dlbv = cpp_utils::interp({state_.s},pathlocal_.s,pathlocal_.dlb,false);
+//        float dlb = dlbv.at(0);
+//        if(state_.d > dub+2.0f || state_.d < dlb-2.0f){ // todo from param
+//            planner_activated_ = false; // && ref == track_speed
+//        }
+
+        if(ctrlmode_ == 2){
+            planner_activated_ = true;
+        } else {
+            planner_activated_ = false;
         }
         status_msg.planner_activated = planner_activated_;
 
@@ -367,13 +374,12 @@ SAARTI::SAARTI(ros::NodeHandle nh){
             status_msg.header.stamp = ros::Time::now();
             status_msg.sampling_aug_activated = bool(sampling_augmentation_);
             status_msg.N_rollouts = Nd_rollout_*Nvx_rollout_;
-            // todo: nr_of_collision_free_candidates
-            status_pub_.publish(status_msg);
 
         } else {
-            ROS_INFO_STREAM("planner deactivated");
+            ROS_WARN_THROTTLE(1.0,"planner deactivated");
         }
-
+        status_msg.header.stamp = ros::Time::now();
+        status_pub_.publish(status_msg);
         ros::spinOnce();
         loop_rate.sleep();
     }
@@ -812,8 +818,7 @@ void SAARTI::run_optimization(){
 
 } // end namespace
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv){
     ros::init(argc, argv, "saarti_node");
     ros::NodeHandle nh;
     saarti_node::SAARTI saarti(nh);

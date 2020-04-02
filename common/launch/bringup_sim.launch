@@ -4,9 +4,7 @@
     <!-- load simple robot description for vis -->
     <arg name="urdf_model" default="$(find common)/config/vehicles/rhino/urdf/car.urdf" />
     <param name="robot_description_simple" command="$(find xacro)/xacro --inorder $(arg urdf_model)" />
-    
-    <!-- param for perception mode -->
-    <param name="sensor_setup" type="string" value="rhino_sim" />
+    <param name="system_setup" type="string" value="rhino_fssim" />
 
     <!-- simulation manager node (sets rosparams "robot_name and car params")-->
     <arg name="sim_config" default="rhino_asta_long.yaml"/>

@@ -166,6 +166,14 @@ class ExperimentManager:
                     self.ctrl_mode = 1 # pp cruise control from standstill
                     if(self.state.vx > 5): # todo
                         self.ctrl_mode = 2 # tamp cruise control when we get up to speed
+                
+                # PURE PURSUIT TEST
+                elif(self.scenario_id == 5):
+                    self.ctrl_mode = 1
+
+                # TAMP TEST
+                elif(self.scenario_id == 6):
+                    self.ctrl_mode = 2
                                        
                 # RACING
                 else:
@@ -414,7 +422,7 @@ class ExperimentManager:
     def gettextmarker(self,text):
         m = Marker()
         m.header.stamp = rospy.Time.now()
-        m.header.frame_id = "fssim/vehicle/base_link"
+        m.header.frame_id = "base_link"
         m.pose.position.x = 0;
         m.pose.position.y = 7.5;
         m.pose.position.z = 5.0;

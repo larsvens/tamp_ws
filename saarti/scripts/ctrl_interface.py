@@ -11,12 +11,17 @@
 # publishes: 
 # vehicle specific ctrl command (topic /fssim/cmd for sim, topic **** for real opendlv)
 
+# swithches controller and output topic based on the "system_setup" param
+# system_setup = rhino_real -> /OpenDLV/ActuationRequest
+# system_setup = rhino_fssim or gotthard_fssim -> /fssim/cmd
+
 import numpy as np
 import rospy
 from common.msg import Trajectory
 from common.msg import Path
 from common.msg import State
 from fssim_common.msg import Cmd
+from opendlv_ros.msg import ActuationRequest 
 from visualization_msgs.msg import Marker
 from std_msgs.msg import Float32
 from coordinate_transforms import ptsFrenetToCartesian
@@ -26,7 +31,7 @@ class CtrlInterface:
     def __init__(self):
         
         # params
-        self.robot_name = rospy.get_param('/robot_name')
+        self.system_setup = rospy.get_param('/system_setup')
         self.dt = rospy.get_param('/dt_ctrl')
         
         # init node subs pubs
@@ -35,17 +40,19 @@ class CtrlInterface:
         self.pathlocalsub = rospy.Subscriber("pathlocal", Path, self.pathlocal_callback)
         self.state_sub = rospy.Subscriber("/state", State, self.state_callback)
         self.ctrlmodesub = rospy.Subscriber("ctrl_mode", Int16, self.ctrl_mode_callback)
-        self.vehicleinpub = rospy.Publisher('/fssim/cmd', Cmd, queue_size=10)
         self.lhptpub = rospy.Publisher('/lhpt_vis', Marker, queue_size=1)
         self.vx_errorpub = rospy.Publisher('/vx_error_vis', Float32, queue_size=1)
         self.rate = rospy.Rate(1/self.dt)
-
+        if(self.system_setup == "rhino_real"):
+            self.cmdpub = rospy.Publisher('/OpenDLV/ActuationRequest', ActuationRequest, queue_size=10)
+        elif(self.system_setup == "rhino_fssim" or self.system_setup == "gotthard_fssim"):
+            self.cmdpub = rospy.Publisher('/fssim/cmd', Cmd, queue_size=10)
+        
         # set static vehicle params
         self.setStaticParams()
 
         # init msgs
         self.state = State()
-        self.vehicle_in = Cmd()
         self.trajstar = Trajectory()
         self.pathlocal = Path()
         self.ctrl_mode = 0 # 0: stop, 1: cruise_ctrl, 2: tamp 
@@ -87,10 +94,13 @@ class CtrlInterface:
                 if (self.state.vx > 0.1):
                     rospy.loginfo_throttle(1,"in stop mode")
                     delta_out = self.delta_out_last
-                    dc_out = -200000 #self.dc_out_last
+                    if(self.system_setup == "rhino_real"):
+                        dc_out = 0.0
+                    else:
+                        dc_out = -200000 # todo set for other platforms
                 else:
-                    delta_out = 0
-                    dc_out = 0
+                    delta_out = 0.0
+                    dc_out = 0.0
             elif(self.ctrl_mode == 1):   # CRUISE CTRL             
                 delta_out, dc_out, Xlh,Ylh = self.cc_ctrl()           
                            
@@ -102,13 +112,18 @@ class CtrlInterface:
                     self.rate.sleep()         
                 delta_out, dc_out, Xlh, Ylh = self.tamp_ctrl()
             else:
-                print "invalid ctrl_mode! ctrl_mode = ", self.ctrl_mode
+                rospy.logerr("invalid ctrl_mode! ctrl_mode = " + str(self.ctrl_mode))
     
-            # publish ctrl cmd            
-            self.vehicle_in.delta = delta_out
-            #print "dc_out published = ", dc_out
-            self.vehicle_in.dc = dc_out
-            self.vehicleinpub.publish(self.vehicle_in)
+            # publish ctrl cmd
+            if(self.system_setup == "rhino_real"):
+                self.cmd = ActuationRequest()
+                self.cmd.steering = delta_out
+                self.cmd.acceleration = dc_out
+            elif(self.system_setup == "rhino_fssim" or self.system_setup == "gotthard_fssim"):
+                self.cmd = Cmd()
+                self.cmd.delta = delta_out
+                self.cmd.dc = dc_out
+            self.cmdpub.publish(self.cmd)
 
             # publish tuning info
             self.vx_errorpub.publish(self.vx_error)
@@ -123,7 +138,7 @@ class CtrlInterface:
             self.rate.sleep()
     
     def cc_ctrl(self):
-        rospy.loginfo_throttle(1, "Running CC control")
+        rospy.loginfo_throttle(1, "ctrl_interface: running CC control with vxref = " + str(self.cc_vxref))
         
         if(self.state.vx > 0.0):
             # get lhpt
@@ -141,27 +156,36 @@ class CtrlInterface:
             rho_pp = self.pp_curvature(self.state.X,self.state.Y,self.state.psi,Xlh[0],Ylh[0])
             delta_out = rho_pp*(self.lf + self.lr) # kinematic feed fwd
         else:
-            Xlh = 0.0
-            Ylh = 0.0
+            Xlh = self.state.X
+            Ylh = self.state.Y
             delta_out = 0.0
         
         self.vx_error = self.cc_vxref - self.state.vx
-        if(self.robot_name == "gotthard"):
-            k = 500
-        elif(self.robot_name == "rhino"):
+        if(self.system_setup == "rhino_real"):
+            k = 0.2
+            dc_out_unsat = k*self.vx_error
+            # saturate output
+            dc_out = float(np.clip(dc_out_unsat, a_min = -1.0, a_max = 1.0))
+            if (dc_out_unsat != dc_out):
+                rospy.logwarn_throttle(1,"saturated logitudinal command in cc_ctrl")
+        elif(self.system_setup == "rhino_fssim"):
             k = 1500
+            dc_out = k*self.vx_error
+        elif(self.system_setup == "gotthard_fssim"):
+            k = 500
+            dc_out = k*self.vx_error
         else: 
             k = 0
-            print "ERROR: incorrect /robot_name"
-        dc_out = k*self.vx_error
+            rospy.logerr("ctrl_interface: invalid value of system_setup param, system_setup = " + self.system_setup)
+        
         return delta_out, dc_out, Xlh,Ylh
         
         
     def tamp_ctrl(self):
         rospy.loginfo_throttle(1, "Running TAMP control")
         # LATERAL CTRL
-        # feedfwd        
-        # compute local curvature of trajhat (rho)
+
+        # kinematic feedfwd term
         lhpt_idx = 7;
         Xlh = self.trajstar.X[lhpt_idx]
         Ylh = self.trajstar.Y[lhpt_idx]
@@ -169,40 +193,46 @@ class CtrlInterface:
                                    self.trajstar.Y[0],
                                    self.trajstar.psi[0],
                                    Xlh,
-                                   Ylh)
+                                   Ylh)       
+        kin_ff_term = rho_pp*(self.lf + self.lr)
 
-        # kin + dyn feedforward        
-        kin_ff_term = rho_pp*(self.lf + self.lr)         
-        dyn_ff_term = 0.9*self.trajstar.Fyf[0]/self.trajstar.Cf[0] # 0.5
-        if(self.robot_name == "gotthard"): 
-            dyn_ff_term = 0.1*dyn_ff_term
+        # dynamic feedfwd term (platform dependent)        
+        if(self.system_setup == "rhino_real"):
+            dyn_ff_term = 0.9*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
+        elif(self.system_setup == "rhino_fssim"):
+            dyn_ff_term = 0.9*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
+        elif(self.system_setup == "gotthard_fssim"):
+            dyn_ff_term = 0.1*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
+        else:
+            rospy.logerr("ctrl_interface: invalid value of system_setup param, system_setup = " + self.system_setup)
         delta_out = kin_ff_term + dyn_ff_term
 
 
         # LONGITUDINAL CTRL
         # feedfwd
         Fx_request = self.trajstar.Fxf[0] + self.trajstar.Fxr[0]
-        
-        if(self.robot_name == "gotthard"):
-            # feedfwd 
-          
+        self.vx_error = self.trajstar.vx[1]-self.state.vx
+        if(self.system_setup == "rhino_real"):
+            feedfwd = Fx_request/self.m
+            feedback = 6.0*self.vx_error
+            dc_out_unsat = feedfwd + feedback
+            # saturate output
+            dc_out = float(np.clip(dc_out_unsat, a_min = -1.0, a_max = 1.0))
+            if (dc_out_unsat != dc_out):
+                rospy.logwarn_throttle(1,"saturated logitudinal command in tamp_ctrl")
+        elif(self.system_setup == "rhino_fssim"):
+            feedfwd = Fx_request
+            feedback = 50000*self.vx_error
+            dc_out = feedfwd + feedback
+        elif(self.system_setup == "gotthard_fssim"):
             feedfwd = 1.1*Fx_request 
-            self.vx_error = self.trajstar.vx[1]-self.state.vx
             feedback = 0.0*self.vx_error
-            
             Cr0 = 180
             Cm1 = 5000            
-            dc_out = ((feedfwd+feedback)+Cr0)/Cm1 
-            
-        elif(self.robot_name == "rhino"):
-            feedfwd = Fx_request
-            self.vx_error = self.trajstar.vx[1]-self.state.vx
-            feedback = 50000*self.vx_error
-            #print("feedback: ", feedback)
-            dc_out = feedfwd + feedback
+            dc_out = ((feedfwd+feedback)+Cr0)/Cm1           
         else:
-            dc_out = Fx_request
-            print "ERROR: incorrect /robot_name"
+            dc_out = 0
+            rospy.logerr("ctrl_interface: invalid value of system_setup param, system_setup = " + self.system_setup)
         
         return delta_out, dc_out, Xlh, Ylh
 
@@ -266,7 +296,8 @@ class CtrlInterface:
         self.ctrl_mode = msg.data
 
     def setStaticParams(self):
-        self.g = 9.81
+        self.g = rospy.get_param('/car/inertia/g')
+        self.m = rospy.get_param('/car/inertia/m')
         self.lf = rospy.get_param('/car/kinematics/b_F')
         self.lr = rospy.get_param('/car/kinematics/b_R')
 

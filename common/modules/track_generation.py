@@ -263,7 +263,7 @@ def export_as_kml(track_name, export_path, X_cl,Y_cl,origin_pose_utm):
 # Track Generation
 #
 plt.close('all')
-track_name = "rural_test_route_1"
+track_name = "storaholm_gravel_south"
 
 # export params
 export_path_fssim = "/home/larsvens/ros/tamp__ws/src/fssim/fssim_gazebo/models/track"
@@ -341,6 +341,34 @@ if(track_name == "rural_test_route_1"):
     # adjust offset for this route
     Xoffs = -90
     Yoffs = -150
+    X_utm = X_utm+Xoffs
+    Y_utm = Y_utm+Yoffs
+ 
+    # set utm origin pose
+    X0_utm = float(X_utm[0])
+    Y0_utm = float(Y_utm[0])
+    psi0_utm = float(np.arctan2(Y_utm[1]-Y_utm[0],X_utm[1]-X_utm[0]))
+            
+    origin_pose_utm =	{
+      "X0_utm": X0_utm,
+      "Y0_utm": Y0_utm,
+      "psi0_utm": psi0_utm,
+      "utm_nr": utm_nr, 
+      "utm_letter": utm_letter
+    }
+
+    # set centerline in map coord sys
+    X_cl = X_utm - X0_utm
+    Y_cl = Y_utm - Y0_utm
+
+if(track_name == "storaholm_gravel_south"):
+    filepath = path.join('../config/tracks/ge_exports/storaholm_gravel_south.kml')
+    lanewidth = 2.3
+    X_utm, Y_utm, utm_nr, utm_letter = get_cl_from_kml(filepath)           
+
+    # adjust offset for this route
+    Xoffs = 0
+    Yoffs = 0
     X_utm = X_utm+Xoffs
     Y_utm = Y_utm+Yoffs
  

@@ -13,7 +13,7 @@ s_obs_at_popup: 160
 d_obs_at_popup: -0.6 #-1.75 
 
 ### track config 
-track_name: "asta_zero" # todo pipe through at "simulation.cfg"
+track_name: "asta_zero_long"
 s_begin_mu_segments:  [0.0]
 mu_segment_values:  [0.4]
 

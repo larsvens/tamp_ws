@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 # Descrition: Publishes state in cartesian coordinatesand broadcasts tf tamp_map -> base_link
-# selects input topic based on sensor_setup param 
-# sensor_setup = "rhino_real": /OpenDLV/SensorMsgGPS & /OpenDLV/SensorMsgCAN
-# sensor_setup = "fssim": /fssim/base_pose_ground_truth
+# selects input topic based on system_setup param 
+# system_setup = "rhino_real": /OpenDLV/SensorMsgGPS & /OpenDLV/SensorMsgCAN
+# system_setup = "rhino_fssim": /fssim/base_pose_ground_truth
 
 
 import numpy as np
@@ -29,7 +29,7 @@ class StateEstCart:
         
         # load rosparams
         self.robot_name = rospy.get_param('/robot_name')
-        self.sensor_setup = rospy.get_param('/sensor_setup')
+        self.system_setup = rospy.get_param('/system_setup')
         self.lr = rospy.get_param('/car/kinematics/b_R')
 
         # init local vars
@@ -41,7 +41,7 @@ class StateEstCart:
             self.dims = yaml.load(f,Loader=yaml.SafeLoader)   
        
         # init subs pubs
-        if (self.sensor_setup == "rhino_real"):
+        if (self.system_setup == "rhino_real"):
             self.odlv_gps_sub = rospy.Subscriber("/OpenDLV/SensorMsgGPS", SensorMsgGPS, self.odlv_gps_callback)
             self.odlv_gps_msg = SensorMsgGPS()
             self.received_odlv_gps = False
@@ -51,27 +51,28 @@ class StateEstCart:
             self.origin_pose_utm_sub = rospy.Subscriber("/origin_pose_utm", OriginPoseUTM, self.origin_pose_utm_callback)
             self.origin_pose_utm = OriginPoseUTM()
             self.received_origin_pose_utm = False
-        else:
+        elif(self.system_setup == "rhino_fssim"):
             self.fssim_state_sub = rospy.Subscriber("/fssim/base_pose_ground_truth", fssimState, self.fssim_state_callback)
             self.received_fssim_state = False
-    
+        else: 
+            rospy.logerr("state_est_cart: invalid value of system_setup param, system_setup = " + self.system_setup)
         self.statepub = rospy.Publisher('state_cart', State, queue_size=1)
         self.tfbr = tf.TransformBroadcaster()
         
         # wait for messages before entering main loop
-        if (self.sensor_setup == "rhino_real"):
+        if (self.system_setup == "rhino_real"):
             while((not self.received_odlv_gps) or (not self.received_odlv_can)):
                 rospy.loginfo_throttle(1, "state_est_cart: waiting opendlv messages")
                 self.rate.sleep()
             while(not self.received_origin_pose_utm):
                 rospy.loginfo_throttle(1, "state_est_cart: waiting origin pose utm")
                 self.rate.sleep()
-        else:
+        elif(self.system_setup == "rhino_fssim"):
             while(not self.received_fssim_state):
                 rospy.loginfo_throttle(1, "state_est_cart: waiting fssim state message")
                 self.rate.sleep()
 
-        rospy.logwarn("state_est_cart: started with sensor setup " + self.sensor_setup)
+        rospy.logwarn("state_est_cart: started with sensor setup " + self.system_setup)
 
         # Main loop
         while not rospy.is_shutdown():
@@ -80,7 +81,7 @@ class StateEstCart:
             start = time.time()
             
             # state estimation
-            if (self.sensor_setup == "rhino_real"):
+            if (self.system_setup == "rhino_real"):
                 self.update_rhino_state()
                 self.statepub.publish(self.state_out)
                 

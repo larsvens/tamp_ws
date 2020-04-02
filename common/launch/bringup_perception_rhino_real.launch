@@ -3,7 +3,7 @@
 <launch>
     <!-- rosparams -->
     <param name="robot_name" type="string" value="rhino" />
-    <param name="sensor_setup" type="string" value="rhino_real" />
+    <param name="system_setup" type="string" value="rhino_real" />
     <rosparam command="load" file="$(find common)/config/exp_config/rural_test_route_1_config.yaml" />
     <rosparam command="load" file="$(find common)/config/vehicles/rhino/config/car.yaml" />
 

@@ -97,15 +97,11 @@ Visualization Manager:
           Value: true
         cog:
           Value: true
-        left_front_wheel:
-          Value: true
         left_rear_wheel_joint:
           Value: true
         left_steering_hinge:
           Value: true
         map:
-          Value: true
-        right_front_wheel:
           Value: true
         right_rear_wheel_joint:
           Value: true
@@ -126,13 +122,11 @@ Visualization Manager:
                 left_rear_wheel_joint:
                   {}
                 left_steering_hinge:
-                  left_front_wheel:
-                    {}
+                  {}
                 right_rear_wheel_joint:
                   {}
                 right_steering_hinge:
-                  right_front_wheel:
-                    {}
+                  {}
           map:
             {}
       Update Interval: 0
@@ -383,17 +377,17 @@ Visualization Manager:
       Marker Topic: /trajset_vis
       Name: trajset
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
-      Enabled: false
+      Enabled: true
       Marker Topic: /lhpt_vis
       Name: lhpt
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /obs_vis
@@ -403,13 +397,13 @@ Visualization Manager:
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
-      Enabled: false
+      Enabled: true
       Marker Topic: /state_text_marker
       Name: state_text
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
-      Value: false
+      Value: true
     - Alpha: 0.5
       Class: jsk_rviz_plugin/PolygonArray
       Color: 149; 149; 149
@@ -463,10 +457,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.225398704
+      Pitch: 0.790399075
       Target Frame: base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.12539983
+      Yaw: 3.18539882
     Saved:
       - Class: rviz/ThirdPersonFollower
         Distance: 24.7596321
