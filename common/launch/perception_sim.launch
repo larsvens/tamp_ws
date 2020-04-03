@@ -1,0 +1,29 @@
+<!-- Run single simulation with fssim. Takes sim config file as argument--> 
+
+<launch>
+    <!-- args -->
+    <arg name="robot_name" default="rhino" />
+    <arg name="urdf_model" default="$(find common)/config/vehicles/$(arg robot_name)/urdf/car.urdf" />
+    <arg name="system_setup" default="rhino_fssim" />
+    <arg name="track_name" default="asta_zero_short" />
+
+    <!-- params -->
+    <param name="robot_name" type="string" value="$(arg robot_name)" />
+    <param name="system_setup" type="string" value="$(arg system_setup)" /> 
+    <param name="track_name" type="string" value="$(arg track_name)" />	
+    <rosparam command="load" file="$(find common)/config/vehicles/$(arg robot_name)/config/car.yaml" />
+
+    <!-- simulation manager node (sets rosparams "robot_name and car params")-->
+    <node pkg="fssim" name="fssim_manager" type="fssim_manager.py" output="screen" args="--config $(find common)/config/sim_config/$(arg robot_name)_$(arg track_name).yaml">  </node> 
+
+    <!-- perception nodes -->
+    <node pkg="perception" type="track_iface.py" name="track_iface"> </node>
+    <node pkg="perception" type="state_est_cart.py" name="state_est_cart"> </node>
+    <node pkg="perception" type="state_est_frenet.py" name="state_est_frenet"> </node>
+    <node pkg="perception" type="road_perception.py" name="road_perception"> </node>
+  
+    <!-- visualization -->
+    <param name="robot_description_simple" command="$(find xacro)/xacro --inorder $(arg urdf_model)" />
+    <node name="rviz_" pkg="rviz" type="rviz" args="-d $(find common)/config/rviz_config/saarti_sim.rviz "/>
+
+</launch>

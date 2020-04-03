@@ -4,7 +4,6 @@
 Description: This node
     - controls pop-up obstacles
     - publishes state marker (including current mu)
-    - all other nodes shut down when this shuts down
 '''
 
 import numpy as np
@@ -14,6 +13,7 @@ from common.msg import Obstacles
 from common.msg import State
 from common.msg import SaartiStatus
 from common.msg import MuSegments
+from fssim_common.msg import TireParams
 from std_msgs.msg import Int16
 from visualization_msgs.msg import Marker
 from coordinate_transforms import ptsFrenetToCartesian
@@ -28,7 +28,7 @@ class ExperimentManager:
         # timing params
         self.t_activate = rospy.get_param('/t_activate')
         self.dt = 0.01
-        self.rate = rospy.Rate(1/self.dt)               
+        self.rate = rospy.Rate(1/self.dt)
         
         # track params
         self.track_name = rospy.get_param('/track_name')
@@ -36,7 +36,10 @@ class ExperimentManager:
         # vehicle params
         self.robot_name = rospy.get_param('/robot_name') 
         self.vehicle_width = rospy.get_param('/car/kinematics/l_width')            
-                
+        
+        # system params
+        self.system_setup = rospy.get_param('/system_setup') 
+        
         # init subs pubs
         self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
         self.statesub = rospy.Subscriber("state", State, self.state_callback)
@@ -46,7 +49,12 @@ class ExperimentManager:
         self.ctrl_mode_pub = rospy.Publisher('/ctrl_mode', Int16, queue_size=1)
         self.statetextmarkerpub = rospy.Publisher('/state_text_marker', Marker, queue_size=1)        
         self.musegs_pub = rospy.Publisher('/mu_segments', MuSegments, queue_size=10)
-        
+
+        # if sim initialize tire param publisher
+        if(self.system_setup == "rhino_fssim"):
+            self.tireparampub = rospy.Publisher('/tire_params', TireParams, queue_size=1)
+            self.tireparams = TireParams()
+            
         # init misc internal variables
         self.pathglobal = Path()
         self.received_pathglobal = False
@@ -91,6 +99,7 @@ class ExperimentManager:
         self.musegs = MuSegments()
         self.musegs.s_begin_mu_segments = self.s_begin_mu_segments
         self.musegs.mu_segment_values = self.mu_segment_values
+        self.musegs.header.stamp = rospy.Time.now()
         self.musegs_pub.publish(self.musegs)
         
         # main loop
@@ -99,7 +108,7 @@ class ExperimentManager:
             if (self.exptime >= self.t_activate):        
                 rospy.loginfo_throttle(1, "Running experiment, ctrl mode = %i"%self.ctrl_mode)
                 
-                # get current mu for visualization
+                # get current mu
                 s_ego = self.state.s % self.s_lap                
                 for i in range(self.N_mu_segments-1):
                     if(self.s_begin_mu_segments[i] <= s_ego <= self.s_begin_mu_segments[i+1]):
@@ -108,6 +117,14 @@ class ExperimentManager:
                 if(s_ego >= self.s_begin_mu_segments[-1]):
                     self.mu_segment_idx = self.N_mu_segments-1
                 mu = self.mu_segment_values[self.mu_segment_idx] 
+                
+                if(self.system_setup == "rhino_fssim"):
+                    # set tire params of sim vehicle
+                    self.tireparams.B, self.tireparams.C, self.tireparams.D, self.tireparams.E = self.get_tire_params(mu)
+                    self.tireparams.D = - self.tireparams.D # fssim sign convention             
+                    self.tireparams.tire_coefficient = 1.0        
+                    self.tireparams.header.stamp = rospy.Time.now()
+                    self.tireparampub.publish(self.tireparams)
                 
                 # POPUP SCENARIO
                 if (self.scenario_id in [1,4] ):
@@ -163,6 +180,37 @@ class ExperimentManager:
             
             self.exptime += self.dt
             self.rate.sleep()
+
+    def get_tire_params(self,mu):
+        if (0.0 <= mu <0.3): # ice
+            B = 4.0
+            C = 2.0
+            D = mu
+            E = 1.0
+        elif (0.3 <= mu < 0.5): # snow
+            B = 5.0
+            C = 2.0
+            D = mu
+            E = 1.0
+        elif (0.5 <= mu < 0.9): # wet
+            B = 12.0
+            C = 2.3
+            D = mu
+            E = 1.0
+        elif (0.9 <= mu < 1.5): # dry
+            B = 10.0
+            C = 1.9
+            D = mu
+            E = 0.97
+        elif (1.5 <= mu < 2.5): # dry + racing tires (gotthard default)
+            B = 12.56;
+            C = 1.38; 
+            D = mu;
+            E = 1.0               
+        else: 
+            rospy.logerr("Faulty mu value in exp manager")
+        
+        return B,C,D,E
 
 
     def getobstaclemarker(self,X,Y,R):

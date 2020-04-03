@@ -7,11 +7,11 @@
     <arg name="system_setup" default="rhino_real" />
     <arg name="track_name" default="rural_test_route_1" />
 
-    <!-- rosparams -->
+    <!-- params -->
     <param name="robot_name" type="string" value="$(arg robot_name)" />
     <param name="system_setup" type="string" value="$(arg system_setup)" />
     <param name="track_name" type="string" value="$(arg track_name)" />	
-    <rosparam command="load" file="$(find common)/config/vehicles/rhino/config/car.yaml" />
+    <rosparam command="load" file="$(find common)/config/vehicles/$(arg robot_name)/config/car.yaml" />
 
     <!-- perception nodes -->
     <node pkg="perception" type="track_iface.py" name="track_iface" output="screen" > </node>

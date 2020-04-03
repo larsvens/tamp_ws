@@ -6,14 +6,11 @@ Description: This node
     - controls pop-up obstacles
     - controls friction conditions
     - save or plot run data 
-    - all other nodes shut down when this shuts down
 '''
 import os
-import time
 import copy 
 import numpy as np
 import rospy
-from rosgraph_msgs.msg import Clock
 from common.msg import Path
 from common.msg import Obstacles
 from common.msg import State
@@ -35,6 +32,8 @@ class ExperimentManager:
         
         # timing params
         self.dt_sim = 0.01 # timestep of the simulation
+        self.dt = 0.01
+        self.rate = rospy.Rate(1/self.dt)
         self.t_activate = rospy.get_param('/t_activate')
         self.t_final = rospy.get_param('/t_final')             
         
@@ -102,9 +101,10 @@ class ExperimentManager:
         self.received_trajstar = False
         self.fssim_carinfo = CarInfo()
         
+        # wait for pathglobal
         while(not self.received_pathglobal):
-            print("waiting for pathglobal")
-            time.sleep(self.dt_sim*100)
+            rospy.loginfo_throttle(1, "exp_manager: waiting for pathglobal")
+            self.rate.sleep()
 
         # init experiment variables
         self.scenario_id = rospy.get_param('/scenario_id')
@@ -354,14 +354,8 @@ class ExperimentManager:
                 rospy.loginfo_throttle(1, "Experiment starting in %i seconds"%(self.t_activate-self.exptime))
             
             # handle exptime
-            self.exptime += self.dt_sim
-            msg = Clock()
-            t_rostime = rospy.Time(self.exptime)
-            msg.clock = t_rostime
-            #self.clockpub.publish(msg)
-                                     
-            
-            time.sleep(self.dt_sim)
+            self.exptime += self.dt
+            self.rate.sleep()
 
         print 'simulation finished'
     

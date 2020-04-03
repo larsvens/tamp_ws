@@ -27,9 +27,6 @@ class StateEstFrenet:
         self.dt = 0.02
         self.rate = rospy.Rate(1/self.dt) # 50hz   
         
-        # load rosparams
-        self.robot_name = rospy.get_param('/robot_name')
-        
         # init subs
         self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
         self.pathglobal = Path()

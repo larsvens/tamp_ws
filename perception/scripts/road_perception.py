@@ -41,7 +41,7 @@ class Perception:
         self.rate = rospy.Rate(1/self.dt)
         
         # params of local path
-        self.N = 100
+        self.N = 50
         self.ds = 1.0 #0.5
 
         # set static vehicle params

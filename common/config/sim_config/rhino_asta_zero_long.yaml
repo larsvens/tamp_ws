@@ -1,5 +1,5 @@
 
-simulation_name: "rhino_asta_long"
+simulation_name: "rhino_asta_zero_long"
 
 robot_name: rhino  
 kill_after: 6000   

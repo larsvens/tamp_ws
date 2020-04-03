@@ -3,22 +3,16 @@
 <launch>
 
     <!-- load rosparams --> 
-    <arg name="exp_config" default="popup_nonadapt_config.yaml"/>
+    <arg name="exp_config" default="reduced_mu_turn_config.yaml"/>
     <rosparam command="load" file="$(find common)/config/exp_config/$(arg exp_config)" />
     
     <!-- experiment manager node -->
-    <node pkg="common" type="sim_exp_manager.py" name="experiment_manager"  required="true" output="screen"> </node>
-
-    <!-- perception nodes -->
-    <node pkg="perception" type="track_iface.py" name="track_iface" output="screen" > </node>
-    <node pkg="perception" type="state_est_cart.py" name="state_est_cart"> </node>
-    <node pkg="perception" type="state_est_frenet.py" name="state_est_frenet"> </node>
-    <node pkg="perception" type="road_perception.py" name="road_perception" > </node>
+    <node pkg="common" type="exp_manager.py" name="experiment_manager"  required="true" output="screen"> </node>
 
     <!-- planning & ctrl nodes -->
-
-    <!-- visualization -->
-    <node name="rviz_" pkg="rviz" type="rviz" args="-d $(find common)/config/rviz_config/saarti_sim.rviz "/>
+    <rosparam command="load" file="$(find saarti)/config/planning_and_ctrl_config.yaml" /> 
+    <node pkg="saarti" type="saarti_node" name="saarti_node" /> 
+    <node pkg="saarti" type="ctrl_interface.py" name="ctrl_interface"/> 
 
     <!-- logging -->
     <arg name="record_rosbag" default="false" />
