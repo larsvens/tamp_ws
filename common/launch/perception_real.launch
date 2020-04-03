@@ -1,10 +1,16 @@
 <!-- bring up perception nodes for rhino log or real time test --> 
 
 <launch>
+    <!-- args -->
+    <arg name="robot_name" default="rhino" />
+    <arg name="urdf_model" default="$(find common)/config/vehicles/$(arg robot_name)/urdf/car.urdf" />
+    <arg name="system_setup" default="rhino_real" />
+    <arg name="track_name" default="rural_test_route_1" />
+
     <!-- rosparams -->
-    <param name="robot_name" type="string" value="rhino" />
-    <param name="system_setup" type="string" value="rhino_real" />
-    <rosparam command="load" file="$(find common)/config/exp_config/rural_test_route_1_config.yaml" />
+    <param name="robot_name" type="string" value="$(arg robot_name)" />
+    <param name="system_setup" type="string" value="$(arg system_setup)" />
+    <param name="track_name" type="string" value="$(arg track_name)" />	
     <rosparam command="load" file="$(find common)/config/vehicles/rhino/config/car.yaml" />
 
     <!-- perception nodes -->
@@ -14,7 +20,6 @@
     <node pkg="perception" type="road_perception.py" name="road_perception" > </node>
 
     <!-- visualization -->
-    <arg name="urdf_model" default="$(find common)/config/vehicles/rhino/urdf/car.urdf" />
     <param name="robot_description_simple" command="$(find xacro)/xacro --inorder $(arg urdf_model)" />
     <node name="rviz_" pkg="rviz" type="rviz" args="-d $(find common)/config/rviz_config/saarti_real.rviz "/>
 

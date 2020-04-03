@@ -61,6 +61,7 @@ catkin_python_setup()
    Obstacles.msg
    SaartiStatus.msg
    OriginPoseUTM.msg
+   MuSegments.msg
  )
 
 ## Generate services in the 'srv' folder

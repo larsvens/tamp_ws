@@ -13,6 +13,7 @@ from common.msg import Path
 from common.msg import Obstacles
 from common.msg import State
 from common.msg import SaartiStatus
+from common.msg import MuSegments
 from std_msgs.msg import Int16
 from visualization_msgs.msg import Marker
 from coordinate_transforms import ptsFrenetToCartesian
@@ -29,21 +30,12 @@ class ExperimentManager:
         self.dt = 0.01
         self.rate = rospy.Rate(1/self.dt)               
         
-        # pop-up scenario params
-        self.s_ego_at_popup = rospy.get_param('/s_ego_at_popup')
-        self.s_obs_at_popup = rospy.get_param('/s_obs_at_popup')
-        self.d_obs_at_popup = rospy.get_param('/d_obs_at_popup')
-        
         # track params
         self.track_name = rospy.get_param('/track_name')
-        self.s_begin_mu_segments = rospy.get_param('/s_begin_mu_segments')
-        self.mu_segment_values = rospy.get_param('/mu_segment_values')
-        self.N_mu_segments = len(self.s_begin_mu_segments)
-        self.mu_segment_idx = 0
-        
+
         # vehicle params
         self.robot_name = rospy.get_param('/robot_name') 
-        self.vehicle_width = rospy.get_param('/car/kinematics/l_width')    
+        self.vehicle_width = rospy.get_param('/car/kinematics/l_width')            
                 
         # init subs pubs
         self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
@@ -53,6 +45,7 @@ class ExperimentManager:
         self.obsvispub = rospy.Publisher('/obs_vis', Marker, queue_size=1)
         self.ctrl_mode_pub = rospy.Publisher('/ctrl_mode', Int16, queue_size=1)
         self.statetextmarkerpub = rospy.Publisher('/state_text_marker', Marker, queue_size=1)        
+        self.musegs_pub = rospy.Publisher('/mu_segments', MuSegments, queue_size=10)
         
         # init misc internal variables
         self.pathglobal = Path()
@@ -62,8 +55,9 @@ class ExperimentManager:
         self.saarti_status = SaartiStatus()
         self.received_saartistatus = False
         
+        # wait for pathglobal
         while(not self.received_pathglobal):
-            rospy.loginfo_throttle(1, "exp_manager: waiting pathglobal")
+            rospy.loginfo_throttle(1, "exp_manager: waiting for pathglobal")
             self.rate.sleep()
 
         # init experiment variables
@@ -71,6 +65,9 @@ class ExperimentManager:
         self.traction_adaptive  = rospy.get_param('/traction_adaptive')
         
         # init obstacles
+        self.s_ego_at_popup = rospy.get_param('/s_ego_at_popup')
+        self.s_obs_at_popup = rospy.get_param('/s_obs_at_popup')
+        self.d_obs_at_popup = rospy.get_param('/d_obs_at_popup')
         self.obs = Obstacles()
         self.obs.s = [self.s_obs_at_popup]
         self.obs.d = [self.d_obs_at_popup]
@@ -84,6 +81,17 @@ class ExperimentManager:
                                           np.array(self.pathglobal.psi_c), \
                                           np.array(self.pathglobal.s))
         self.ctrl_mode = 0 # # 0: stop, 1: cruise_ctrl, 2: tamp 
+        
+        # publish mu segments for track iface
+        self.s_begin_mu_segments = rospy.get_param('/s_begin_mu_segments')
+        self.mu_segment_values = rospy.get_param('/mu_segment_values')
+        self.N_mu_segments = len(self.s_begin_mu_segments)
+        self.mu_segment_idx = 0
+        
+        self.musegs = MuSegments()
+        self.musegs.s_begin_mu_segments = self.s_begin_mu_segments
+        self.musegs.mu_segment_values = self.mu_segment_values
+        self.musegs_pub.publish(self.musegs)
         
         # main loop
         self.exptime = 0 

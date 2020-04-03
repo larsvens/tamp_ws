@@ -7,13 +7,12 @@ s_begin_log: 180
 s_pause_gazebo: []
 #s_pause_gazebo: [180, 195, 210, 225, 240] # snapshots
 
-# pop-up obstacle config
+# pop-up obstacle locations
 s_ego_at_popup:  50
 s_obs_at_popup: 70
 d_obs_at_popup: -1.75 
 
-### track config 
-track_name: "storaholm_gravel_south" 
+# friction conditions 
 s_begin_mu_segments:  [0.0, 50.0]
 mu_segment_values:  [1.0, 0.5]
 

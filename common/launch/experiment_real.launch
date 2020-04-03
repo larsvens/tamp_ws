@@ -1,6 +1,12 @@
 <!-- launch rhino real time experiment --> 
 
 <launch>
+    <!-- args -->
+    <arg name="exp_config" default="rural_test_route_1_config.yaml"/>
+
+    <!-- params -->
+    <rosparam command="load" file="$(find common)/config/exp_config/$(arg exp_config)" />
+
     <!-- experiment manager node -->
     <node pkg="common" type="real_exp_manager.py" name="experiment_manager"  required="true" output="screen"/>
 

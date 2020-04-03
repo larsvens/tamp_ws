@@ -13,9 +13,8 @@ s_obs_at_popup: 650
 d_obs_at_popup: -1.75 
 
 ### track config 
-track_name: "rural_test_route_1" 
 s_begin_mu_segments:  [0.0, 700.0]
-mu_segment_values:  [1.0, 0.5]
+mu_segment_values:  [0.9, 0.6]
 
 # cc config
 cc_vxref: 20
