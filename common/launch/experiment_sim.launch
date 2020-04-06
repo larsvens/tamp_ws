@@ -18,7 +18,7 @@
 
     <!-- logging -->
     <arg name="record_rosbag" default="false" />
-    <node pkg="rosbag" type="record" name="rosbag_record_exp" args="record -a -O  $(find tamp_logs)/bags/sim_exp/latest_bag" if="$(arg record_rosbag)" />
+    <node pkg="rosbag" type="record" name="rosbag_record_exp" args="record -a -O  $(find tamp_logs)/bags/sim_exp/latest" if="$(arg record_rosbag)" />
 
 
 </launch>

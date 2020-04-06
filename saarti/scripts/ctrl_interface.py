@@ -118,11 +118,21 @@ class CtrlInterface:
             if(self.system_setup == "rhino_real"):
                 self.cmd = ActuationRequest()
                 self.cmd.steering = delta_out
-                self.cmd.acceleration = dc_out
+                
+                # acc_rec -> throttle mapping
+                if(dc_out >= 0):
+                    ax_20_percent = 1.0 # approx acceleration at 20% throttle (TUNE THIS VALUE)
+                    throttle_out = (20.0/ax_20_percent)*dc_out
+                    self.cmd.acceleration = float(np.clip(throttle_out, a_min = 0.0, a_max = 20.0))
+                else:    
+                    self.cmd.acceleration = dc_out
+                #self.cmd.acceleration = dc_out
+                
             elif(self.system_setup == "rhino_fssim" or self.system_setup == "gotthard_fssim"):
                 self.cmd = Cmd()
                 self.cmd.delta = delta_out
                 self.cmd.dc = dc_out
+            self.cmd.header.stamp = rospy.Time.now()
             self.cmdpub.publish(self.cmd)
 
             # publish tuning info

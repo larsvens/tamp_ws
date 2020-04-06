@@ -14,6 +14,7 @@ from common.msg import State
 from common.msg import SaartiStatus
 from common.msg import MuSegments
 from fssim_common.msg import TireParams
+from opendlv_ros.msg import ActuationRequest 
 from std_msgs.msg import Int16
 from visualization_msgs.msg import Marker
 from coordinate_transforms import ptsFrenetToCartesian
@@ -54,7 +55,10 @@ class ExperimentManager:
         if(self.system_setup == "rhino_fssim"):
             self.tireparampub = rospy.Publisher('/tire_params', TireParams, queue_size=1)
             self.tireparams = TireParams()
-            
+        
+        if(self.system_setup == "rhino_real"):
+            self.ctrl_sub = rospy.Subscriber("/OpenDLV/ActuationRequest", ActuationRequest, self.cmd_callback)
+            self.cmd_msg = ActuationRequest()
         # init misc internal variables
         self.pathglobal = Path()
         self.received_pathglobal = False
@@ -170,9 +174,11 @@ class ExperimentManager:
                     traction_adaptive_str = "off"
                     
                 state_text = "traction_adapt: " + traction_adaptive_str + "\n"  \
-                             "s:  " + "%.3f" % self.state.s + "\n"  \
-                             "vx: " + "%.3f" % self.state.vx + "\n"  \
-                             "mu: " + "%.3f" % mu            
+                             "s:   " + "%.3f" % self.state.s + "\n"  \
+                             "vx:  " + "%.3f" % self.state.vx + "\n"  \
+                             "mu:  " + "%.3f" % mu + "\n"  \
+                             "str: " + "%.3f" % self.cmd_msg.steering + "\n"  \
+                             "acc: " + "%.3f" % self.cmd_msg.acceleration 
                 m = self.gettextmarker(state_text)
                 m.header.stamp = rospy.Time.now()
                 self.statetextmarkerpub.publish(m)    
@@ -266,8 +272,11 @@ class ExperimentManager:
     def status_callback(self, msg):
         self.saarti_status = msg
         self.received_saartistatus = True
-    
-    
+  
+    def cmd_callback(self, msg):
+        self.cmd_msg = msg
+        self.received_cmd_msg = True
+        
 if __name__ == '__main__':
     em = ExperimentManager()
     try:
