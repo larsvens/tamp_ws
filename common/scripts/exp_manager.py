@@ -173,8 +173,10 @@ class ExperimentManager:
                              "s:  " + "%.3f" % self.state.s + "\n"  \
                              "vx: " + "%.3f" % self.state.vx + "\n"  \
                              "mu: " + "%.3f" % mu            
-                self.statetextmarkerpub.publish(self.gettextmarker(state_text))    
-                          
+                m = self.gettextmarker(state_text)
+                m.header.stamp = rospy.Time.now()
+                self.statetextmarkerpub.publish(m)    
+
             else: # not reached activation time
                 rospy.loginfo_throttle(1, "Experiment starting in %i seconds"%(self.t_activate-self.exptime))
             
@@ -233,7 +235,6 @@ class ExperimentManager:
 
     def gettextmarker(self,text):
         m = Marker()
-        m.header.stamp = rospy.Time.now()
         m.header.frame_id = "base_link"
         m.pose.position.x = 0;
         m.pose.position.y = 7.5;

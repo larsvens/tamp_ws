@@ -31,11 +31,14 @@ class TrackInterface:
         self.pathglobal = Path()
         self.originposeUTM = OriginPoseUTM()
         self.tf_broadcaster = tf2_ros.StaticTransformBroadcaster()
-        self.rate = rospy.Rate(1)
-        
+
         # set params
         self.track_name = rospy.get_param('/track_name')
-
+        self.dt = rospy.get_param('/dt_track_iface')
+        self.rate = rospy.Rate(1.0/self.dt)
+        self.N_delay_pub_pathglobal = rospy.get_param('/N_delay_pub_pathglobal')
+        self.N_delay_repub_pathglobal = rospy.get_param('/N_delay_repub_pathglobal')
+        
         # get track from yaml
         trackyaml = rospkg.RosPack().get_path('common') + '/config/tracks/' + self.track_name + '/' + self.track_name + '.yaml'
         with open(trackyaml, 'r') as f:
@@ -66,7 +69,7 @@ class TrackInterface:
         mu = self.get_mu_from_segments(self.pathglobal.s,self.s_begin_mu_segments,self.mu_segment_values,self.N_mu_segments)
 
         # wait for receiving nodes to launch
-        count = 2
+        count = self.N_delay_pub_pathglobal
         while(count > 0):
             self.rate.sleep()
             count = count - 1
@@ -154,7 +157,7 @@ class TrackInterface:
 
         while not rospy.is_shutdown():
             # republish pathglobal every 5 seconds
-            for i in range(5): 
+            for i in range(self.N_delay_repub_pathglobal): 
                 self.rate.sleep()
             self.pathglobalpub.publish(self.pathglobal)
 

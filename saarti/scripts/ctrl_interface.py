@@ -140,7 +140,7 @@ class CtrlInterface:
     def cc_ctrl(self):
         rospy.loginfo_throttle(1, "ctrl_interface: running CC control with vxref = " + str(self.cc_vxref))
         
-        if(self.state.vx > 0.0):
+        if(self.state.vx > 0.1):
             # get lhpt
             lhdist = 7 # todo determine from velocity
             s_lh = self.state.s + lhdist

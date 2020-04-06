@@ -1,0 +1,17 @@
+# perception config
+
+# track_iface
+dt_track_iface: 1.0
+N_delay_pub_pathglobal: 1
+N_delay_repub_pathglobal: 5
+
+# state_est_cart 
+dt_state_est_cart: 0.01
+
+# state_est_frenet
+dt_state_est_frenet: 0.02
+
+# road percept
+dt_road_perception: 0.25
+N_pathlocal: 70
+ds_pathlocal: 1.0

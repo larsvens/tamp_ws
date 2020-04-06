@@ -24,7 +24,7 @@ class StateEstCart:
     def __init__(self):
         # init node
         rospy.init_node('state_est_cart', anonymous=True)
-        self.dt = 0.01
+        self.dt = rospy.get_param('/dt_state_est_cart')
         self.rate = rospy.Rate(1/self.dt)      
         
         # load rosparams

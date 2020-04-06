@@ -12,7 +12,8 @@
     <param name="system_setup" type="string" value="$(arg system_setup)" />
     <param name="track_name" type="string" value="$(arg track_name)" />	
     <rosparam command="load" file="$(find common)/config/vehicles/$(arg robot_name)/config/car.yaml" />
-
+    <rosparam command="load" file="$(find perception)/config/perception_config.yaml" />
+    
     <!-- perception nodes -->
     <node pkg="perception" type="track_iface.py" name="track_iface" output="screen" > </node>
     <node pkg="perception" type="state_est_cart.py" name="state_est_cart" output="screen"> </node>

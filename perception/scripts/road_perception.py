@@ -31,32 +31,32 @@ class Perception:
         # init node subs pubs
         rospy.init_node('road_perception', anonymous=True)
         self.pathglobalsub = rospy.Subscriber("pathglobal", Path, self.pathglobal_callback)
+        self.pathglobal = Path()
+        self.received_pathglobal = False
+        
         self.state_sub = rospy.Subscriber("state", State, self.state_callback)
+        self.state = State()
+        self.received_state = False
+        
         self.pathlocalpub = rospy.Publisher('pathlocal', Path, queue_size=10)
-        #self.pathlocalvispub_old = rospy.Publisher('pathlocal_vis', navPath, queue_size=10)
+        self.pathlocal = Path()
+        
         self.pathlocalvispub = rospy.Publisher('pathlocal_vis', PolygonArray, queue_size=1)
 
         # node params
-        self.dt = 0.25
+        self.dt = rospy.get_param('/dt_road_perception')
         self.rate = rospy.Rate(1/self.dt)
         
         # params of local path
-        self.N = 50
-        self.ds = 1.0 #0.5
+        self.N = rospy.get_param('/N_pathlocal')
+        self.ds = rospy.get_param('/ds_pathlocal')
 
         # set static vehicle params
         self.setRosParams()
 
-        # init local vars
-        self.pathglobal = Path()
+        # local vars
         self.pathrolling = Path() # used to run several laps
-        self.pathlocal = Path()
-        self.state = State()
-               
-        # msg receive checks
-        self.received_pathglobal = False
-        self.received_state = False
-        
+
         # wait for messages before entering main loop
         while(not self.received_pathglobal):
             print "perception: waiting for pathglobal"
@@ -117,17 +117,16 @@ class Perception:
         self.smin_local = self.state.s
         #print "smin_local = ", self.smin_local
         smax_local = self.smin_local+stot_local
-        
         s = np.linspace(self.smin_local,smax_local,self.N)
         
-        # interpolate on global path
+        if (s[0] < self.pathrolling.s[0]):
+            rospy.logerr("perception: pathlocal.s not on pathrolling interval! (pathlocal is behind)")
+            rospy.logerr("smin_pathlocal = " + str(s[0]) + ", pathrolling.s[0] = " + str(self.pathrolling.s[0]))
+        if (s[-1] > self.pathrolling.s[-1]):
+            rospy.logerr("perception: pathlocal.s not on pathrolling interval! (pathlocal is ahead)")
+            rospy.logerr("smax_pathlocal = " + str(s[-1]) + ", pathrolling.s[-1] = " + str(self.pathrolling.s[-1]))
         
-        if (s[0] < self.pathrolling.s[0] or s[-1] > self.pathrolling.s[-1]):
-            rospy.logerr("perception: pathlocal.s not on pathrolling interval!")
-            print "state.s       ", self.state.s
-            print "pathlocal.s   ", s
-            print "pathrolling.s ", self.pathrolling.s
-        
+        # interpolate on global path            
         self.pathlocal.header.stamp = rospy.Time.now()
         self.pathlocal.header.frame_id = "map"
         self.pathlocal.X =              np.interp(s,self.pathrolling.s,self.pathrolling.X)
@@ -190,16 +189,20 @@ class Perception:
         self.s_lap = stot_global + dist_sf  
         
         # start pathrolling as two first laps
-        self.pathrolling.X = np.concatenate((np.array(self.pathglobal.X),np.array(self.pathglobal.X)),axis=0)
-        self.pathrolling.Y = np.concatenate((np.array(self.pathglobal.Y),np.array(self.pathglobal.Y)),axis=0)
-        self.pathrolling.s = np.concatenate((np.array(self.pathglobal.s),np.array(self.pathglobal.s) + self.s_lap ),axis=0)
-        self.pathrolling.psi_c = np.concatenate((np.array(self.pathglobal.psi_c),np.array(self.pathglobal.psi_c)),axis=0)
-        self.pathrolling.theta_c = np.concatenate((np.array(self.pathglobal.theta_c),np.array(self.pathglobal.theta_c)),axis=0)
-        self.pathrolling.kappa_c = np.concatenate((np.array(self.pathglobal.kappa_c),np.array(self.pathglobal.kappa_c)),axis=0)
-        self.pathrolling.kappaprime_c = np.concatenate((np.array(self.pathglobal.kappaprime_c),np.array(self.pathglobal.kappaprime_c)),axis=0)
+        if(not self.received_pathglobal):
+            
+            self.pathrolling.X = np.concatenate((np.array(self.pathglobal.X),np.array(self.pathglobal.X)),axis=0)
+            self.pathrolling.Y = np.concatenate((np.array(self.pathglobal.Y),np.array(self.pathglobal.Y)),axis=0)
+            self.pathrolling.s = np.concatenate((np.array(self.pathglobal.s),np.array(self.pathglobal.s) + self.s_lap ),axis=0)
+            self.pathrolling.psi_c = np.concatenate((np.array(self.pathglobal.psi_c),np.array(self.pathglobal.psi_c)),axis=0)
+            self.pathrolling.theta_c = np.concatenate((np.array(self.pathglobal.theta_c),np.array(self.pathglobal.theta_c)),axis=0)
+            self.pathrolling.kappa_c = np.concatenate((np.array(self.pathglobal.kappa_c),np.array(self.pathglobal.kappa_c)),axis=0)
+            self.pathrolling.kappaprime_c = np.concatenate((np.array(self.pathglobal.kappaprime_c),np.array(self.pathglobal.kappaprime_c)),axis=0)
+            self.pathrolling.dub = np.concatenate((np.array(self.pathglobal.dub),np.array(self.pathglobal.dub)),axis=0)
+            self.pathrolling.dlb = np.concatenate((np.array(self.pathglobal.dlb),np.array(self.pathglobal.dlb)),axis=0)
+        
+        # mu can be updated later by exp manager
         self.pathrolling.mu = np.concatenate((np.array(self.pathglobal.mu),np.array(self.pathglobal.mu)),axis=0)
-        self.pathrolling.dub = np.concatenate((np.array(self.pathglobal.dub),np.array(self.pathglobal.dub)),axis=0)
-        self.pathrolling.dlb = np.concatenate((np.array(self.pathglobal.dlb),np.array(self.pathglobal.dlb)),axis=0)
         
         self.received_pathglobal = True
     

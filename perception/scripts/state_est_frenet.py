@@ -24,7 +24,7 @@ class StateEstFrenet:
     def __init__(self):
         # init node
         rospy.init_node('state_est_frenet', anonymous=True)
-        self.dt = 0.02
+        self.dt = rospy.get_param('/dt_state_est_frenet')
         self.rate = rospy.Rate(1/self.dt) # 50hz   
         
         # init subs

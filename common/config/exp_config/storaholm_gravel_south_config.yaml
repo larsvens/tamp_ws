@@ -13,8 +13,8 @@ s_obs_at_popup: 70
 d_obs_at_popup: -1.75 
 
 # friction conditions 
-s_begin_mu_segments:  [0.0, 50.0]
-mu_segment_values:  [1.0, 0.5]
+s_begin_mu_segments:  [0.0, 100.0]
+mu_segment_values:  [0.7, 0.3]
 
 # cc config
 cc_vxref: 5

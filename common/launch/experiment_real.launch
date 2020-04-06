@@ -8,7 +8,7 @@
     <rosparam command="load" file="$(find common)/config/exp_config/$(arg exp_config)" />
 
     <!-- experiment manager node -->
-    <node pkg="common" type="exp_manager.py" name="experiment_manager"  required="true" output="screen"/>
+    <node pkg="common" type="exp_manager.py" name="experiment_manager" output="screen"/>
 
     <!-- planning & ctrl nodes -->
     <rosparam command="load" file="$(find saarti)/config/planning_and_ctrl_config.yaml" /> 
