@@ -130,8 +130,8 @@ class StateEstCart:
         #self.state_out.vy = self.odlv_gps_msg.vx*np.sin(-self.odlv_gps_msg.yawangle) + self.odlv_gps_msg.vy*np.cos(-self.odlv_gps_msg.yawangle)
         
         # PSI OFFSET (TUNE AFTER GPS CALIBRATION)
-        psi_offset = -27*(np.pi/180)
-        
+        #psi_offset = -27*(np.pi/180)
+        psi_offset = np.pi/2 
         if(delta_t_gps.to_sec() <= msg_time_mgn):
         #if(False): # uncomment to deactivate DR
             # DEAD RECKONING FROM LATEST GPS POSE   
