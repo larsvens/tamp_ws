@@ -127,12 +127,13 @@ class CtrlInterface:
                 else:    
                     self.cmd.acceleration = dc_out
                 #self.cmd.acceleration = dc_out
+                self.cmd.header.stamp = rospy.Time.now()
                 
             elif(self.system_setup == "rhino_fssim" or self.system_setup == "gotthard_fssim"):
                 self.cmd = Cmd()
                 self.cmd.delta = delta_out
                 self.cmd.dc = dc_out
-            self.cmd.header.stamp = rospy.Time.now()
+            
             self.cmdpub.publish(self.cmd)
 
             # publish tuning info

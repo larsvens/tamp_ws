@@ -2,20 +2,19 @@
 
 t_activate: 5.0
 t_final: 500.0
-scenario_id: 2 # 1: pop-up, 2: reduced mu turn, 3: racing
+scenario_id: 6 # 1: pop-up, 2: reduced mu turn, 3: racing 4: local min test 5: pp-test 6: tamp test
 s_begin_log: 180
 s_pause_gazebo: []
 #s_pause_gazebo: [180, 195, 210, 225, 240] # snapshots
 
-# pop-up obstacle config
+# pop-up obstacle locations
 s_ego_at_popup:  50
 s_obs_at_popup: 75
 d_obs_at_popup: -1.75 
 
-### track config 
-track_name: "asta_zero_short"
-s_begin_mu_segments:  [0.0, 200.0]
-mu_segment_values:  [1.0, 0.5]
+# friction conditions 
+s_begin_mu_segments:  [0.0, 230.0, 270.0]
+mu_segment_values:  [1.0, 0.5, 1.0]
 
 # cc config
 cc_vxref: 15

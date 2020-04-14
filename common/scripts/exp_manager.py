@@ -15,6 +15,7 @@ from common.msg import SaartiStatus
 from common.msg import MuSegments
 from fssim_common.msg import TireParams
 from opendlv_ros.msg import ActuationRequest 
+from fssim_common.msg import Cmd
 from std_msgs.msg import Int16
 from visualization_msgs.msg import Marker
 from coordinate_transforms import ptsFrenetToCartesian
@@ -55,9 +56,10 @@ class ExperimentManager:
         if(self.system_setup == "rhino_fssim"):
             self.tireparampub = rospy.Publisher('/tire_params', TireParams, queue_size=1)
             self.tireparams = TireParams()
-        
+            self.ctrl_sub = rospy.Subscriber("/fssim/cmd", Cmd, self.fssim_cmd_callback)
+            self.cmd_msg = Cmd()        
         if(self.system_setup == "rhino_real"):
-            self.ctrl_sub = rospy.Subscriber("/OpenDLV/ActuationRequest", ActuationRequest, self.cmd_callback)
+            self.ctrl_sub = rospy.Subscriber("/OpenDLV/ActuationRequest", ActuationRequest, self.odlv_cmd_callback)
             self.cmd_msg = ActuationRequest()
         # init misc internal variables
         self.pathglobal = Path()
@@ -172,13 +174,23 @@ class ExperimentManager:
                     traction_adaptive_str = "on"
                 else:
                     traction_adaptive_str = "off"
-                    
+                
+                if(self.system_setup == "rhino_real"):
+                    delta = self.cmd_msg.steering
+                    acc = self.cmd_msg.acceleration
+                elif(self.system_setup == "rhino_fssim"):
+                    delta = self.cmd_msg.delta
+                    acc = self.cmd_msg.dc   
+                else:
+                    delta = 0
+                    acc = 0                     
+                
                 state_text = "traction_adapt: " + traction_adaptive_str + "\n"  \
                              "s:   " + "%.3f" % self.state.s + "\n"  \
                              "vx:  " + "%.3f" % self.state.vx + "\n"  \
                              "mu:  " + "%.3f" % mu + "\n"  \
-                             "str: " + "%.3f" % self.cmd_msg.steering + "\n"  \
-                             "acc: " + "%.3f" % self.cmd_msg.acceleration 
+                             "str: " + "%.3f" % delta + "\n"  \
+                             "acc: " + "%.3f" % acc 
                 m = self.gettextmarker(state_text)
                 m.header.stamp = rospy.Time.now()
                 self.statetextmarkerpub.publish(m)    
@@ -273,7 +285,11 @@ class ExperimentManager:
         self.saarti_status = msg
         self.received_saartistatus = True
   
-    def cmd_callback(self, msg):
+    def odlv_cmd_callback(self, msg):
+        self.cmd_msg = msg
+        self.received_cmd_msg = True
+
+    def fssim_cmd_callback(self, msg):
         self.cmd_msg = msg
         self.received_cmd_msg = True
         

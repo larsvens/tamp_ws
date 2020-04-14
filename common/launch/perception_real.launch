@@ -25,7 +25,10 @@
     <node name="rviz_" pkg="rviz" type="rviz" args="-d $(find common)/config/rviz_config/saarti_real.rviz "/>
 
 
-    <!-- TMP! -->
+
+    <?ignore
+
+    <!-- Need to launch everything before ros-bridge
 
     <!-- args -->
     <arg name="exp_config" default="rural_test_route_1_config.yaml"/>
@@ -42,7 +45,7 @@
     <node pkg="saarti" type="ctrl_interface.py" name="ctrl_interface"/> 
     <node pkg="opendlv_ros" type="cmd_translator_node" name="cmd_translator"/> 
 
-
+    ?>
 
 
 </launch>
