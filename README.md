@@ -26,7 +26,9 @@ clone this repo and fork of fssim to a new catkin workspace
 `git clone git@github.com:larsvens/tamp_ws.git`   
 `git clone git@github.com:larsvens/fssim.git`   
 
-build with `catkin build`   
+clone my fork of the acado repo https://github.com/larsvens/acado_fork (outside the workspace), and follow the deploy instructions in the readme. 
+
+build everything in the tamp workspace with `catkin build`   
 
 To run the racing demo:   
 `source devel/setup.bash`   
