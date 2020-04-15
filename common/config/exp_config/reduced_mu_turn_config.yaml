@@ -3,26 +3,46 @@
 t_activate: 5.0
 t_final: 500.0
 scenario_id: 6 # 1: pop-up, 2: reduced mu turn, 3: racing 4: local min test 5: pp-test 6: tamp test
-s_begin_log: 180
-s_pause_gazebo: []
-#s_pause_gazebo: [180, 195, 210, 225, 240] # snapshots
 
 # pop-up obstacle locations
 s_ego_at_popup:  50
 s_obs_at_popup: 75
 d_obs_at_popup: -1.75 
 
-# friction conditions 
-s_begin_mu_segments:  [0.0, 230.0, 270.0]
+# friction conditions (static)
+#s_begin_mu_segments:  [0.0]
+#mu_segment_values:  [1.0]
+
+# friction conditions (asta_zero_short)
+#s_begin_mu_segments:  [0.0, 230.0, 270.0]
+#mu_segment_values:  [1.0, 0.5, 1.0]
+
+# friction conditions (asta_zero_long)
+s_begin_mu_segments:  [0.0, 275.0, 315.0]
 mu_segment_values:  [1.0, 0.5, 1.0]
 
-# cc config
-cc_vxref: 15
+# cc config (static)
+#s_begin_vxref_segments: [0.0]
+#vxref_segment_values: [5.0]
+
+# cc config (asta_zero_short)
+#s_begin_vxref_segments: [0.0, 270.0, 350.0, 510.0]
+#vxref_segment_values: [10.0, 10.0, 20.0, 5.0]
+
+# cc config (asta_zero_long)
+#s_begin_vxref_segments: [0.0, 315.0, 510.0]
+#vxref_segment_values: [15.0, 10.0, 5.0]
+
+# cc config tuning
+s_begin_vxref_segments: [0.0, 310.0, 400.0, 550.0]
+vxref_segment_values: [10.0, 10.0, 15.0, 5.0]
+
+# dref
 cc_dref: 0
 
 # pcs refs
-pcs_vxref: 1.0
-pcs_dref: -1
+#pcs_vxref: 1.0
+#pcs_dref: -1
 
 ### saarti algorithm config		
 

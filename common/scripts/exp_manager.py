@@ -13,6 +13,7 @@ from common.msg import Obstacles
 from common.msg import State
 from common.msg import SaartiStatus
 from common.msg import MuSegments
+from std_msgs.msg import Float32
 from fssim_common.msg import TireParams
 from opendlv_ros.msg import ActuationRequest 
 from fssim_common.msg import Cmd
@@ -51,7 +52,8 @@ class ExperimentManager:
         self.ctrl_mode_pub = rospy.Publisher('/ctrl_mode', Int16, queue_size=1)
         self.statetextmarkerpub = rospy.Publisher('/state_text_marker', Marker, queue_size=1)        
         self.musegs_pub = rospy.Publisher('/mu_segments', MuSegments, queue_size=10)
-
+        self.vxref_pub = rospy.Publisher('/vxref', Float32, queue_size=1)
+        
         # if sim initialize tire param publisher
         if(self.system_setup == "rhino_fssim"):
             self.tireparampub = rospy.Publisher('/tire_params', TireParams, queue_size=1)
@@ -108,6 +110,17 @@ class ExperimentManager:
         self.musegs.header.stamp = rospy.Time.now()
         self.musegs_pub.publish(self.musegs)
         
+        # get vxref per segment
+        self.s_begin_vxref_segments = rospy.get_param('/s_begin_vxref_segments')
+        self.vxref_segment_values = rospy.get_param('/vxref_segment_values') 
+        self.N_vxref_segments = len(self.s_begin_vxref_segments)       
+        self.vxref_segment_idx = 0
+        self.vxref = Float32()
+        self.vxref.data = 0
+        
+        # wait for user activation
+        raw_input("Press Enter to start experiment...")
+        
         # main loop
         self.exptime = 0 
         while (not rospy.is_shutdown()):
@@ -131,6 +144,16 @@ class ExperimentManager:
                     self.tireparams.tire_coefficient = 1.0        
                     self.tireparams.header.stamp = rospy.Time.now()
                     self.tireparampub.publish(self.tireparams)
+                
+                # publish current vxref
+                for i in range(self.N_vxref_segments-1):
+                    if(self.s_begin_vxref_segments[i] <= s_ego <= self.s_begin_vxref_segments[i+1]):
+                        self.vxref_segment_idx = i
+                        break
+                if(s_ego >= self.s_begin_vxref_segments[-1]):
+                    self.vxref_segment_idx = self.N_vxref_segments-1
+                self.vxref.data = self.vxref_segment_values[self.vxref_segment_idx]     
+                self.vxref_pub.publish(self.vxref)
                 
                 # POPUP SCENARIO
                 if (self.scenario_id in [1,4] ):
@@ -186,11 +209,12 @@ class ExperimentManager:
                     acc = 0                     
                 
                 state_text = "traction_adapt: " + traction_adaptive_str + "\n"  \
-                             "s:   " + "%.3f" % self.state.s + "\n"  \
-                             "vx:  " + "%.3f" % self.state.vx + "\n"  \
-                             "mu:  " + "%.3f" % mu + "\n"  \
-                             "str: " + "%.3f" % delta + "\n"  \
-                             "acc: " + "%.3f" % acc 
+                             "s:     " + "%.3f" % self.state.s + "\n"  \
+                             "mu:    " + "%.3f" % mu + "\n"  \
+                             "vxref: " + "%.3f" % self.vxref.data + "\n"  \
+                             "vx:    " + "%.3f" % self.state.vx + "\n"  \
+                             "steer: " + "%.3f" % delta + "\n"  \
+                             "acc:   " + "%.3f" % acc 
                 m = self.gettextmarker(state_text)
                 m.header.stamp = rospy.Time.now()
                 self.statetextmarkerpub.publish(m)    

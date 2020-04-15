@@ -5,7 +5,7 @@
     <arg name="robot_name" default="rhino" />
     <arg name="urdf_model" default="$(find common)/config/vehicles/$(arg robot_name)/urdf/car.urdf" />
     <arg name="system_setup" default="rhino_real" />
-    <arg name="track_name" default="rural_test_route_1" />
+    <arg name="track_name" default="asta_zero_long" />
 
     <!-- params -->
     <param name="robot_name" type="string" value="$(arg robot_name)" />
@@ -23,29 +23,5 @@
     <!-- visualization -->
     <param name="robot_description_simple" command="$(find xacro)/xacro --inorder $(arg urdf_model)" />
     <node name="rviz_" pkg="rviz" type="rviz" args="-d $(find common)/config/rviz_config/saarti_real.rviz "/>
-
-
-
-    <?ignore
-
-    <!-- Need to launch everything before ros-bridge
-
-    <!-- args -->
-    <arg name="exp_config" default="rural_test_route_1_config.yaml"/>
-
-    <!-- params -->
-    <rosparam command="load" file="$(find common)/config/exp_config/$(arg exp_config)" />
-
-    <!-- experiment manager node -->
-    <node pkg="common" type="exp_manager.py" name="experiment_manager" output="screen"/>
-
-    <!-- planning & ctrl nodes -->
-    <rosparam command="load" file="$(find saarti)/config/planning_and_ctrl_config.yaml" /> 
-    <node pkg="saarti" type="saarti_node" name="saarti_node" /> 
-    <node pkg="saarti" type="ctrl_interface.py" name="ctrl_interface"/> 
-    <node pkg="opendlv_ros" type="cmd_translator_node" name="cmd_translator"/> 
-
-    ?>
-
 
 </launch>

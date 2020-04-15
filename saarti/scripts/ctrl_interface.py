@@ -40,6 +40,7 @@ class CtrlInterface:
         self.pathlocalsub = rospy.Subscriber("pathlocal", Path, self.pathlocal_callback)
         self.state_sub = rospy.Subscriber("/state", State, self.state_callback)
         self.ctrlmodesub = rospy.Subscriber("ctrl_mode", Int16, self.ctrl_mode_callback)
+        self.vxrefsub = rospy.Subscriber("vxref", Float32, self.vxref_callback)
         self.lhptpub = rospy.Publisher('/lhpt_vis', Marker, queue_size=1)
         self.vx_errorpub = rospy.Publisher('/vx_error_vis', Float32, queue_size=1)
         self.rate = rospy.Rate(1/self.dt)
@@ -63,8 +64,7 @@ class CtrlInterface:
         # ctrl errors
         self.vx_error = Float32()
         
-        # get cc setpoint
-        self.cc_vxref = rospy.get_param('/cc_vxref')
+        # get dref setpoint
         self.cc_dref = rospy.get_param('/cc_dref')
         
         # delay sim variable
@@ -123,7 +123,7 @@ class CtrlInterface:
                 if(dc_out >= 0):
                     ax_20_percent = 1.0 # approx acceleration at 20% throttle (TUNE THIS VALUE)
                     throttle_out = (20.0/ax_20_percent)*dc_out
-                    self.cmd.acceleration = float(np.clip(throttle_out, a_min = 0.0, a_max = 20.0))
+                    self.cmd.acceleration = float(np.clip(throttle_out, a_min = 0.0, a_max = 20.0)) # (TUNE THIS VALUE)
                 else:    
                     self.cmd.acceleration = dc_out
                 #self.cmd.acceleration = dc_out
@@ -225,7 +225,7 @@ class CtrlInterface:
         self.vx_error = self.trajstar.vx[1]-self.state.vx
         if(self.system_setup == "rhino_real"):
             feedfwd = Fx_request/self.m
-            feedback = 6.0*self.vx_error
+            feedback = 6.0*self.vx_error # TUNE THIS VALUE (before: 6.0)
             dc_out_unsat = feedfwd + feedback
             # saturate output
             dc_out = float(np.clip(dc_out_unsat, a_min = -1.0, a_max = 1.0))
@@ -306,6 +306,9 @@ class CtrlInterface:
     def ctrl_mode_callback(self, msg):
         self.ctrl_mode = msg.data
 
+    def vxref_callback(self, msg):
+        self.cc_vxref = msg.data
+    
     def setStaticParams(self):
         self.g = rospy.get_param('/car/inertia/g')
         self.m = rospy.get_param('/car/inertia/m')

@@ -7,6 +7,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include "std_msgs/String.h"
 #include "std_msgs/Int16.h"
+#include "std_msgs/Float32.h"
 //#include "std_msgs/ColorRGBA.h"
 
 // visualization
@@ -77,6 +78,7 @@ private:
     ros::Subscriber obstacles_sub_;
     ros::Subscriber state_sub_;
     ros::Subscriber ctrlmode_sub_;
+    ros::Subscriber vxref_sub_;
     ros::Publisher trajstar_pub_;
     ros::Publisher trajhat_pub_;
     ros::Publisher trajset_vis_pub_;
@@ -110,6 +112,7 @@ private:
     std::tuple<int, int> trajset_eval_cost();
     void state_callback(const common::State::ConstPtr& msg);
     void ctrlmode_callback(const std_msgs::Int16::ConstPtr& msg);
+    void vxref_callback(const std_msgs::Float32::ConstPtr& msg);
     void pathlocal_callback(const common::Path::ConstPtr& msg);
     void obstacles_callback(const common::Obstacles::ConstPtr& msg);
     void get_rosparams();

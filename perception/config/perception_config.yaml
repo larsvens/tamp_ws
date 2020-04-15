@@ -13,5 +13,5 @@ dt_state_est_frenet: 0.02
 
 # road percept
 dt_road_perception: 0.25
-N_pathlocal: 70
+N_pathlocal: 100
 ds_pathlocal: 1.0

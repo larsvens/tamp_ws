@@ -5,7 +5,7 @@
     <param name="use_sim_time" value="true" /> 
 
     <!-- load rosparams --> 
-    <arg name="exp_config" default="reduced_mu_turn_config.yaml"/>
+    <arg name="exp_config" default="reduced_mu_turn_config.yaml	"/>
     <rosparam command="load" file="$(find common)/config/exp_config/$(arg exp_config)" />
     
     <!-- experiment manager node -->
@@ -17,9 +17,37 @@
     <node pkg="saarti" type="ctrl_interface.py" name="ctrl_interface"/> 
 
     <!-- logging -->
-    <arg name="record_rosbag" default="false" />
-    <node pkg="rosbag" type="record" name="rosbag_record_exp" args="record -a -O  $(find tamp_logs)/bags/sim_exp/latest" if="$(arg record_rosbag)" />
-
-
+    <arg name="record_rosbag" default="true" />
+    <node pkg="rosbag" name="rosbag_record_exp" type="record" if="$(arg record_rosbag )" output="screen"    
+		args="record -O  $(find tamp_logs)/bags/sim_exp/latest --duration=5m
+			/pathglobal
+			/pathglobal_vis
+			/dlbglobal_vis
+			/dubglobal_vis
+			/origin_pose_utm
+			/tf
+			/tf_static
+			/state_cart
+			/state
+			/pathlocal
+			/pathlocal_vis
+			/ctrl_mode
+			/vxref
+			/state_text_marker
+			/obs
+			/obs_vis
+			/trajset_vis
+			/posconstr_vis
+			/trajhat
+			/trajhat_vis
+			/trajstar
+			/trajstar_vis
+			/trajstar_polarr_vis
+			/saarti_status
+			/lhpt_vis
+			/fssim/base_pose_ground_truth
+			/fssim/car_info
+			/fssim/cmd"> 
+    </node>    
 </launch>
 
