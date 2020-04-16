@@ -36,7 +36,7 @@ Visualization Manager:
   Class: ""
   Displays:
     - Alpha: 0.5
-      Cell Size: 30
+      Cell Size: 200
       Class: rviz/Grid
       Color: 177; 177; 177
       Enabled: true
@@ -387,7 +387,7 @@ Visualization Manager:
       Marker Topic: /lhpt_vis
       Name: lhpt
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -403,7 +403,7 @@ Visualization Manager:
       Marker Topic: /state_text_marker
       Name: state_text
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Alpha: 0.5
@@ -443,26 +443,21 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz/ThirdPersonFollower
-      Distance: 62.3192291
+      Angle: 0
+      Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
-      Focal Shape Fixed Size: false
-      Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.300399601
+      Scale: 11.8369236
       Target Frame: base_link
-      Value: ThirdPersonFollower (rviz)
-      Yaw: 3.12039232
+      Value: TopDownOrtho (rviz)
+      X: 1.6541419
+      Y: 4.06858349
     Saved:
       - Class: rviz/ThirdPersonFollower
         Distance: 24.7596321
