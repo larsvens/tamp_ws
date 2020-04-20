@@ -14,8 +14,12 @@
     <rosparam command="load" file="$(find saarti)/config/planning_and_ctrl_config.yaml" /> 
     <node pkg="saarti" type="saarti_node" name="saarti_node" /> 
     <node pkg="saarti" type="ctrl_interface.py" name="ctrl_interface"/> 
-    <node pkg="opendlv_ros" type="cmd_translator_node" name="cmd_translator"/> 
+    <!-- <node pkg="opendlv_ros" type="cmd_translator_node" name="cmd_translator"/> -->
 
+   <node name = "cmd_translator" pkg = "opendlv_ros" type = "cmd_translator_node" output = "screen" > 
+   	<remap from="opendlv_cmd" to="lars/ActuationRequest"/>
+   </node>
+ 
 </launch>
 
 

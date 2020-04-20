@@ -45,7 +45,7 @@ class CtrlInterface:
         self.vx_errorpub = rospy.Publisher('/vx_error_vis', Float32, queue_size=1)
         self.rate = rospy.Rate(1/self.dt)
         if(self.system_setup == "rhino_real"):
-            self.cmdpub = rospy.Publisher('/OpenDLV/ActuationRequest', ActuationRequest, queue_size=10)
+            self.odlv_cmdpub = rospy.Publisher('/OpenDLV/ActuationRequest', ActuationRequest, queue_size=1)
         elif(self.system_setup == "rhino_fssim" or self.system_setup == "gotthard_fssim"):
             self.cmdpub = rospy.Publisher('/fssim/cmd', Cmd, queue_size=10)
         
@@ -60,6 +60,7 @@ class CtrlInterface:
         self.trajstar_received = False
         self.pathlocal_received = False
         self.state_received = False
+        self.odlv_cmd = ActuationRequest()
         
         # ctrl errors
         self.vx_error = Float32()
@@ -85,6 +86,8 @@ class CtrlInterface:
 
         while(self.ctrl_mode == 0):
             rospy.loginfo_throttle(1, "waiting for activation from exp manager")
+            #self.odlv_cmd.header.stamp = rospy.Time.now()
+            #self.odlv_cmdpub.publish(self.odlv_cmd)
             self.rate.sleep
             
         # main loop
@@ -116,25 +119,26 @@ class CtrlInterface:
     
             # publish ctrl cmd
             if(self.system_setup == "rhino_real"):
-                self.cmd = ActuationRequest()
-                self.cmd.steering = delta_out
+                
+                self.odlv_cmd.steering = delta_out
                 
                 # acc_rec -> throttle mapping
-                if(dc_out >= 0):
+                if(dc_out >= 0): # accelerating
                     ax_20_percent = 1.0 # approx acceleration at 20% throttle (TUNE THIS VALUE)
                     throttle_out = (20.0/ax_20_percent)*dc_out
-                    self.cmd.acceleration = float(np.clip(throttle_out, a_min = 0.0, a_max = 20.0)) # (TUNE THIS VALUE)
-                else:    
-                    self.cmd.acceleration = dc_out
+                    self.odlv_cmd.acceleration = float(np.clip(throttle_out, a_min = 0.0, a_max = 20.0)) # (TUNE THIS VALUE)
+                else: # braking
+                    self.odlv_cmd.acceleration = dc_out
                 #self.cmd.acceleration = dc_out
-                self.cmd.header.stamp = rospy.Time.now()
+                self.odlv_cmd.header.stamp = rospy.Time.now()
                 
             elif(self.system_setup == "rhino_fssim" or self.system_setup == "gotthard_fssim"):
                 self.cmd = Cmd()
                 self.cmd.delta = delta_out
                 self.cmd.dc = dc_out
             
-            self.cmdpub.publish(self.cmd)
+            #self.odlv_cmd.acceleration = 50.0 # TMP!
+            self.odlv_cmdpub.publish(self.odlv_cmd)
 
             # publish tuning info
             self.vx_errorpub.publish(self.vx_error)
@@ -153,7 +157,7 @@ class CtrlInterface:
         
         if(self.state.vx > 0.1):
             # get lhpt
-            lhdist = 7 # todo determine from velocity
+            lhdist = 15 # 7 # todo determine from velocity
             s_lh = self.state.s + lhdist
             d_lh = self.cc_dref
             
@@ -197,7 +201,7 @@ class CtrlInterface:
         # LATERAL CTRL
 
         # kinematic feedfwd term
-        lhpt_idx = 7;
+        lhpt_idx = 25 #7;
         Xlh = self.trajstar.X[lhpt_idx]
         Ylh = self.trajstar.Y[lhpt_idx]
         rho_pp = self.pp_curvature(self.trajstar.X[0],

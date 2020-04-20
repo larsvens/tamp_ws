@@ -23,7 +23,7 @@ mu_segment_values:  [1.0, 0.5, 1.0]
 
 # cc config (static)
 s_begin_vxref_segments: [0.0]
-vxref_segment_values: [5.0]
+vxref_segment_values: [25.0]
 
 # cc config (asta_zero_short)
 #s_begin_vxref_segments: [0.0, 270.0, 350.0, 510.0]

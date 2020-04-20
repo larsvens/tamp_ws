@@ -149,7 +149,7 @@ class StateEstCart:
             # USE RAW GPS MEASUREMENT FOR POSE            
             self.state_out.X = X_utm - self.origin_pose_utm.X0_utm
             self.state_out.Y = Y_utm - self.origin_pose_utm.Y0_utm
-            self.state_out.psi = self.odlv_gps_msg.yawangle + psi_offset
+            self.state_out.psi = self.odlv_gps_msg.yawangle + psi_offset 
 
     def broadcast_dyn_tfs(self):
         self.tfbr.sendTransform((self.state_out.X, self.state_out.Y, 0),
