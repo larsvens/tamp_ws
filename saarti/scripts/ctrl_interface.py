@@ -16,11 +16,12 @@
 # system_setup = rhino_fssim or gotthard_fssim -> /fssim/cmd
 
 import numpy as np
+from scipy.interpolate import interp1d
 import rospy
 from common.msg import Trajectory
 from common.msg import Path
 from common.msg import State
-from fssim_common.msg import Cmd
+from fssim_common.msg import Cmd as FssimCmd
 from opendlv_ros.msg import ActuationRequest 
 from visualization_msgs.msg import Marker
 from std_msgs.msg import Float32
@@ -45,9 +46,11 @@ class CtrlInterface:
         self.vx_errorpub = rospy.Publisher('/vx_error_vis', Float32, queue_size=1)
         self.rate = rospy.Rate(1/self.dt)
         if(self.system_setup == "rhino_real"):
-            self.odlv_cmdpub = rospy.Publisher('/OpenDLV/ActuationRequest', ActuationRequest, queue_size=1)
+            self.cmdpub = rospy.Publisher('/OpenDLV/ActuationRequest', ActuationRequest, queue_size=1)
+            self.cmd = ActuationRequest()
         elif(self.system_setup == "rhino_fssim" or self.system_setup == "gotthard_fssim"):
-            self.cmdpub = rospy.Publisher('/fssim/cmd', Cmd, queue_size=10)
+            self.cmdpub = rospy.Publisher('/fssim/cmd', FssimCmd, queue_size=1)
+            self.cmd = FssimCmd()
         
         # set static vehicle params
         self.setStaticParams()
@@ -60,7 +63,7 @@ class CtrlInterface:
         self.trajstar_received = False
         self.pathlocal_received = False
         self.state_received = False
-        self.odlv_cmd = ActuationRequest()
+        
         
         # ctrl errors
         self.vx_error = Float32()
@@ -86,8 +89,8 @@ class CtrlInterface:
 
         while(self.ctrl_mode == 0):
             rospy.loginfo_throttle(1, "waiting for activation from exp manager")
-            #self.odlv_cmd.header.stamp = rospy.Time.now()
-            #self.odlv_cmdpub.publish(self.odlv_cmd)
+            #self.cmd.header.stamp = rospy.Time.now()
+            #self.cmdpub.publish(self.cmd)
             self.rate.sleep
             
         # main loop
@@ -117,28 +120,23 @@ class CtrlInterface:
             else:
                 rospy.logerr("invalid ctrl_mode! ctrl_mode = " + str(self.ctrl_mode))
     
-            # publish ctrl cmd
+            # set platform specific cmd
             if(self.system_setup == "rhino_real"):
-                
-                self.odlv_cmd.steering = delta_out
-                
-                # acc_rec -> throttle mapping
+                self.cmd.header.stamp = rospy.Time.now()
+                self.cmd.steering = delta_out                
                 if(dc_out >= 0): # accelerating
-                    ax_20_percent = 1.0 # approx acceleration at 20% throttle (TUNE THIS VALUE)
-                    throttle_out = (20.0/ax_20_percent)*dc_out
-                    self.odlv_cmd.acceleration = float(np.clip(throttle_out, a_min = 0.0, a_max = 20.0)) # (TUNE THIS VALUE)
+                    throttle_out = 20.0*dc_out # (TUNE THIS VALUE)
+                    self.cmd.acceleration = float(np.clip(throttle_out, a_min = 0.0, a_max = 20.0)) # (TUNE THIS VALUE)
                 else: # braking
-                    self.odlv_cmd.acceleration = dc_out
-                #self.cmd.acceleration = dc_out
-                self.odlv_cmd.header.stamp = rospy.Time.now()
+                    self.cmd.acceleration = dc_out
                 
             elif(self.system_setup == "rhino_fssim" or self.system_setup == "gotthard_fssim"):
-                self.cmd = Cmd()
                 self.cmd.delta = delta_out
                 self.cmd.dc = dc_out
             
+            # publish ctrl cmd
             #self.odlv_cmd.acceleration = 50.0 # TMP!
-            self.odlv_cmdpub.publish(self.odlv_cmd)
+            self.cmdpub.publish(self.cmd)
 
             # publish tuning info
             self.vx_errorpub.publish(self.vx_error)
@@ -157,7 +155,7 @@ class CtrlInterface:
         
         if(self.state.vx > 0.1):
             # get lhpt
-            lhdist = 15 # 7 # todo determine from velocity
+            lhdist = 10 # 15 # todo determine from velocity
             s_lh = self.state.s + lhdist
             d_lh = self.cc_dref
             
@@ -201,9 +199,20 @@ class CtrlInterface:
         # LATERAL CTRL
 
         # kinematic feedfwd term
-        lhpt_idx = 25 #7;
-        Xlh = self.trajstar.X[lhpt_idx]
-        Ylh = self.trajstar.Y[lhpt_idx]
+        #lhpt_idx = 7 # 25
+        #Xlh = self.trajstar.X[lhpt_idx]
+        #Ylh = self.trajstar.Y[lhpt_idx]
+        
+        # kinematic feedfwd term
+        lhdist = 10
+        s_lh = self.state.s + lhdist
+        #Xlh = np.interp(s_lh, self.trajstar.s, self.trajstar.X)
+        #Ylh = np.interp(s_lh, self.trajstar.s, self.trajstar.Y) 
+        f1 = interp1d(self.trajstar.s, self.trajstar.X, kind='cubic')
+        Xlh = f1(s_lh)
+        f2 = interp1d(self.trajstar.s, self.trajstar.Y, kind='cubic')
+        Ylh = f2(s_lh)
+        
         rho_pp = self.pp_curvature(self.trajstar.X[0],
                                    self.trajstar.Y[0],
                                    self.trajstar.psi[0],

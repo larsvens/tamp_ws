@@ -478,7 +478,7 @@ def export_as_kml(track_name, export_path, X_cl,Y_cl,origin_pose_utm):
 # Track Generation
 #
 plt.close('all')
-track_name = "asta_coll_avoid"
+track_name = "asta_zero_long"
 
 # export params
 export_path_fssim = "/home/larsvens/ros/tamp__ws/src/fssim/fssim_gazebo/models/track"
@@ -497,7 +497,7 @@ if(track_name == "asta_zero_short"):
     }
     
     l_before_curve = 30
-    R_corner = 22
+    R_corner = 28 # 8m/s^2 @ 15m/s  # before: 22
     lanewidth = 2.3
     X_cl_, Y_cl_ = get_triangular_shape_cl(R_corner,l_before_curve)   
 
@@ -517,7 +517,7 @@ elif(track_name == "asta_zero_long"):
     }
     
     l_before_curve = 70
-    R_corner = 22
+    R_corner = 28 # 8m/s^2 @ 15m/s  # before: 22
     lanewidth = 2.3
     X_cl_, Y_cl_ = get_triangular_shape_cl(R_corner,l_before_curve)   
  

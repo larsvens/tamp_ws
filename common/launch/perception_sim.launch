@@ -8,7 +8,7 @@
     <arg name="robot_name" default="rhino" />
     <arg name="urdf_model" default="$(find common)/config/vehicles/$(arg robot_name)/urdf/car.urdf" />
     <arg name="system_setup" default="rhino_fssim" />
-    <arg name="track_name" default="asta_zero_short" />
+    <arg name="track_name" default="asta_zero_long" />
 
     <!-- params -->
     <param name="robot_name" type="string" value="$(arg robot_name)" />

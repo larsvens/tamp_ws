@@ -5,7 +5,7 @@
     <param name="use_sim_time" value="true" /> 
 
     <!-- load rosparams --> 
-    <arg name="exp_config" default="reduced_mu_turn_config.yaml	"/>
+    <arg name="exp_config" default="reduced_mu_turn_config.yaml"/> 
     <rosparam command="load" file="$(find common)/config/exp_config/$(arg exp_config)" />
     
     <!-- experiment manager node -->
