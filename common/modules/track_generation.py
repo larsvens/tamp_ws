@@ -448,8 +448,11 @@ def export_as_sdf(track_name, export_path, dict_track):
 def export_as_kml(track_name, export_path, X_cl,Y_cl,origin_pose_utm):
     
     # store gps coordinates of centerline
-    X_cl_utm = origin_pose_utm["X0_utm"] + X_cl*np.cos(origin_pose_utm["psi0_utm"])-Y_cl*np.sin(origin_pose_utm["psi0_utm"])
-    Y_cl_utm = origin_pose_utm["Y0_utm"] + Y_cl*np.cos(origin_pose_utm["psi0_utm"])+X_cl*np.sin(origin_pose_utm["psi0_utm"])
+    #X_cl_utm = origin_pose_utm["X0_utm"] + X_cl*np.cos(origin_pose_utm["psi0_utm"])-Y_cl*np.sin(origin_pose_utm["psi0_utm"])
+    #Y_cl_utm = origin_pose_utm["Y0_utm"] + Y_cl*np.cos(origin_pose_utm["psi0_utm"])+X_cl*np.sin(origin_pose_utm["psi0_utm"])
+    
+    X_cl_utm = origin_pose_utm["X0_utm"] + X_cl
+    Y_cl_utm = origin_pose_utm["Y0_utm"] + Y_cl
     
     lat_cl, lon_cl = utm.to_latlon(X_cl_utm, Y_cl_utm, origin_pose_utm["utm_nr"], origin_pose_utm["utm_letter"])
     kml = simplekml.Kml()
@@ -470,14 +473,12 @@ def export_as_kml(track_name, export_path, X_cl,Y_cl,origin_pose_utm):
     print "[INFO] Saving track to: ",file_path
     
     
-    
-    
 
 #
 # Track Generation
 #
 plt.close('all')
-track_name = "asta_zero_long"
+track_name = "asta_coll_avoid"
 
 # export params
 export_path_fssim = "/home/larsvens/ros/tamp__ws/src/fssim/fssim_gazebo/models/track"
@@ -498,7 +499,11 @@ if(track_name == "asta_zero_short"):
     l_before_curve = 30
     R_corner = 22
     lanewidth = 2.3
-    X_cl, Y_cl = get_triangular_shape_cl(R_corner,l_before_curve)       
+    X_cl_, Y_cl_ = get_triangular_shape_cl(R_corner,l_before_curve)   
+
+    # rotate track to origin pose utm
+    X_cl = X_cl_*np.cos(origin_pose_utm["psi0_utm"]) - Y_cl_*np.sin(origin_pose_utm["psi0_utm"])
+    Y_cl = Y_cl_*np.cos(origin_pose_utm["psi0_utm"]) + X_cl_*np.sin(origin_pose_utm["psi0_utm"])    
     
     
 elif(track_name == "asta_zero_long"):
@@ -516,9 +521,28 @@ elif(track_name == "asta_zero_long"):
     lanewidth = 2.3
     X_cl_, Y_cl_ = get_triangular_shape_cl(R_corner,l_before_curve)   
  
-    # rotate track
-    X_cl = X_cl_*np.cos(origin_pose_utm["psi0_utm"])-Y_cl_*np.sin(origin_pose_utm["psi0_utm"])
-    Y_cl = Y_cl_*np.cos(origin_pose_utm["psi0_utm"])+X_cl_*np.sin(origin_pose_utm["psi0_utm"])
+    # rotate track to origin pose utm
+    X_cl = X_cl_*np.cos(origin_pose_utm["psi0_utm"]) - Y_cl_*np.sin(origin_pose_utm["psi0_utm"])
+    Y_cl = Y_cl_*np.cos(origin_pose_utm["psi0_utm"]) + X_cl_*np.sin(origin_pose_utm["psi0_utm"])
+
+elif(track_name == "asta_coll_avoid"):
+    # set origin pose in UTM to AstaZero HSA
+    origin_pose_utm =	{
+      "X0_utm": 367498,
+      "Y0_utm": 6406777,
+      "psi0_utm": -1.1949329177828036,
+      "utm_nr": 33, 
+      "utm_letter": 'V'
+    }
+    
+    l_before_curve = 115
+    R_corner = 40
+    lanewidth = 2.3
+    X_cl_, Y_cl_ = get_triangular_shape_cl(R_corner,l_before_curve)   
+ 
+    # rotate track to origin pose utm
+    X_cl = X_cl_*np.cos(origin_pose_utm["psi0_utm"]) - Y_cl_*np.sin(origin_pose_utm["psi0_utm"])
+    Y_cl = Y_cl_*np.cos(origin_pose_utm["psi0_utm"]) + X_cl_*np.sin(origin_pose_utm["psi0_utm"])
     
 elif(track_name == "asta_local_min"):
     # set origin pose in UTM to AstaZero HSA
@@ -534,8 +558,12 @@ elif(track_name == "asta_local_min"):
     l_hor = 80
     R_corner = 35
     lanewidth = 2.8
-    X_cl, Y_cl = get_Lshaped_cl(l_vert,l_hor,R_corner)
-    Y_cl = -Y_cl
+    X_cl_, Y_cl_ = get_Lshaped_cl(l_vert,l_hor,R_corner)
+    Y_cl_ = -Y_cl_
+    
+    # rotate track to origin pose utm
+    X_cl = X_cl_*np.cos(origin_pose_utm["psi0_utm"]) - Y_cl_*np.sin(origin_pose_utm["psi0_utm"])
+    Y_cl = Y_cl_*np.cos(origin_pose_utm["psi0_utm"]) + X_cl_*np.sin(origin_pose_utm["psi0_utm"])
     
 if(track_name == "frihamnen"):
     filepath = path.join('../config/tracks/ge_exports/frihamnen_0.kml')
