@@ -16,6 +16,7 @@ import rospkg
 from fssim_common.msg import State as fssimState
 from common.msg import State
 from common.msg import OriginPoseUTM
+from util import angleToInterval
 from opendlv_ros.msg import SensorMsgGPS
 from opendlv_ros.msg import SensorMsgCAN 
 
@@ -213,7 +214,7 @@ class StateEstCart:
         self.received_fssim_state = True
         self.state_out.X = msg.x
         self.state_out.Y = msg.y
-        self.state_out.psi = msg.yaw
+        self.state_out.psi = angleToInterval(np.array([msg.yaw]))[0]
         self.state_out.psidot = msg.r
         self.state_out.vx = msg.vx
         self.state_out.vy = msg.vy
