@@ -65,6 +65,7 @@ class CtrlInterface:
         self.trajstar_received = False
         self.pathlocal_received = False
         self.state_received = False
+        self.ctrl_mode_received = False
         self.vx_error = Float32()
         
         # get dref setpoint
@@ -86,10 +87,8 @@ class CtrlInterface:
             rospy.loginfo_throttle(1, "waiting for pathlocal")
             self.rate.sleep()
 
-        while(self.ctrl_mode == 0):
-            rospy.loginfo_throttle(1, "waiting for activation from exp manager")
-            #self.cmd.header.stamp = rospy.Time.now()
-            #self.cmdpub.publish(self.cmd)
+        while(not self.ctrl_mode_received):
+            rospy.loginfo_throttle(1, "waiting for ctrl_mode")
             self.rate.sleep
             
         # main loop
@@ -99,7 +98,6 @@ class CtrlInterface:
                 rospy.loginfo_throttle(1,"in stop mode")
                 delta_out = self.delta_out_buffer[0]
                 dc_out = 0.0
-                # publish ZERO HERE
             elif(self.ctrl_mode == 1):   # CRUISE CTRL             
                 delta_out, dc_out = self.cc_ctrl()                                      
             elif(self.ctrl_mode == 2):   # TAMP   
@@ -360,12 +358,12 @@ class CtrlInterface:
 
     def state_callback(self, msg):
         self.state = msg 
-        #print "self.state.s = " , self.state.s
         self.state_received = True
         
     def ctrl_mode_callback(self, msg):
         self.ctrl_mode = msg.data
-
+        self.ctrl_mode_received = True
+        
     def vxref_callback(self, msg):
         self.cc_vxref = msg.data
     

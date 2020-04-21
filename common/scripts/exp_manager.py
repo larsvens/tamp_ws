@@ -190,6 +190,8 @@ class ExperimentManager:
                 dub = np.interp(self.state.s,self.pathglobal.s,self.pathglobal.dub)
                 if (self.state.d < dlb-1.0 or self.state.d > dub+1.0): # todo get from param
                     self.ctrl_mode = 0 # stop
+                
+                # publish ctrl mode
                 self.ctrl_mode_pub.publish(self.ctrl_mode)
                 
                 # publish text marker (state info)
@@ -221,6 +223,9 @@ class ExperimentManager:
 
             else: # not reached activation time
                 rospy.loginfo_throttle(1, "Experiment starting in %i seconds"%(self.t_activate-self.exptime))
+                # publish ctrl_mode: 0 which causes ctrl interface to publish 0 ctrl input, initializing CAN interface
+                self.ctrl_mode = 0 # stop
+                self.ctrl_mode_pub.publish(self.ctrl_mode)
             
             self.exptime += self.dt
             self.rate.sleep()
