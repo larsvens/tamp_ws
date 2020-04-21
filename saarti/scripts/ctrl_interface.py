@@ -65,17 +65,17 @@ class CtrlInterface:
         self.trajstar_received = False
         self.pathlocal_received = False
         self.state_received = False
-        
-        
-        # ctrl errors
         self.vx_error = Float32()
         
         # get dref setpoint
         self.cc_dref = rospy.get_param('/cc_dref')
-
-        # misc vars
-        self.delta_out_last = 0
-        self.dc_out_last = 0
+        
+        # postproc tuning vars
+        self.delta_out_buffer_size = 20
+        self.delta_out_buffer = np.zeros(self.delta_out_buffer_size)
+        self.delta_out_ma_window_size = 10               # 1 deactivates        
+        self.db_range = 0.5*(np.pi/180)                 # 0.0 deactivates
+        self.delta_out_rate_max = 30.0*(np.pi/180)       # large value deactivates
 
         # wait for messages before entering main loop
         while(not self.state_received):
@@ -94,30 +94,44 @@ class CtrlInterface:
             
         # main loop
         while not rospy.is_shutdown(): 
-            
+            # COMPUTE CONTROL
             if(self.ctrl_mode == 0):     # STOP (set by exp manager if outside of track)
-                if (self.state.vx > 0.1):
-                    rospy.loginfo_throttle(1,"in stop mode")
-                    delta_out = self.delta_out_last
-                    if(self.system_setup == "rhino_real"):
-                        dc_out = 0.0
-                    else:
-                        dc_out = -200000 # todo set for other platforms
-                else:
-                    delta_out = 0.0
-                    dc_out = 0.0
+                rospy.loginfo_throttle(1,"in stop mode")
+                delta_out = self.delta_out_buffer[0]
+                dc_out = 0.0
+                # publish ZERO HERE
             elif(self.ctrl_mode == 1):   # CRUISE CTRL             
-                delta_out, dc_out = self.cc_ctrl()           
-                           
+                delta_out, dc_out = self.cc_ctrl()                                      
             elif(self.ctrl_mode == 2):   # TAMP   
                 while(not self.trajstar_received):
-                    print("waiting for trajstar, stopping")
+                    rospy.loginfo_throttle(1, "ctrl_interface: waiting for trajstar")
                     delta_out = 0
                     dc_out = 0
                     self.rate.sleep()         
                 delta_out, dc_out = self.tamp_ctrl()
             else:
-                rospy.logerr("invalid ctrl_mode! ctrl_mode = " + str(self.ctrl_mode))
+                rospy.logerr("ctrl_interface: invalid ctrl_mode! ctrl_mode = " + str(self.ctrl_mode))
+    
+            # POST PROCESSING
+            self.delta_out_buffer = np.roll(self.delta_out_buffer,1)
+            if(not np.isnan(delta_out)):
+                self.delta_out_buffer[0] = delta_out
+            else:
+                delta_out = self.delta_out_buffer[1]
+                self.delta_out_buffer[0] = delta_out
+                rospy.logerr("ctrl_interface: nans in delta computation")
+            # smoothing
+            delta_out = np.mean(self.delta_out_buffer[0:self.delta_out_ma_window_size])
+            # rate limit
+            if(self.delta_out_buffer[0] > self.delta_out_buffer[1] + self.delta_out_rate_max*self.dt):
+                delta_out = self.delta_out_buffer[1] + self.delta_out_rate_max*self.dt
+                self.delta_out_buffer[0] = delta_out
+            if(self.delta_out_buffer[0] < self.delta_out_buffer[1] - self.delta_out_rate_max*self.dt):
+                delta_out = self.delta_out_buffer[1] - self.delta_out_rate_max*self.dt
+                self.delta_out_buffer[0] = delta_out
+            # deadband
+            if(-self.db_range < delta_out < self.db_range):
+                delta_out = 0
     
             # set platform specific cmd and publish
             if(self.system_setup == "rhino_real"):
@@ -134,15 +148,10 @@ class CtrlInterface:
                 self.cmd.dc = dc_out
             
             # publish
-            if(not np.isnan(delta_out)):
-                self.cmdpub.publish(self.cmd)
+            self.cmdpub.publish(self.cmd)
 
             # publish tuning info
-            self.vx_errorpub.publish(self.vx_error)
-
-            # store latest controls
-            self.delta_out_last = delta_out
-            self.dc_out_last = dc_out
+            #self.vx_errorpub.publish(self.vx_error)
 
             self.rate.sleep()
     
@@ -198,50 +207,11 @@ class CtrlInterface:
         rospy.loginfo_throttle(1, "Running TAMP control")
 
         # LATERAL CTRL
-        kin_ff_mode = 0 # 0: pure pursuit, 1: polyfit 
-        
-        if(kin_ff_mode == 0): # kinematic feedfwd by pure pursuit
-            lhdist_min = 7.0
-            lhdist_max = 14.0
-            lhdist = float(np.clip((self.state.vx/10.0)*lhdist_max, a_min = lhdist_min, a_max = lhdist_max))
-            s_lh = self.state.s + lhdist
-            Xlh = np.interp(s_lh, self.trajstar.s, self.trajstar.X)
-            Ylh = np.interp(s_lh, self.trajstar.s, self.trajstar.Y) 
-            f1 = interp1d(self.trajstar.s, self.trajstar.X, kind='cubic')
-            Xlh = f1(s_lh)
-            f2 = interp1d(self.trajstar.s, self.trajstar.Y, kind='cubic')
-            Ylh = f2(s_lh)
-            rho_pp = self.pp_curvature(self.trajstar.X[0],
-                                       self.trajstar.Y[0],
-                                       self.trajstar.psi[0],
-                                       Xlh,
-                                       Ylh)       
-            kin_ff_term = rho_pp*(self.lf + self.lr) 
-            # publish vis marker
-            m = self.getlhptmarker(Xlh,Ylh)
-            self.lhptpub.publish(m) 
-            
-        elif(kin_ff_mode == 1): # kinematic feedfwd by polyfit
-            fitdist_min = 7.0
-            fitdist_max = 14.0
-            fitdist = float(np.clip((self.state.vx/10.0)*fitdist_max, a_min = fitdist_min, a_max = fitdist_max))            
-            sfit = np.linspace(self.state.s, self.state.s + fitdist, num=10)
-            # rotate trajstar to vehicle frame xy
-            deltaX = np.interp(sfit, self.trajstar.s, self.trajstar.X) - self.state.X
-            deltaY = np.interp(sfit, self.trajstar.s, self.trajstar.Y) - self.state.Y
-            x = deltaX*np.cos(self.state.psi) + deltaY*np.sin(self.state.psi)
-            y = -deltaX*np.sin(self.state.psi) + deltaY*np.cos(self.state.psi)    
-            # fit 3rd order polynomial
-            X_poly = np.vstack((x ** 3, x ** 2, x ** 1))
-            poly_coeffs = np.linalg.lstsq(X_poly.T, y,rcond=None)[0]
-            x_eval = 0.0
-            rho = (6.0*poly_coeffs[0]*x_eval + 2.0*poly_coeffs[1])/((1.0 + (3.0*poly_coeffs[0]*x_eval**2.0 + 2.0*poly_coeffs[1]*x_eval + poly_coeffs[2]))**1.5)
-            y_fit = np.dot(poly_coeffs, X_poly)        
-            dydx = 3.0*poly_coeffs[0]*x_eval**2 + 2.0*poly_coeffs[1]*x_eval + poly_coeffs[2]
-            kin_ff_term = rho*(self.lf + self.lr) + np.arctan(dydx) 
-            # publish vis marker
-            m = self.getpolyfitmarker(x, y_fit)
-            self.polyfitpub.publish(m)                
+        kin_ff_method = "polyfit" # 0: pure pursuit, 1: polyfit 
+        if(kin_ff_method == "pure_pursuit"):
+            kin_ff_term = self.kinematic_ff_by_pp()
+        elif(kin_ff_method == "polyfit"):
+            kin_ff_term = self.kinematic_ff_by_polyfit()
 
         # dynamic feedfwd term (platform dependent)        
         if(self.system_setup == "rhino_real"):
@@ -253,15 +223,6 @@ class CtrlInterface:
         else:
             rospy.logerr("ctrl_interface: invalid value of system_setup param, system_setup = " + self.system_setup)
         delta_out = kin_ff_term + dyn_ff_term
-
-        # POST PROCESSING
-        # smoothing
-        
-        # rate limit
-        
-        # deadband
-        
-
 
         # LONGITUDINAL CTRL
         # feedfwd
@@ -291,6 +252,51 @@ class CtrlInterface:
         
         return delta_out, dc_out
 
+    def kinematic_ff_by_polyfit(self):
+        fitdist_min = 7.0
+        fitdist_max = 14.0
+        fitdist = float(np.clip((self.state.vx/10.0)*fitdist_max, a_min = fitdist_min, a_max = fitdist_max))            
+        sfit = np.linspace(self.state.s, self.state.s + fitdist, num=10)
+        # rotate trajstar to vehicle frame xy
+        deltaX = np.interp(sfit, self.trajstar.s, self.trajstar.X) - self.state.X
+        deltaY = np.interp(sfit, self.trajstar.s, self.trajstar.Y) - self.state.Y
+        x = deltaX*np.cos(self.state.psi) + deltaY*np.sin(self.state.psi)
+        y = -deltaX*np.sin(self.state.psi) + deltaY*np.cos(self.state.psi)    
+        # fit 3rd order polynomial
+        X_poly = np.vstack((x ** 3, x ** 2, x ** 1))
+        poly_coeffs = np.linalg.lstsq(X_poly.T, y,rcond=None)[0]
+        x_eval = 0.0
+        rho = (6.0*poly_coeffs[0]*x_eval + 2.0*poly_coeffs[1])/((1.0 + (3.0*poly_coeffs[0]*x_eval**2.0 + 2.0*poly_coeffs[1]*x_eval + poly_coeffs[2]))**1.5)
+        y_fit = np.dot(poly_coeffs, X_poly)        
+        dydx = 3.0*poly_coeffs[0]*x_eval**2 + 2.0*poly_coeffs[1]*x_eval + poly_coeffs[2]
+        kin_ff_term = rho*(self.lf + self.lr) + np.arctan(dydx) 
+        # publish vis marker
+        m = self.getpolyfitmarker(x, y_fit)
+        self.polyfitpub.publish(m)
+        return kin_ff_term
+
+    def kinematic_ff_by_pp(self):
+        lhdist_min = 6.0
+        lhdist_max = 12.0
+        lhdist = float(np.clip((self.state.vx/10.0)*lhdist_max, a_min = lhdist_min, a_max = lhdist_max))
+        s_lh = self.state.s + lhdist
+        Xlh = np.interp(s_lh, self.trajstar.s, self.trajstar.X)
+        Ylh = np.interp(s_lh, self.trajstar.s, self.trajstar.Y) 
+        f1 = interp1d(self.trajstar.s, self.trajstar.X, kind='cubic')
+        Xlh = f1(s_lh)
+        f2 = interp1d(self.trajstar.s, self.trajstar.Y, kind='cubic')
+        Ylh = f2(s_lh)
+        rho_pp = self.pp_curvature(self.trajstar.X[0],
+                                   self.trajstar.Y[0],
+                                   self.trajstar.psi[0],
+                                   Xlh,
+                                   Ylh)       
+        kin_ff_term = rho_pp*(self.lf + self.lr) 
+        # publish vis marker
+        m = self.getlhptmarker(Xlh,Ylh)
+        self.lhptpub.publish(m) 
+        return kin_ff_term
+        
     def pp_curvature(self,Xego,Yego,psiego,Xlh,Ylh):
         deltaX = (Xlh-Xego)
         deltaY = (Ylh-Yego)
