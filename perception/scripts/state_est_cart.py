@@ -19,6 +19,7 @@ from common.msg import OriginPoseUTM
 from util import angleToInterval
 from opendlv_ros.msg import SensorMsgGPS
 from opendlv_ros.msg import SensorMsgCAN 
+#import filterpy
 
 class StateEstCart:
     # constructor
@@ -106,10 +107,13 @@ class StateEstCart:
             self.rate.sleep()
 
     def update_rhino_state(self):
+        # get pos from gps
         X_utm, Y_utm, utm_nr, utm_letter = utm.from_latlon(self.odlv_gps_msg.lat, self.odlv_gps_msg.long)
+        X = X_utm - self.origin_pose_utm.X0_utm
+        Y = Y_utm - self.origin_pose_utm.Y0_utm
         
         # check utm zone
-        if(utm_nr != self.origin_pose_utm.utm_nr):
+        if(utm_nr != self.origin_pose_utm.utm_nr or utm_letter != chr(self.origin_pose_utm.utm_letter)):
             rospy.logerr("UTM zone mismatch: GPS measurement utm_nr =     " + str(utm_nr) + ", origin_pose utm_nr =     " + str(self.origin_pose_utm.utm_nr))
             rospy.logerr("UTM zone mismatch: GPS measurement utm_letter = " + utm_letter + ", origin_pose utm_letter = " + str(chr(self.origin_pose_utm.utm_letter)))
 
@@ -118,39 +122,53 @@ class StateEstCart:
         delta_t_gps = rospy.Time.now() - self.ts_latest_pos_update
         delta_t_can = rospy.Time.now() - self.odlv_can_msg.header.stamp
 
-        # check that message is not too old before using it
-        msg_time_mgn = 0.2
+        # warning if message is old
+        msg_time_mgn = 0.1
         if(delta_t_gps.to_sec() > msg_time_mgn):
-            rospy.logwarn("state_est_cart: Old GPS measurement, delta_t_gps.to_sec() = " + str(delta_t_gps.to_sec()))            
+            rospy.logwarn("state_est_cart: Old GPS measurement, delta_t_gps.to_sec() = " + str(delta_t_gps.to_sec()))
+        else:
+            rospy.logwarn_throttle(1,"state_est_cart: GPS measurement age: = " + str(delta_t_gps.to_sec()))
 
         if(delta_t_can.to_sec() > msg_time_mgn):
             rospy.logwarn("state_est_cart: Old CAN measurement, delta_t_can.to_sec() = " + str(delta_t_can.to_sec()))
 
-        # set velocities
+        # get velocities
         self.state_out.psidot = self.odlv_can_msg.yawrate
         #self.state_out.vx = np.sqrt(self.odlv_gps_msg.vx**2 + self.odlv_gps_msg.vy**2)
         #self.state_out.vy = self.state_out.psidot*self.lr        
         #self.state_out.vx = self.odlv_gps_msg.vx
         self.state_out.vx = self.odlv_can_msg.vx
         self.state_out.vy = self.odlv_gps_msg.vy 
+
+        # get motion tangent angle
+        if(self.state_out.vx > 1.0 and X-self.state_out.X != 0.0):
+            self.psi_tan = np.arctan((Y-self.state_out.Y)/(X-self.state_out.X))
+        else:
+            self.psi_tan = self.odlv_gps_msg.yawangle
         
-        # PSI OFFSET (TUNE AFTER GPS CALIBRATION)
-        #psi_offset = -27*(np.pi/180)
-        psi_offset = 0 #np.pi/2 
-        if(delta_t_gps.to_sec() <= msg_time_mgn and self.state_out.vx > 1.0):
-        #if(False): # uncomment to deactivate DR
+        # estimate heading offset
+        #psi_offset = self.psi_tan - self.odlv_gps_msg.yawangle
+        psi_offset = 0.00
+        
+        # get pose
+        #if(delta_t_gps.to_sec() <= msg_time_mgn and self.state_out.vx > 1.0):
+        if(False): # uncomment to deactivate DR
             # DEAD RECKONING FROM LATEST GPS POSE   
             #self.state_out.psi = self.odlv_gps_msg.yawangle + psi_offset + self.state_out.psidot*delta_t_gps.to_sec()
             self.state_out.psi = self.odlv_gps_msg.yawangle + psi_offset 
             vX = self.state_out.vx*np.cos(self.state_out.psi) - self.state_out.vy*np.sin(self.state_out.psi)
             vY = self.state_out.vx*np.sin(self.state_out.psi) + self.state_out.vy*np.cos(self.state_out.psi)
-            self.state_out.X = X_utm - self.origin_pose_utm.X0_utm + vX*delta_t_gps.to_sec()
-            self.state_out.Y = Y_utm - self.origin_pose_utm.Y0_utm + vY*delta_t_gps.to_sec()
+            self.state_out.X = X + vX*delta_t_gps.to_sec()
+            self.state_out.Y = Y + vY*delta_t_gps.to_sec()
         else:
             # USE RAW GPS MEASUREMENT FOR POSE            
-            self.state_out.X = X_utm - self.origin_pose_utm.X0_utm
-            self.state_out.Y = Y_utm - self.origin_pose_utm.Y0_utm
+            self.state_out.X = X
+            self.state_out.Y = Y
             self.state_out.psi = self.odlv_gps_msg.yawangle + psi_offset 
+
+        # print errors if faulty state estimates
+        if(self.state_out.psi < -np.pi or self.state_out.psi > np.pi):
+            rospy.logerr("state_est_cart: psi outside interval, psi = " + str(self.state_out.psi))
 
     def broadcast_dyn_tfs(self):
         self.tfbr.sendTransform((self.state_out.X, self.state_out.Y, 0),
@@ -222,8 +240,12 @@ class StateEstCart:
         self.statepub.publish(self.state_out) # publish in callback to minimize delay
 
     def odlv_gps_callback(self, msg):
+        # print errors if faulty measurements
+        if(msg.yawangle < 0.0 or msg.yawangle > 360):
+            rospy.logerr("state_est_cart: incoming heading outside interval, hdng = " + str(msg.yawangle))
+        
         # store timestamp of latest incoming position
-        if (self.odlv_gps_msg.vx >= 1.0 and self.odlv_gps_msg.lat != msg.lat):
+        if (self.odlv_gps_msg.vx >= 1.0 and not (self.odlv_gps_msg.lat == msg.lat and self.odlv_gps_msg.long == msg.long)):
             self.ts_latest_pos_update = rospy.Time.now()
         elif (self.odlv_gps_msg.vx < 1.0):
             self.ts_latest_pos_update = rospy.Time.now()
@@ -236,10 +258,7 @@ class StateEstCart:
         # converting to psi (radians -pi to pi, 0 East, increasing counterclockwise )
         heading = self.odlv_gps_msg.yawangle
         psi = (np.pi/180)*(90-heading) 
-        while(psi > np.pi):
-            psi = psi -2*np.pi
-        while(psi <= -np.pi):
-            psi = psi +2*np.pi
+        psi = angleToInterval(np.array([psi]))[0]
         self.odlv_gps_msg.yawangle = psi
         
         # convert heading-rate to yawrate

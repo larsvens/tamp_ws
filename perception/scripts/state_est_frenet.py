@@ -118,7 +118,7 @@ class StateEstFrenet:
         self.state_out.d = d[0]
         
         psi_c = np.interp(s,self.pathglobal.s,self.pathglobal_psic_cont)
-        angleToInterval(psi_c)
+        psi_c = angleToInterval(psi_c)
         
         self.state_out.deltapsi = self.state_out.psi - psi_c
         # correction of detapsi @ psi flips
