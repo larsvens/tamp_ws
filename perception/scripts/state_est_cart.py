@@ -55,7 +55,7 @@ class StateEstCart:
     
         self.kf.H = np.array([[1.,0.,0.,0.],   # measurement function
                               [0.,0.,1.,0.]])         
-        Qscale = 0.01
+        Qscale = 0.005 # 0.01
         self.kf.Q = Qscale*np.array([[1.0,    0.,    0.,    0.], 
                                      [0.,    1.0,    0.,    0.],
                                      [0.,    0.,    1.0,    0.],
