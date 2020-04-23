@@ -55,7 +55,7 @@ class StateEstCart:
     
         self.kf.H = np.array([[1.,0.,0.,0.],   # measurement function
                               [0.,0.,1.,0.]])         
-        Qscale = 0.005 # 0.01
+        Qscale = 0.005   # 0.01
         self.kf.Q = Qscale*np.array([[1.0,    0.,    0.,    0.], 
                                      [0.,    1.0,    0.,    0.],
                                      [0.,    0.,    1.0,    0.],
@@ -190,6 +190,10 @@ class StateEstCart:
         self.kf.update(z)
         self.state_out.X = self.kf.x[0][0]
         self.state_out.Y = self.kf.x[2][0]
+
+        # TMP deactivate kf
+        #self.state_out.X = X_raw
+        #self.state_out.Y = Y_raw
 
         # print errors if faulty state estimates
         if(self.state_out.psi < -np.pi or self.state_out.psi > np.pi):

@@ -19,7 +19,7 @@ d_obs_at_popup: -1.75
 
 # friction conditions (asta_zero_long)
 s_begin_mu_segments:  [0.0, 275.0, 315.0]
-mu_segment_values:  [0.8, 0.4, 0.8]
+mu_segment_values:  [0.8, 0.8, 0.8] # TMP! [0.8, 0.4, 0.8]
 
 # cc config (static)
 #s_begin_vxref_segments: [0.0]

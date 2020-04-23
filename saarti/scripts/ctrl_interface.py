@@ -74,7 +74,7 @@ class CtrlInterface:
         # postproc tuning vars
         self.delta_out_buffer_size = 20
         self.delta_out_buffer = np.zeros(self.delta_out_buffer_size)
-        self.delta_out_ma_window_size = 10               # 1 deactivates        
+        self.delta_out_ma_window_size = 20               # 1 deactivates        
         self.db_range = 0.5*(np.pi/180)                 # 0.0 deactivates
         self.delta_out_rate_max = 30.0*(np.pi/180)       # large value deactivates
 
@@ -152,7 +152,61 @@ class CtrlInterface:
             #self.vx_errorpub.publish(self.vx_error)
 
             self.rate.sleep()
-    
+            
+        
+    def tamp_ctrl(self):
+        rospy.loginfo_throttle(1, "Running TAMP control")
+
+        # LATERAL CTRL
+        kin_ff_method = "polyfit" # 0: pure pursuit, 1: polyfit 
+        if(kin_ff_method == "pure_pursuit"):
+            kin_ff_term = self.kinematic_ff_by_pp()
+        elif(kin_ff_method == "polyfit"):
+            kin_ff_term = self.kinematic_ff_by_polyfit()
+
+        # dynamic feedfwd term (platform dependent)        
+        if(self.system_setup == "rhino_real"):
+            dyn_ff_term = 0.9*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
+        elif(self.system_setup == "rhino_fssim"):
+            dyn_ff_term = 0.9*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
+        elif(self.system_setup == "gotthard_fssim"):
+            dyn_ff_term = 0.1*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
+        else:
+            rospy.logerr("ctrl_interface: invalid value of system_setup param, system_setup = " + self.system_setup)
+        delta_out = kin_ff_term + dyn_ff_term
+        # saturate output
+        if(self.system_setup == "rhino_real"):
+            delta_out = float(np.clip(delta_out, a_min = -0.40, a_max = 0.40)) # delta_max = kappa_max*(lf+lr)
+        
+        # LONGITUDINAL CTRL
+        # feedfwd
+        Fx_request = self.trajstar.Fxf[0] + self.trajstar.Fxr[0]
+        self.vx_error = self.trajstar.vx[1]-self.state.vx
+        if(self.system_setup == "rhino_real"):
+            feedfwd = Fx_request/self.m
+            feedback = 6.0*self.vx_error # TUNE THIS VALUE (before: 6.0)
+            dc_out_unsat = feedfwd + feedback
+            # saturate output
+            dc_out = float(np.clip(dc_out_unsat, a_min = -1.0, a_max = 1.0))
+            if (dc_out_unsat != dc_out):
+                rospy.logwarn_throttle(1,"saturated logitudinal command in tamp_ctrl")
+        elif(self.system_setup == "rhino_fssim"):
+            feedfwd = Fx_request
+            feedback = 50000*self.vx_error
+            dc_out = feedfwd + feedback
+        elif(self.system_setup == "gotthard_fssim"):
+            feedfwd = 1.1*Fx_request 
+            feedback = 0.0*self.vx_error
+            Cr0 = 180
+            Cm1 = 5000            
+            dc_out = ((feedfwd+feedback)+Cr0)/Cm1           
+        else:
+            dc_out = 0
+            rospy.logerr("ctrl_interface: invalid value of system_setup param, system_setup = " + self.system_setup)        
+        
+        return delta_out, dc_out
+
+
     def cc_ctrl(self):
         rospy.loginfo_throttle(1, "ctrl_interface: running CC control with vxref = " + str(self.cc_vxref))
         
@@ -199,56 +253,7 @@ class CtrlInterface:
             rospy.logerr("ctrl_interface: invalid value of system_setup param, system_setup = " + self.system_setup)
         
         return delta_out, dc_out
-        
-        
-    def tamp_ctrl(self):
-        rospy.loginfo_throttle(1, "Running TAMP control")
 
-        # LATERAL CTRL
-        kin_ff_method = "polyfit" # 0: pure pursuit, 1: polyfit 
-        if(kin_ff_method == "pure_pursuit"):
-            kin_ff_term = self.kinematic_ff_by_pp()
-        elif(kin_ff_method == "polyfit"):
-            kin_ff_term = self.kinematic_ff_by_polyfit()
-
-        # dynamic feedfwd term (platform dependent)        
-        if(self.system_setup == "rhino_real"):
-            dyn_ff_term = 0.9*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
-        elif(self.system_setup == "rhino_fssim"):
-            dyn_ff_term = 0.9*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
-        elif(self.system_setup == "gotthard_fssim"):
-            dyn_ff_term = 0.1*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
-        else:
-            rospy.logerr("ctrl_interface: invalid value of system_setup param, system_setup = " + self.system_setup)
-        delta_out = kin_ff_term + dyn_ff_term
-
-        # LONGITUDINAL CTRL
-        # feedfwd
-        Fx_request = self.trajstar.Fxf[0] + self.trajstar.Fxr[0]
-        self.vx_error = self.trajstar.vx[1]-self.state.vx
-        if(self.system_setup == "rhino_real"):
-            feedfwd = Fx_request/self.m
-            feedback = 6.0*self.vx_error # TUNE THIS VALUE (before: 6.0)
-            dc_out_unsat = feedfwd + feedback
-            # saturate output
-            dc_out = float(np.clip(dc_out_unsat, a_min = -1.0, a_max = 1.0))
-            if (dc_out_unsat != dc_out):
-                rospy.logwarn_throttle(1,"saturated logitudinal command in tamp_ctrl")
-        elif(self.system_setup == "rhino_fssim"):
-            feedfwd = Fx_request
-            feedback = 50000*self.vx_error
-            dc_out = feedfwd + feedback
-        elif(self.system_setup == "gotthard_fssim"):
-            feedfwd = 1.1*Fx_request 
-            feedback = 0.0*self.vx_error
-            Cr0 = 180
-            Cm1 = 5000            
-            dc_out = ((feedfwd+feedback)+Cr0)/Cm1           
-        else:
-            dc_out = 0
-            rospy.logerr("ctrl_interface: invalid value of system_setup param, system_setup = " + self.system_setup)        
-        
-        return delta_out, dc_out
 
     def kinematic_ff_by_polyfit(self):
         fitdist_min = 7.0
