@@ -63,6 +63,8 @@ private:
     float mu_nominal_; // only used for nonadaptive case
     float vxref_cc_; // only used for velocity keeping (refmode 1)
     float dref_cc_; // only used for velocity keeping (refmode 1)
+    float Ff_util_;
+    float Fr_util_;
     int Nd_rollout_;
     int Nvx_rollout_;
     float vxub_rollout_;

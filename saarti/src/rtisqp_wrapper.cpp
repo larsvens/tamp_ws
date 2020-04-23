@@ -139,15 +139,15 @@ void RtisqpWrapper::setOptReference(containers::trajstruct traj, containers::ref
     acadoVariables.yN[ 6 ] = 0;                                // dummy
 }
 
-void RtisqpWrapper::setInputConstraints(containers::trajstruct traj){
+void RtisqpWrapper::setInputConstraints(containers::trajstruct traj,float Ff_util,float Fr_util){
     // note: mu and Fz have been previously set either static or adaptive
 
     // get max forces front and back
     vector<float> Ffmax;
     vector<float> Frmax;
     for (uint k = 0; k < N ; ++k){
-        Ffmax.push_back(traj.mu.at(k)*traj.Fzf.at(k)*0.90f); // 0.95 tmp adjust with some margin (todo just put on lateral)
-        Frmax.push_back(traj.mu.at(k)*traj.Fzr.at(k));
+        Ffmax.push_back(traj.mu.at(k)*traj.Fzf.at(k)*Ff_util); // (todo differentiate lateral and longitudinal)
+        Frmax.push_back(traj.mu.at(k)*traj.Fzr.at(k)*Fr_util);
     }
 
     // set friction constraints front wheel

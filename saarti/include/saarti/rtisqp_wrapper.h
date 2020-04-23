@@ -52,7 +52,7 @@ public:
     void setInitialGuess(containers::trajstruct);
     void setInitialState(containers::statestruct);
     void setOptReference(containers::trajstruct, containers::refstruct refs);
-    void setInputConstraints(containers::trajstruct traj);
+    void setInputConstraints(containers::trajstruct traj, float Ff_util, float Fr_util);
     containers::posconstrstruct setStateConstraints(containers::trajstruct &traj,
                                                     containers::obstastruct obs,
                                                     vector<float> lld,

@@ -17,6 +17,8 @@ __global__ void single_rollout(float *trajset_arr,
                                float *dub_path,
                                float *dlb_path,
                                float mu_nominal,
+                               float Ff_util,
+                               float Fr_util,
                                float m,
                                float Iz,
                                float lf,
@@ -143,8 +145,8 @@ __global__ void single_rollout(float *trajset_arr,
             Cr = B*C*D*Fzr; // Rajamani
 
             // compute maximum tire forces
-            float Ffmax = mu*Fzf;
-            float Frmax = mu*Fzr;
+            float Ffmax = mu*Fzf*Ff_util;
+            float Frmax = mu*Fzr*Fr_util;
 
          /*
          * ROLLOUT CONTROLLER
@@ -246,6 +248,8 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                   containers::staticparamstruct sp,
                   int traction_adaptive,
                   float mu_nominal,
+                  float Ff_util,
+                  float Fr_util,
                   std::vector<float> Kctrl_,
                   uint Nt, // N in planning horizon
                   uint Nd, // Nr of goal pts in d (also nr of threads, multiples of 32 to maximize gpu utilization)
@@ -340,6 +344,8 @@ void cuda_rollout(std::vector<containers::trajstruct> &trajset_struct,
                                 dub_path,
                                 dlb_path,
                                 mu_nominal,
+                                Ff_util,
+                                Fr_util,
                                 sp.m,
                                 sp.Iz,
                                 sp.lf,

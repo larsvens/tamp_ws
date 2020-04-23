@@ -163,7 +163,9 @@ class CtrlInterface:
             kin_ff_term = self.kinematic_ff_by_pp()
         elif(kin_ff_method == "polyfit"):
             kin_ff_term = self.kinematic_ff_by_polyfit()
-
+        elif(kin_ff_method == "dpsids"):
+            kin_ff_term = self.kinematic_ff_by_dpsids()
+            
         # dynamic feedfwd term (platform dependent)        
         if(self.system_setup == "rhino_real"):
             dyn_ff_term = 0.9*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
@@ -176,7 +178,7 @@ class CtrlInterface:
         delta_out = kin_ff_term + dyn_ff_term
         # saturate output
         if(self.system_setup == "rhino_real"):
-            delta_out = float(np.clip(delta_out, a_min = -0.40, a_max = 0.40)) # delta_max = kappa_max*(lf+lr)
+            delta_out = float(np.clip(delta_out, a_min = -0.50, a_max = 0.50)) # delta_max = kappa_max*(lf+lr)
         
         # LONGITUDINAL CTRL
         # feedfwd
@@ -253,12 +255,11 @@ class CtrlInterface:
             rospy.logerr("ctrl_interface: invalid value of system_setup param, system_setup = " + self.system_setup)
         
         return delta_out, dc_out
-
-
+   
     def kinematic_ff_by_polyfit(self):
-        fitdist_min = 7.0
-        fitdist_max = 14.0
-        fitdist = float(np.clip((self.state.vx/10.0)*fitdist_max, a_min = fitdist_min, a_max = fitdist_max))            
+        fitdist_min = 5.0
+        fitdist_max = 10.0
+        fitdist = float(np.clip((np.min(self.trajstar.vx)/10.0)*fitdist_max, a_min = fitdist_min, a_max = fitdist_max))            
         sfit = np.linspace(self.state.s, self.state.s + fitdist, num=10)
         # rotate trajstar to vehicle frame xy
         deltaX = np.interp(sfit, self.trajstar.s, self.trajstar.X) - self.state.X
@@ -266,13 +267,14 @@ class CtrlInterface:
         x = deltaX*np.cos(self.state.psi) + deltaY*np.sin(self.state.psi)
         y = -deltaX*np.sin(self.state.psi) + deltaY*np.cos(self.state.psi)    
         # fit 3rd order polynomial
-        X_poly = np.vstack((x ** 3, x ** 2, x ** 1))
+        #X_poly = np.vstack((x ** 3, x ** 2, x ** 1))
+        X_poly = np.vstack((x ** 3, x ** 2, np.zeros(x.shape)))
         poly_coeffs = np.linalg.lstsq(X_poly.T, y,rcond=None)[0]
         x_eval = 0.0
         rho = (6.0*poly_coeffs[0]*x_eval + 2.0*poly_coeffs[1])/((1.0 + (3.0*poly_coeffs[0]*x_eval**2.0 + 2.0*poly_coeffs[1]*x_eval + poly_coeffs[2]))**1.5)
         y_fit = np.dot(poly_coeffs, X_poly)        
-        dydx = 3.0*poly_coeffs[0]*x_eval**2 + 2.0*poly_coeffs[1]*x_eval + poly_coeffs[2]
-        kin_ff_term = rho*(self.lf + self.lr) + np.arctan(dydx) 
+        #dydx = 3.0*poly_coeffs[0]*x_eval**2 + 2.0*poly_coeffs[1]*x_eval + poly_coeffs[2]
+        kin_ff_term = rho*(self.lf + self.lr)# + np.arctan(dydx) 
         # publish vis marker
         m = self.getpolyfitmarker(x, y_fit)
         self.polyfitpub.publish(m)
@@ -298,6 +300,17 @@ class CtrlInterface:
         # publish vis marker
         m = self.getlhptmarker(Xlh,Ylh)
         self.lhptpub.publish(m) 
+        return kin_ff_term
+
+    def kinematic_ff_by_dpsids(self):
+        s0 = 0.
+        s1 = 5.
+        delta_s = s1-s0
+        psi0 = np.interp(self.state.s+s0, self.trajstar.s, self.trajstar.psi)
+        psi1 = np.interp(self.state.s+s0, self.trajstar.s, self.trajstar.psi)
+        deltapsi = psi1 - psi0 # todo angle to interval
+        rho = deltapsi/delta_s
+        kin_ff_term = rho*(self.lf + self.lr)
         return kin_ff_term
         
     def pp_curvature(self,Xego,Yego,psiego,Xlh,Ylh):
