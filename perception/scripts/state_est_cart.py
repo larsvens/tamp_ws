@@ -169,18 +169,24 @@ class StateEstCart:
         
         # velocities 
         vx_raw = self.odlv_can_msg.vx
-        vy_raw = -self.odlv_gps_msg.vy # flipped sign convention vy
+        vy_raw = -self.odlv_gps_msg.vy # flipped sign convention oxgs
 
+        # accelerations
+        ax_raw = self.odlv_gps_msg.ax
+        ay_raw = -self.odlv_gps_msg.ay # flipped sign convention oxgs
+        
         # publish raw pose marker
         m = self.get_pose_marker(X_raw,Y_raw,psi_raw)
         self.poserawpub.publish(m)
         
         # STATE EST
         
-        # set velocities and heading directly
+        # set velocities, acc and heading directly
         self.state_out.psidot = psidot_raw
         self.state_out.vx = vx_raw
         self.state_out.vy = vy_raw 
+        self.state_out.ax = ax_raw
+        self.state_out.ay = ay_raw 
         self.state_out.psi = psi_raw 
 
         # set posifion from KF
