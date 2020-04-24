@@ -263,6 +263,12 @@ class StateEstCart:
                                 "cog",
                                 "base_link")         
 
+        self.tfbr.sendTransform((2.0, 0.0, 1.45),
+                                (0, 0, 0, 1), 
+                                rospy.Time.now(),
+                                "cam",
+                                "cog")  
+        
         self.tfbr.sendTransform((self.dims["cog"]["chassis"]["x"], self.dims["cog"]["chassis"]["y"], self.dims["cog"]["chassis"]["z"]),
                                 (0, 0, 0, 1), 
                                 rospy.Time.now(),
