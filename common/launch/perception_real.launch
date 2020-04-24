@@ -6,6 +6,8 @@
     <arg name="urdf_model" default="$(find common)/config/vehicles/$(arg robot_name)/urdf/car.urdf" />
     <arg name="system_setup" default="rhino_real" />
     <arg name="track_name" default="asta_zero_long" />
+    <arg name="record_rosbag" default="true" />
+    <arg name="launch_zed" default="false" />
 
     <!-- params -->
     <param name="robot_name" type="string" value="$(arg robot_name)" />
@@ -15,17 +17,17 @@
     <rosparam command="load" file="$(find perception)/config/perception_config.yaml" />
     
     <!-- perception nodes -->
-    <node pkg="perception" type="track_iface.py" name="track_iface" output="screen" > </node>
-    <node pkg="perception" type="state_est_cart.py" name="state_est_cart" output="screen"> </node>
-    <node pkg="perception" type="state_est_frenet.py" name="state_est_frenet" output="screen"> </node>
-    <node pkg="perception" type="road_perception.py" name="road_perception" > </node>
+    <node pkg="perception" type="track_iface.py" name="track_iface" output="screen" />
+    <node pkg="perception" type="state_est_cart.py" name="state_est_cart" output="screen" />
+    <node pkg="perception" type="state_est_frenet.py" name="state_est_frenet" output="screen" />
+    <node pkg="perception" type="road_perception.py" name="road_perception" />
+    <node pkg="zed_wrapper" type="zed_posetracking_node" name="zed_posetracking_node" if="$(arg launch_zed )" /> 
 
     <!-- visualization -->
     <param name="robot_description_simple" command="$(find xacro)/xacro --inorder $(arg urdf_model)" />
     <node name="rviz_" pkg="rviz" type="rviz" args="-d $(find common)/config/rviz_config/saarti_real.rviz "/>
 
     <!-- logging -->
-    <arg name="record_rosbag" default="true" />
     <node pkg="opendlv_ros" type="sens_msg_remap_node.py" name="sens_msg_remap"/>
     <node pkg="rosbag" name="rosbag_record_exp" type="record" if="$(arg record_rosbag )" output="screen"    
 		args="record -o  $(find tamp_logs)/bagfiles/real_exp/astazero-2020-04-30/asta --duration=5m
@@ -57,7 +59,10 @@
 			/OpenDLV/SensorMsgGPS_log
 			/OpenDLV/SensorMsgCAN_log
 			/OpenDLV/ActuationRequest
-			/lars/ActuationRequest"> 
+			/lars/ActuationRequest
+			/zed/camera_info
+			/zed/left_cam/compressed
+			/zed/odom"> 
     </node>
 
 </launch>

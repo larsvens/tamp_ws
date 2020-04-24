@@ -20,16 +20,47 @@ from tf.transformations import quaternion_from_euler
 from util import angleToInterval
 from opendlv_ros.msg import SensorMsgGPS
 from opendlv_ros.msg import SensorMsgCAN 
-from filterpy.kalman import KalmanFilter
-#from filterpy.common import Q_discrete_white_noise
 
+class pos2DKalmanFilter:
+    # constructor
+    def __init__(self,dt,Qscale):
+        self.x = np.array([[0.], # X
+                           [0.], # Xdot
+                           [0.], # Y
+                           [0.]]) # Ydot  
+        self.F = np.array([[1., dt, 0., 0.],
+                              [0., 1., 0., 0.],
+                              [0., 0., 1., dt],
+                              [0., 0., 0., 1.]])
+    
+        self.H = np.array([[1.,0.,0.,0.],   # measurement function
+                           [0.,0.,1.,0.]])         
+        self.Q = Qscale*np.array([[1.0,    0.,    0.,    0.], 
+                                  [0.,    1.0,    0.,    0.],
+                                  [0.,    0.,    1.0,    0.],
+                                  [0.,    0.,    0.,    1.0]])
+        self.P = np.copy(self.Q) # init covariance matrix same as Q
+        self.R = np.array([[0.1, 0.], # measurement noise
+                           [0., 0.1]])
+
+    def predict(self):
+        self.x = np.dot(self.F, self.x)
+        self.P = np.dot(self.F, self.P).dot(self.F.T) + self.Q
+
+    def update(self,z):
+        S = np.dot(self.H, self.P).dot(self.H.T) + self.R
+        K = np.dot(self.P, self.H.T).dot(np.linalg.pinv(S))
+        y = z - np.dot(self.H, self.x)
+        self.x += np.dot(K, y)
+        self.P = self.P - np.dot(K, self.H).dot(self.P)   
+    
 class StateEstCart:
     # constructor
     def __init__(self):
         # init node
         rospy.init_node('state_est_cart', anonymous=True)
         self.dt = rospy.get_param('/dt_state_est_cart')
-        self.rate = rospy.Rate(1/self.dt)      
+        self.rate = rospy.Rate(1./self.dt)      
         
         # load rosparams
         self.robot_name = rospy.get_param('/robot_name')
@@ -41,28 +72,9 @@ class StateEstCart:
         self.live = False # todo incorporate in "system_setup"
         self.ts_latest_pos_update = rospy.Time.now()
 
-        # init KF
-        self.kf = KalmanFilter (dim_x=4, dim_z=2)
-        self.kf.x = np.array([[0.], # X
-                              [0.], # Xdot
-                              [0.], # Y
-                              [0.]]) # Ydot  
-        dt = self.dt
-        self.kf.F = np.array([[1., dt, 0., 0.],
-                              [0., 1., 0., 0.],
-                              [0., 0., 1., dt],
-                              [0., 0., 0., 1.]])
-    
-        self.kf.H = np.array([[1.,0.,0.,0.],   # measurement function
-                              [0.,0.,1.,0.]])         
-        Qscale = 0.005   # 0.01
-        self.kf.Q = Qscale*np.array([[1.0,    0.,    0.,    0.], 
-                                     [0.,    1.0,    0.,    0.],
-                                     [0.,    0.,    1.0,    0.],
-                                     [0.,    0.,    0.,    1.0]])
-        self.kf.P = self.kf.Q # init covariance matrix
-        self.kf.R = np.array([[0.1, 0.], # measurement noise
-                              [0., 0.1]])
+        # init kf 
+        Qscale = 0.01 
+        self.kf = pos2DKalmanFilter(self.dt,Qscale)
     
         # load vehicle dimensions 
         dimsyaml = rospkg.RosPack().get_path('common') + '/config/vehicles/' + self.robot_name + '/config/distances.yaml'
@@ -129,6 +141,7 @@ class StateEstCart:
                 rospy.logwarn("state_est_cart: compute time exceeding dt!")
                 rospy.logwarn("state_est_cart: total comptime =        " + str(comptime))
                 rospy.logwarn("state_est_cart: comptime tf broadcast = " + str(comptime_tfbc))           
+                        
             self.rate.sleep()
 
     def update_rhino_state(self):
@@ -189,17 +202,13 @@ class StateEstCart:
         self.state_out.ay = ay_raw 
         self.state_out.psi = psi_raw 
 
-        # set posifion from KF
+        # set position from KF
         z = np.array([[X_raw],
                       [Y_raw]])
         self.kf.predict()
-        self.kf.update(z)
+        self.kf.update(z)      
         self.state_out.X = self.kf.x[0][0]
         self.state_out.Y = self.kf.x[2][0]
-
-        # TMP deactivate kf
-        #self.state_out.X = X_raw
-        #self.state_out.Y = Y_raw
 
         # print errors if faulty state estimates
         if(self.state_out.psi < -np.pi or self.state_out.psi > np.pi):

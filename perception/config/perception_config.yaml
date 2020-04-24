@@ -6,7 +6,7 @@ N_delay_pub_pathglobal: 1
 N_delay_repub_pathglobal: 5
 
 # state_est_cart 
-dt_state_est_cart: 0.01
+dt_state_est_cart: 0.02
 
 # state_est_frenet
 dt_state_est_frenet: 0.02
