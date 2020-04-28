@@ -10,4 +10,6 @@ float32 vx
 float32 vy
 float32 ax
 float32 ay
+float32 Fzf
+float32 Fzr
 bool stop

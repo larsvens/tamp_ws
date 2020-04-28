@@ -1,5 +1,6 @@
 Header  header
 bool planner_activated
+bool traction_adapt_activated
 bool sampling_aug_activated
 int32 N_rollouts
 bool rollout_selected

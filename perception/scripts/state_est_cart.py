@@ -65,7 +65,11 @@ class StateEstCart:
         # load rosparams
         self.robot_name = rospy.get_param('/robot_name')
         self.system_setup = rospy.get_param('/system_setup')
+        self.lf = rospy.get_param('/car/kinematics/b_F')
         self.lr = rospy.get_param('/car/kinematics/b_R')
+        self.h_cg = rospy.get_param('/car/kinematics/h_cg')
+        self.m = rospy.get_param('/car/inertia/m')
+        self.g = rospy.get_param('/car/inertia/g')
 
         # init local vars
         self.state_out = State()
@@ -188,6 +192,10 @@ class StateEstCart:
         ax_raw = self.odlv_gps_msg.ax
         ay_raw = -self.odlv_gps_msg.ay # flipped sign convention oxgs
         
+        # normal forces
+        Fzf_raw = self.odlv_can_msg.load_axle_1*9.82
+        Fzr_raw = self.odlv_can_msg.load_axle_2*9.82
+        
         # publish raw pose marker
         m = self.get_pose_marker(X_raw,Y_raw,psi_raw)
         self.poserawpub.publish(m)
@@ -201,6 +209,8 @@ class StateEstCart:
         self.state_out.ax = ax_raw
         self.state_out.ay = ay_raw 
         self.state_out.psi = psi_raw 
+        self.state_out.Fzf = Fzf_raw
+        self.state_out.Fzr = Fzr_raw 
 
         # set position from KF
         z = np.array([[X_raw],
@@ -299,6 +309,10 @@ class StateEstCart:
                                 "right_steering_hinge",
                                 "chassis") 
 
+    def get_normal_forces_from_motion(self,ax,theta):
+        Fzf = (1.0/(self.lf+self.lr))*(self.m*ax*self.h_cg - self.m*self.g*self.h_cg*np.sin(theta) + self.m*self.g*self.lr*np.cos(theta));
+        Fzr = (1.0/(self.lf+self.lr))*(-self.m*ax*self.h_cg + self.m*self.g*self.h_cg*np.sin(theta) + self.m*self.g*self.lf*np.cos(theta));
+        return Fzf,Fzr
 
     def fssim_state_callback(self, msg):
         self.received_fssim_state = True
@@ -308,6 +322,11 @@ class StateEstCart:
         self.state_out.psidot = msg.r
         self.state_out.vx = msg.vx
         self.state_out.vy = msg.vy
+        self.state_out.ax = 0. # todo get ax from sim
+        self.state_out.ay = 0.
+        Fzf, Fzr = self.get_normal_forces_from_motion(self.state_out.ax,0.)
+        self.state_out.Fzf = Fzf 
+        self.state_out.Fzr = Fzr       
         self.state_out.header.stamp = rospy.Time.now()
         self.statepub.publish(self.state_out) # publish in callback to minimize delay
 

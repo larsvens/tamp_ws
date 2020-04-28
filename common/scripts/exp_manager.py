@@ -53,6 +53,7 @@ class ExperimentManager:
         self.statetextmarkerpub = rospy.Publisher('/state_text_marker', Marker, queue_size=1)        
         self.musegs_pub = rospy.Publisher('/mu_segments', MuSegments, queue_size=10)
         self.vxref_pub = rospy.Publisher('/vxref', Float32, queue_size=1)
+        self.mu_pub = rospy.Publisher('/mu_gt', Float32, queue_size=1)
         
         # if sim initialize tire param publisher
         if(self.system_setup == "rhino_fssim"):
@@ -110,6 +111,10 @@ class ExperimentManager:
         self.musegs.header.stamp = rospy.Time.now()
         self.musegs_pub.publish(self.musegs)
         
+        # init mu message (for logging)
+        self.mu = Float32()
+        self.mu.data = rospy.get_param('/mu_nominal')
+        
         # get vxref per segment
         self.s_begin_vxref_segments = rospy.get_param('/s_begin_vxref_segments')
         self.vxref_segment_values = rospy.get_param('/vxref_segment_values') 
@@ -136,6 +141,9 @@ class ExperimentManager:
                 if(s_ego >= self.s_begin_mu_segments[-1]):
                     self.mu_segment_idx = self.N_mu_segments-1
                 mu = self.mu_segment_values[self.mu_segment_idx] 
+                # publish current mu
+                self.mu.data = mu
+                self.mu_pub.publish(self.mu)                
                 
                 if(self.system_setup == "rhino_fssim"):
                     # set tire params of sim vehicle

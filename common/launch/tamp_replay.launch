@@ -1,0 +1,81 @@
+<!-- plays rosbag (specified in arg) and launches rviz --> 
+<launch>
+    <!-- simtime -->
+    <param name="use_sim_time" value="true" /> 
+    
+    <!-- args -->
+    <arg name="robot_name" default="rhino" />
+    <arg name="urdf_model" default="$(find common)/config/vehicles/$(arg robot_name)/urdf/car.urdf" />
+    <arg name="system_setup" default="rhino_real" />
+    <arg name="track_name" default="asta_zero_long" />    
+    
+
+    <!-- replay with logged state est -->
+    <!-- <arg name="bag" default="real_exp/latest.bag" /> -->
+
+
+    <!-- replay with live state est -->
+    <arg name="live_state_est" default="true" />
+    <arg name="bag" default="real_exp/astazero-2020-04-17/odlv_msgs_only/asta_2020-04-17-12-16-58_only_odlv_msgs.bag_" />
+    <!-- params -->
+    <param name="robot_name" type="string" value="$(arg robot_name)" />
+    <param name="system_setup" type="string" value="$(arg system_setup)" />
+    <param name="track_name" type="string" value="$(arg track_name)" />
+    <rosparam command="load" file="$(find common)/config/vehicles/$(arg robot_name)/config/car.yaml" />
+    <rosparam command="load" file="$(find perception)/config/perception_config.yaml" />  
+    <!-- perception nodes -->
+    <node pkg="perception" type="track_iface.py" name="track_iface" output="screen" > </node>
+    <node pkg="perception" type="state_est_cart.py" name="state_est_cart" output="screen"> </node>
+    <node pkg="perception" type="state_est_frenet.py" name="state_est_frenet" output="screen"> </node>
+    <node pkg="perception" type="road_perception.py" name="road_perception" > </node>
+    
+    <!-- play bag -->
+    <node pkg="rosbag" name="rosbag_player" type="play" args="--clock  $(find tamp_logs)/bagfiles/$(arg bag)">
+        <remap from="/OpenDLV/SensorMsgGPS_log" to="/OpenDLV/SensorMsgGPS"/>
+        <remap from="/OpenDLV/SensorMsgCAN_log" to="/OpenDLV/SensorMsgCAN"/>
+    </node> 
+
+    <!-- visualization -->
+    <param name="robot_description_simple" command="$(find xacro)/xacro --inorder $(arg urdf_model)" />
+    <node name="rviz_" pkg="rviz" type="rviz" args="-d $(find tamp_logs)/rviz/saarti_replay.rviz "/>
+
+    <?ignore
+    <!-- re-log for analysis -->
+    <arg name="record_rosbag" default="true" />
+    <node pkg="opendlv_ros" type="sens_msg_remap_node.py" name="sens_msg_remap"/>
+    <node pkg="rosbag" name="rosbag_record_exp" type="record" if="$(arg record_rosbag )" output="screen"    
+		args="record -O  $(find tamp_logs)/bagfiles/real_exp/astazero-2020-04-17/odlv_msgs_only/rere_latest --duration=5m
+			/pathglobal
+			/pathglobal_vis
+			/dlbglobal_vis
+			/dubglobal_vis
+			/origin_pose_utm
+			/tf
+			/tf_static
+			/state_cart
+			/state
+			/pathlocal
+			/pathlocal_vis
+			/ctrl_mode
+			/vxref
+			/state_text_marker
+			/obs
+			/obs_vis
+			/trajset_vis
+			/posconstr_vis
+			/trajhat
+			/trajhat_vis
+			/trajstar
+			/trajstar_vis
+			/trajstar_polarr_vis
+			/saarti_status
+			/lhpt_vis
+			/OpenDLV/SensorMsgGPS_log
+			/OpenDLV/SensorMsgCAN_log
+			/OpenDLV/ActuationRequest
+			/lars/ActuationRequest"> 
+    </node>
+    ?>
+
+</launch>
+

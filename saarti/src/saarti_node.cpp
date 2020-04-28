@@ -377,6 +377,7 @@ SAARTI::SAARTI(ros::NodeHandle nh){
 
             // publish status message
             status_msg.header.stamp = ros::Time::now();
+            status_msg.traction_adapt_activated = bool(traction_adaptive_);
             status_msg.sampling_aug_activated = bool(sampling_augmentation_);
             status_msg.N_rollouts = Nd_rollout_*Nvx_rollout_;
 

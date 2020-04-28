@@ -44,6 +44,7 @@
 			/pathlocal_vis
 			/ctrl_mode
 			/vxref
+			/mu_gt
 			/state_text_marker
 			/obs
 			/obs_vis
