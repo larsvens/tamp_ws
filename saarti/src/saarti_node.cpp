@@ -560,6 +560,11 @@ std::tuple<int, int> SAARTI::trajset_eval_cost(){
 // builds trajectry message from traj struct
 common::Trajectory SAARTI::traj2msg(containers::trajstruct traj){
     common::Trajectory trajmsg;
+    // time
+    for (int k=0; k<N+1; k++){
+        trajmsg.t.push_back(dt_*k);
+    }
+
     // state
     trajmsg.s = traj.s;
     trajmsg.d = traj.d;
