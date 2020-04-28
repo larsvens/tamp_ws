@@ -262,9 +262,9 @@ class StateEstCart:
                                 rospy.Time.now(),
                                 "cog",
                                 "base_link")         
-
+        q = tf.transformations.quaternion_from_euler(-np.pi/2, 0., -np.pi/2.)
         self.tfbr.sendTransform((2.0, 0.0, 1.45),
-                                (0, 0, 0, 1), 
+                                (q[0], q[1], q[2], q[3]), 
                                 rospy.Time.now(),
                                 "cam",
                                 "cog")  
