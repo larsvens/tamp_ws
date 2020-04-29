@@ -1,0 +1,15 @@
+<!-- plays rosbag (specified in arg) and launches rviz --> 
+<launch>
+    
+    <!-- simtime (true if replay, false if live) -->
+    <param name="use_sim_time" value="true" />   
+
+    <!-- play bag -->
+    <arg name="bag" default="real_exp/astazero-2020-04-17/odlv_msgs_only/asta_2020-04-17-12-16-58_only_odlv_msgs_.bag" />
+    <node pkg="rosbag" name="rosbag_player" type="play" output="screen" args="--clock  $(find tamp_logs)/bagfiles/$(arg bag)">
+        <remap from="/OpenDLV/SensorMsgGPS_log" to="/OpenDLV/SensorMsgGPS"/>
+        <remap from="/OpenDLV/SensorMsgCAN_log" to="/OpenDLV/SensorMsgCAN"/>
+    </node> 
+
+</launch>
+
