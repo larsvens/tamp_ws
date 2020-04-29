@@ -71,7 +71,7 @@ class CtrlInterface:
         # get dref setpoint
         self.cc_dref = rospy.get_param('/cc_dref')
         
-        # postproc tuning vars
+        # postproc tuning vars (TUNE LAT)
         self.delta_out_buffer_size = 20
         self.delta_out_buffer = np.zeros(self.delta_out_buffer_size)
         self.delta_out_ma_window_size = 20               # 1 deactivates        
@@ -134,16 +134,28 @@ class CtrlInterface:
     
             # set platform specific cmd and publish
             if(self.system_setup == "rhino_real"):
-                self.cmd.header.stamp = rospy.Time.now()
-                self.cmd.steering = delta_out                
-                if(dc_out >= self.db_range_acc): # accelerating
-                    throttle_out = 20.0*dc_out # (TUNE THIS VALUE)
-                    self.cmd.acceleration = float(np.clip(throttle_out, a_min = 0.0, a_max = 20.0)) # (TUNE THIS VALUE)
-                elif(dc_out < -self.db_range_acc): # braking
+                # map to throttle if pos acc
+                if(dc_out >= self.db_range_acc):        # accelerating
+                    self.cmd.acceleration = 20.0*dc_out # (TUNE LONG)
+                elif(dc_out < -self.db_range_acc):      # braking
                     self.cmd.acceleration = dc_out
-                else:
+                else:                                   # deadband
                     self.cmd.acceleration = 0.0
+ 
+    
+                # saturate output for safety
+                throttle_max = 40.0 # (TUNE LONG) (%) 
+                brake_max = -2.0  # (TUNE LONG) (m/s^2)
+                self.cmd.acceleration = float(np.clip(self.cmd.acceleration, a_min = brake_max, a_max = throttle_max))
                 
+                if(self.cmd.acceleration == throttle_max or self.cmd.acceleration == brake_max):
+                    rospy.logwarn_throttle(1,"saturated logitudinal command in tamp_ctrl, self.cmd.acceleration = " + str(self.cmd.acceleration))
+  
+                # set steering and stamp
+                self.cmd.steering = delta_out  
+                self.cmd.header.stamp = rospy.Time.now()
+
+             
             elif(self.system_setup == "rhino_fssim" or self.system_setup == "gotthard_fssim"):
                 self.cmd.delta = delta_out
                 self.cmd.dc = dc_out
@@ -181,7 +193,7 @@ class CtrlInterface:
         delta_out = kin_ff_term + dyn_ff_term
         # saturate output
         if(self.system_setup == "rhino_real"):
-            delta_out = float(np.clip(delta_out, a_min = -0.50, a_max = 0.50)) # delta_max = kappa_max*(lf+lr)
+            delta_out = float(np.clip(delta_out, a_min = -0.50, a_max = 0.50)) # delta_max = kappa_max*(lf+lr) (TUNE LAT)
         
         # LONGITUDINAL CTRL
         # feedfwd
@@ -189,12 +201,8 @@ class CtrlInterface:
         self.vx_error = self.trajstar.vx[1]-self.state.vx
         if(self.system_setup == "rhino_real"):
             feedfwd = Fx_request/self.m
-            feedback = 6.0*self.vx_error # TUNE THIS VALUE (before: 6.0)
-            dc_out_unsat = feedfwd + feedback
-            # saturate output
-            dc_out = float(np.clip(dc_out_unsat, a_min = -1.0, a_max = 1.0))
-            if (dc_out_unsat != dc_out):
-                rospy.logwarn_throttle(1,"saturated logitudinal command in tamp_ctrl")
+            feedback = 6.0*self.vx_error # TUNE LONG (probably not needed) (before: 6.0)
+            dc_out = feedfwd + feedback
         elif(self.system_setup == "rhino_fssim"):
             feedfwd = Fx_request
             feedback = 50000*self.vx_error

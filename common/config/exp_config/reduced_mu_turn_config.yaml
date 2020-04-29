@@ -12,10 +12,10 @@ d_obs_at_popup: -1.75
 # TUNING/PREP
 
 # initial test static friction static speed (asta_zero_long)
-#s_begin_mu_segments:  [0.0]
-#mu_segment_values:  [0.8]
-#s_begin_vxref_segments: [0.0, 600.0]
-#vxref_segment_values: [10.0, 5.0]
+s_begin_mu_segments:  [0.0]
+mu_segment_values:  [0.8]
+s_begin_vxref_segments: [0.0, 600.0]
+vxref_segment_values: [8.0, 5.0]
 
 # long ctrl tuning (asta_zero_long)
 #s_begin_vxref_segments: [0.0, 310.0, 400.0, 550.0]
@@ -31,10 +31,10 @@ d_obs_at_popup: -1.75
 #vxref_segment_values: [15.0, 10.0, 5.0]
 
 # low friction run (asta_zero_long)
-s_begin_mu_segments:  [0.0, 275.0, 325.0]
-mu_segment_values:  [0.8, 0.4, 0.8]
-s_begin_vxref_segments: [0.0, 315.0, 600.0]
-vxref_segment_values: [15.0, 10.0, 5.0]
+#s_begin_mu_segments:  [0.0, 275.0, 325.0]
+#mu_segment_values:  [0.8, 0.4, 0.8]
+#s_begin_vxref_segments: [0.0, 315.0, 600.0]
+#vxref_segment_values: [15.0, 10.0, 5.0]
 
 
 
@@ -68,10 +68,10 @@ traction_adaptive: 1
 mu_nominal: 0.8 # used only when traction_adaptive = 0
 
 # Force utilization factor
-Ff_util: 0.9 # final tests
-Fr_util: 0.9
-#Ff_util: 0.5 # initial tuning runs
-#Fr_util: 0.5
+#Ff_util: 0.9 # final tests
+#Fr_util: 0.9
+Ff_util: 0.5 # initial tuning runs
+Fr_util: 0.5
 
 # optimization config
 Wx:  [1000.0, 10000000.0, 1.0, 0.1, 1000000.0, 0.1]
