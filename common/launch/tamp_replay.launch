@@ -16,7 +16,7 @@
 
     <!-- replay with live state est -->
     <arg name="live_state_est" default="true" />
-    <arg name="bag" default="real_exp/astazero-2020-04-17/odlv_msgs_only/asta_2020-04-17-12-16-58_only_odlv_msgs.bag_" />
+    <arg name="bag" default="real_exp/astazero-2020-04-17/odlv_msgs_only/asta_2020-04-17-12-16-58_only_odlv_msgs_.bag" />
     <!-- params -->
     <param name="robot_name" type="string" value="$(arg robot_name)" />
     <param name="system_setup" type="string" value="$(arg system_setup)" />

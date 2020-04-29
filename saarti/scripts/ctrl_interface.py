@@ -77,7 +77,8 @@ class CtrlInterface:
         self.delta_out_ma_window_size = 20               # 1 deactivates        
         self.db_range = 0.5*(np.pi/180)                 # 0.0 deactivates
         self.delta_out_rate_max = 30.0*(np.pi/180)       # large value deactivates
-
+        self.db_range_acc = 0.05                        # 0.0 deactivates
+        
         # wait for messages before entering main loop
         while(not self.state_received):
             rospy.loginfo_throttle(1, "waiting for state")
@@ -135,11 +136,13 @@ class CtrlInterface:
             if(self.system_setup == "rhino_real"):
                 self.cmd.header.stamp = rospy.Time.now()
                 self.cmd.steering = delta_out                
-                if(dc_out >= 0): # accelerating
+                if(dc_out >= self.db_range_acc): # accelerating
                     throttle_out = 20.0*dc_out # (TUNE THIS VALUE)
                     self.cmd.acceleration = float(np.clip(throttle_out, a_min = 0.0, a_max = 20.0)) # (TUNE THIS VALUE)
-                else: # braking
+                elif(dc_out < -self.db_range_acc): # braking
                     self.cmd.acceleration = dc_out
+                else:
+                    self.cmd.acceleration = 0.0
                 
             elif(self.system_setup == "rhino_fssim" or self.system_setup == "gotthard_fssim"):
                 self.cmd.delta = delta_out
@@ -168,7 +171,7 @@ class CtrlInterface:
             
         # dynamic feedfwd term (platform dependent)        
         if(self.system_setup == "rhino_real"):
-            dyn_ff_term = 0.9*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
+            dyn_ff_term = 1.0*self.trajstar.Fyf[0]/self.trajstar.Cf[0] #0.75 # 0.9 
         elif(self.system_setup == "rhino_fssim"):
             dyn_ff_term = 0.9*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
         elif(self.system_setup == "gotthard_fssim"):
@@ -258,7 +261,7 @@ class CtrlInterface:
    
     def kinematic_ff_by_polyfit(self):
         fitdist_min = 5.0
-        fitdist_max = 10.0
+        fitdist_max = 15.0
         fitdist = float(np.clip((np.min(self.trajstar.vx)/10.0)*fitdist_max, a_min = fitdist_min, a_max = fitdist_max))            
         sfit = np.linspace(self.state.s, self.state.s + fitdist, num=10)
         # rotate trajstar to vehicle frame xy
@@ -282,7 +285,7 @@ class CtrlInterface:
 
     def kinematic_ff_by_pp(self):
         lhdist_min = 6.0
-        lhdist_max = 12.0
+        lhdist_max = 10.0
         lhdist = float(np.clip((self.state.vx/10.0)*lhdist_max, a_min = lhdist_min, a_max = lhdist_max))
         s_lh = self.state.s + lhdist
         Xlh = np.interp(s_lh, self.trajstar.s, self.trajstar.X)

@@ -1,6 +1,7 @@
 <!-- bring up perception nodes for rhino log or real time test --> 
 
-<launch>
+<launch>  
+
     <!-- args -->
     <arg name="robot_name" default="rhino" />
     <arg name="urdf_model" default="$(find common)/config/vehicles/$(arg robot_name)/urdf/car.urdf" />

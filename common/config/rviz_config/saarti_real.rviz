@@ -1,15 +1,15 @@
 Panels:
   - Class: rviz/Displays
-    Help Height: 93
+    Help Height: 0
     Name: Displays
     Property Tree Widget:
       Expanded:
         - /Grid1
-        - /RobotModel1
         - /TF1/Frames1
-        - /state_text1
+        - /Camera1
+        - /Camera1/Visibility1
       Splitter Ratio: 0.587034822
-    Tree Height: 1163
+    Tree Height: 505
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -29,14 +29,14 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: Camera
 Toolbars:
   toolButtonStyle: 2
 Visualization Manager:
   Class: ""
   Displays:
     - Alpha: 0.5
-      Cell Size: 200
+      Cell Size: 7.5
       Class: rviz/Grid
       Color: 177; 177; 177
       Enabled: true
@@ -58,7 +58,7 @@ Visualization Manager:
       Length: 2
       Name: Map
       Radius: 0.25
-      Reference Frame: map
+      Reference Frame: tamp_map
       Value: true
     - Class: rviz/Axes
       Enabled: true
@@ -95,6 +95,8 @@ Visualization Manager:
         All Enabled: false
         base_link:
           Value: true
+        cam:
+          Value: true
         chassis:
           Value: true
         cog:
@@ -120,6 +122,8 @@ Visualization Manager:
         tamp_map:
           base_link:
             cog:
+              cam:
+                {}
               chassis:
                 left_rear_wheel_joint:
                   {}
@@ -375,13 +379,13 @@ Visualization Manager:
       Unreliable: false
       Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /trajset_vis
       Name: trajset
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /lhpt_vis
@@ -419,11 +423,56 @@ Visualization Manager:
       normal length: 0.100000001
       only border: false
       show normal: false
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /pose_raw_vis
+      Name: raw_pose
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Camera
+      Enabled: true
+      Image Rendering: background and overlay
+      Image Topic: /zed/left_cam
+      Name: Camera
+      Overlay Alpha: 0.100000001
+      Queue Size: 2
+      Transport Hint: compressed
+      Unreliable: false
+      Value: true
+      Visibility:
+        Boundary Estimation: true
+        Camera Observations: true
+        Center Line: true
+        CenterLine: true
+        Control Marker: true
+        FSSIM Track: true
+        Grid: true
+        Lidar Observations: true
+        Map: true
+        RobotModel: false
+        TAMP Map: true
+        TF: false
+        Value: true
+        dlb: true
+        dub: true
+        lhpt: true
+        obstacle: true
+        pathlocal: true
+        positionconstraints: true
+        raw_pose: true
+        state_text: true
+        trajhat: true
+        trajset: true
+        trajstar: true
+        trajstar_poly: true
+      Zoom Factor: 1
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
     Default Light: true
-    Fixed Frame: map
+    Fixed Frame: tamp_map
     Frame Rate: 30
   Name: root
   Tools:
@@ -443,21 +492,26 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: 0
-      Class: rviz/TopDownOrtho
+      Class: rviz/ThirdPersonFollower
+      Distance: 22.1068153
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Focal Shape Fixed Size: false
+      Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 11.8369236
+      Pitch: 0.320398569
       Target Frame: base_link
-      Value: TopDownOrtho (rviz)
-      X: 1.6541419
-      Y: 4.06858349
+      Value: ThirdPersonFollower (rviz)
+      Yaw: 3.14539909
     Saved:
       - Class: rviz/ThirdPersonFollower
         Distance: 24.7596321
@@ -480,12 +534,14 @@ Visualization Manager:
         Value: ThirdPersonFollower (rviz)
         Yaw: 3.12539983
 Window Geometry:
+  Camera:
+    collapsed: false
   Displays:
     collapsed: false
-  Height: 2069
+  Height: 2118
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd00000004000000000000023300000755fc0200000009fb0000001200530065006c0065006300740069006f006e000000003a000001c50000006f00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003a00000544000000f800fffffffb0000000a00560069006500770073010000058800000207000000db00fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000015200000755fc0200000002fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000078000000052fc0100000002fb0000000800540069006d0065010000000000000780000004e800fffffffb0000000800540069006d00650100000000000004500000000000000000000005430000075500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000032100000458fc020000000afb0000001200530065006c0065006300740069006f006e000000003a000001c50000006f00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000036800000255000000f800fffffffb0000000a0056006900650077007301000005c7000001f9000000db00fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d006100670065010000055c000002330000000000000000000000010000055900000786fc0200000002fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000f0000000324fc0100000002fb0000000c00430061006d006500720061010000000000000f000000009500fffffffb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000f0000000052fc0100000002fb0000000800540069006d0065010000000000000f00000004e800fffffffb0000000800540069006d0065010000000000000450000000000000000000000bd50000045800000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -494,6 +550,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: false
-  Width: 1920
+  Width: 3840
   X: 0
   Y: 42
