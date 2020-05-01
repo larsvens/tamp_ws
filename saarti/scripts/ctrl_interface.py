@@ -16,7 +16,7 @@
 # system_setup = rhino_fssim or gotthard_fssim -> /fssim/cmd
 
 import numpy as np
-from scipy.interpolate import interp1d
+#from scipy.interpolate import interp1d
 import rospy
 from common.msg import Trajectory
 from common.msg import Path
@@ -74,10 +74,15 @@ class CtrlInterface:
         # postproc tuning vars (TUNE LAT)
         self.delta_out_buffer_size = 20
         self.delta_out_buffer = np.zeros(self.delta_out_buffer_size)
-        self.delta_out_ma_window_size = 20               # 1 deactivates        
-        self.db_range = 0.5*(np.pi/180)                 # 0.0 deactivates
-        self.delta_out_rate_max = 30.0*(np.pi/180)       # large value deactivates
+        self.delta_out_ma_window_size = 5               # 20 1 deactivates        
+        self.db_range = 0.0*(np.pi/180)                 # 0.0 deactivates
+        self.delta_out_rate_max = 30.0*(np.pi/180)       # 30 large value deactivates
+        
+        # postproc acc
         self.db_range_acc = 0.05                        # 0.0 deactivates
+        self.acc_out_buffer_size = 20
+        self.acc_out_buffer = np.zeros(self.delta_out_buffer_size)
+        self.acc_out_rate_max = 2       # large value deactivates
         
         # wait for messages before entering main loop
         while(not self.state_received):
@@ -98,7 +103,7 @@ class CtrlInterface:
             if(self.ctrl_mode == 0):     # STOP (set by exp manager if outside of track)
                 rospy.loginfo_throttle(1,"in stop mode")
                 delta_out = self.delta_out_buffer[0]
-                dc_out = 0.0
+                dc_out = -1.0
             elif(self.ctrl_mode == 1):   # CRUISE CTRL             
                 delta_out, dc_out = self.cc_ctrl()                                      
             elif(self.ctrl_mode == 2):   # TAMP   
@@ -132,11 +137,27 @@ class CtrlInterface:
             if(-self.db_range < delta_out < self.db_range):
                 delta_out = 0
     
+            # zero if low speed
+            if(self.state.vx < 1.0):
+                delta_out = 0
+    
+            # ACC
+            self.acc_out_buffer = np.roll(self.acc_out_buffer,1)
+            self.acc_out_buffer[0] = dc_out
+            
+            # acc rate limit
+            if(self.acc_out_buffer[0] > self.acc_out_buffer[1] + self.acc_out_rate_max*self.dt):
+                dc_out = self.acc_out_buffer[1] + self.acc_out_rate_max*self.dt
+                self.acc_out_buffer[0] = dc_out
+            if(self.acc_out_buffer[0] < self.acc_out_buffer[1] - self.acc_out_rate_max*self.dt):
+                dc_out = self.acc_out_buffer[1] - self.acc_out_rate_max*self.dt
+                self.acc_out_buffer[0] = dc_out
+    
             # set platform specific cmd and publish
             if(self.system_setup == "rhino_real"):
                 # map to throttle if pos acc
                 if(dc_out >= self.db_range_acc):        # accelerating
-                    self.cmd.acceleration = 20.0*dc_out # (TUNE LONG)
+                    self.cmd.acceleration = 40.0*dc_out # (TUNE LONG)
                 elif(dc_out < -self.db_range_acc):      # braking
                     self.cmd.acceleration = dc_out
                 else:                                   # deadband
@@ -144,7 +165,7 @@ class CtrlInterface:
  
     
                 # saturate output for safety
-                throttle_max = 40.0 # (TUNE LONG) (%) 
+                throttle_max = 50.0 # (TUNE LONG) (%) 
                 brake_max = -2.0  # (TUNE LONG) (m/s^2)
                 self.cmd.acceleration = float(np.clip(self.cmd.acceleration, a_min = brake_max, a_max = throttle_max))
                 
@@ -173,7 +194,7 @@ class CtrlInterface:
         rospy.loginfo_throttle(1, "Running TAMP control")
 
         # LATERAL CTRL
-        kin_ff_method = "polyfit" # 0: pure pursuit, 1: polyfit 
+        kin_ff_method = "pure_pursuit" # 0: pure pursuit, 1: polyfit 
         if(kin_ff_method == "pure_pursuit"):
             kin_ff_term = self.kinematic_ff_by_pp()
         elif(kin_ff_method == "polyfit"):
@@ -183,7 +204,7 @@ class CtrlInterface:
             
         # dynamic feedfwd term (platform dependent)        
         if(self.system_setup == "rhino_real"):
-            dyn_ff_term = 1.0*self.trajstar.Fyf[0]/self.trajstar.Cf[0] #0.75 # 0.9 
+            dyn_ff_term = 0.5*self.trajstar.Fyf[0]/self.trajstar.Cf[0] #0.75 # 0.9 1.0 in sim with polyfit (TUNE LAT)
         elif(self.system_setup == "rhino_fssim"):
             dyn_ff_term = 0.9*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
         elif(self.system_setup == "gotthard_fssim"):
@@ -201,7 +222,7 @@ class CtrlInterface:
         self.vx_error = self.trajstar.vx[1]-self.state.vx
         if(self.system_setup == "rhino_real"):
             feedfwd = Fx_request/self.m
-            feedback = 6.0*self.vx_error # TUNE LONG (probably not needed) (before: 6.0)
+            feedback = 0.0*self.vx_error # TUNE LONG (probably not needed) (before: 6.0)
             dc_out = feedfwd + feedback
         elif(self.system_setup == "rhino_fssim"):
             feedfwd = Fx_request
@@ -269,7 +290,7 @@ class CtrlInterface:
    
     def kinematic_ff_by_polyfit(self):
         fitdist_min = 5.0
-        fitdist_max = 15.0
+        fitdist_max = 12.0
         fitdist = float(np.clip((np.min(self.trajstar.vx)/10.0)*fitdist_max, a_min = fitdist_min, a_max = fitdist_max))            
         sfit = np.linspace(self.state.s, self.state.s + fitdist, num=10)
         # rotate trajstar to vehicle frame xy
@@ -293,15 +314,15 @@ class CtrlInterface:
 
     def kinematic_ff_by_pp(self):
         lhdist_min = 6.0
-        lhdist_max = 10.0
+        lhdist_max = 15.0
         lhdist = float(np.clip((self.state.vx/10.0)*lhdist_max, a_min = lhdist_min, a_max = lhdist_max))
         s_lh = self.state.s + lhdist
         Xlh = np.interp(s_lh, self.trajstar.s, self.trajstar.X)
         Ylh = np.interp(s_lh, self.trajstar.s, self.trajstar.Y) 
-        f1 = interp1d(self.trajstar.s, self.trajstar.X, kind='cubic')
-        Xlh = f1(s_lh)
-        f2 = interp1d(self.trajstar.s, self.trajstar.Y, kind='cubic')
-        Ylh = f2(s_lh)
+        #f1 = interp1d(self.trajstar.s, self.trajstar.X, kind='cubic')
+        #Xlh = f1(s_lh)
+        #f2 = interp1d(self.trajstar.s, self.trajstar.Y, kind='cubic')
+        #Ylh = f2(s_lh)
         rho_pp = self.pp_curvature(self.trajstar.X[0],
                                    self.trajstar.Y[0],
                                    self.trajstar.psi[0],

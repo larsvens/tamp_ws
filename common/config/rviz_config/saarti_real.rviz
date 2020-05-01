@@ -391,7 +391,7 @@ Visualization Manager:
       Marker Topic: /lhpt_vis
       Name: lhpt
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -407,7 +407,7 @@ Visualization Manager:
       Marker Topic: /state_text_marker
       Name: state_text
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Alpha: 0.5
@@ -460,6 +460,7 @@ Visualization Manager:
         lhpt: true
         obstacle: true
         pathlocal: true
+        polyfit: true
         positionconstraints: true
         raw_pose: true
         state_text: true
@@ -468,6 +469,14 @@ Visualization Manager:
         trajstar: true
         trajstar_poly: true
       Zoom Factor: 1
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /polyfit_vis
+      Name: polyfit
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -508,10 +517,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.320398569
+      Pitch: 0.530398488
       Target Frame: base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.14539909
+      Yaw: 3.17539978
     Saved:
       - Class: rviz/ThirdPersonFollower
         Distance: 24.7596321

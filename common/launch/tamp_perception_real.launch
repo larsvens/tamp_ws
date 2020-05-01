@@ -6,9 +6,9 @@
     <arg name="robot_name" default="rhino" />
     <arg name="urdf_model" default="$(find common)/config/vehicles/$(arg robot_name)/urdf/car.urdf" />
     <arg name="system_setup" default="rhino_real" />
-    <arg name="track_name" default="asta_zero_long" />
+    <arg name="track_name" default="asta_zero_short" />
     <arg name="record_rosbag" default="true" />
-    <arg name="launch_zed" default="false" />
+    <arg name="launch_zed" default="true" />
 
     <!-- params -->
     <param name="robot_name" type="string" value="$(arg robot_name)" />

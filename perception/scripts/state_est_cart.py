@@ -18,6 +18,7 @@ from common.msg import OriginPoseUTM
 from visualization_msgs.msg import Marker
 from tf.transformations import quaternion_from_euler
 from util import angleToInterval
+from util import angleToContinous
 from opendlv_ros.msg import SensorMsgGPS
 from opendlv_ros.msg import SensorMsgCAN 
 
@@ -85,6 +86,10 @@ class StateEstCart:
         with open(dimsyaml, 'r') as f:
             self.dims = yaml.load(f,Loader=yaml.SafeLoader)   
        
+        # heading filter
+        self.psi_buffer_size = 20
+        self.psi_buffer = np.zeros(self.psi_buffer_size)
+        
         # init subs pubs
         if (self.system_setup == "rhino_real"):
             self.odlv_gps_sub = rospy.Subscriber("/OpenDLV/SensorMsgGPS", SensorMsgGPS, self.odlv_gps_callback)
@@ -180,7 +185,17 @@ class StateEstCart:
         heading_raw = self.odlv_gps_msg.yawangle
         psi_raw = (np.pi/180)*(90-heading_raw) 
         psi_raw = angleToInterval(np.array([psi_raw]))[0]
-         
+        
+        # filter psi
+        #psi_raw_cont = angleToContinous(psi_raw)
+        self.psi_buffer = np.roll(self.psi_buffer,1)
+        #self.psi_buffer[0] = psi_raw_cont
+        self.psi_buffer[0] = psi_raw
+        #psi_raw_cont_filtered = np.median(self.psi_buffer)
+        psi_filtered = np.median(self.psi_buffer)
+        #psi_filtered = angleToInterval(psi_raw_cont_filtered)
+        
+        
         # convert heading-rate to yawrate
         psidot_raw = -self.odlv_gps_msg.yawrate*(np.pi/180)
         
@@ -210,7 +225,7 @@ class StateEstCart:
         self.state_out.ay = ay_raw 
         self.state_out.psi = psi_raw 
         self.state_out.Fzf = Fzf_raw
-        self.state_out.Fzr = Fzr_raw 
+        self.state_out.Fzr = Fzr_raw
 
         # set position from KF
         z = np.array([[X_raw],
