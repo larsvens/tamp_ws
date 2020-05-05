@@ -2,7 +2,7 @@
 
 <launch>
     <!-- args -->
-    <arg name="exp_config" default="reduced_mu_turn_config.yaml"/>
+    <arg name="exp_config" default="asta_reduced_mu_turn_config.yaml"/>
 
     <!-- params -->
     <rosparam command="load" file="$(find common)/config/exp_config/$(arg exp_config)" />

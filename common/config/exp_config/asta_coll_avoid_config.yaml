@@ -1,0 +1,62 @@
+# Experiment configuration
+
+t_activate: 5.0
+t_final: 500.0
+scenario_id: 1 # 1: pop-up, 2: reduced mu turn, 3: racing 4: local min test 5: pp-test 6: tamp test
+
+# pop-up obstacle config
+s_ego_at_popup:  240
+s_obs_at_popup: 260
+d_obs_at_popup: 0.6 #-1.75 
+
+# high friction run (asta_coll_avoid)
+s_begin_mu_segments:  [0.0]
+mu_segment_values:  [0.8]
+s_begin_vxref_segments: [0.0, 720.0]
+vxref_segment_values: [12.0, 5.0]
+
+# dref
+cc_dref: 0
+
+# pcs refs
+#pcs_vxref: 1.0
+#pcs_dref: -1
+
+### saarti algorithm config		
+
+# Reference mode, 
+# 0: minimize s
+# 1: cc @ cc_vxref
+# 2: maximize s
+ref_mode: 1
+
+# Algorithm mode, 
+# 0: RTI
+# 1: SAA-RTI 
+sampling_augmentation: 1
+Nd_rollout: 10 # multiples of 32 to maximize gpu utilization
+Nvx_rollout: 15
+vxub_rollout: 20.0
+
+# Traction adaptation 
+# 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics), static Cr
+# 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics, Cr from mu and Fz
+traction_adaptive: 1
+mu_nominal: 0.8 # used only when traction_adaptive = 0
+
+# Force utilization factor
+Ff_util: 0.8 # final tests
+Fr_util: 0.9
+#Ff_util: 0.5 # initial tuning runs
+#Fr_util: 0.5
+
+# optimization config
+Wx:  [1000.0, 10000000.0, 1.0, 0.1, 1000000.0, 0.1]
+WNx: [1000.0, 100000000.0, 1.0, 0.1, 1000000.0, 0.1]
+Wu: [0.001, 0.1, 0.1]
+Wslack: 100000000
+
+# rollout controller config
+K:   [0.000, 2954.774, 87597.099, 2566.325, 0.000, 5751.643,
+      0.688, 0.000, 0.000, 0.000, 2178.309, 0.000,
+      0.688, 0.000, 0.000, 0.000, 2178.309, 0.000]

@@ -7,30 +7,22 @@
     <arg name="robot_name" default="rhino" />
     <arg name="urdf_model" default="$(find common)/config/vehicles/$(arg robot_name)/urdf/car.urdf" />
     <arg name="system_setup" default="rhino_real" />
-    <arg name="track_name" default="asta_zero_long" />    
+    <arg name="track_name" default="asta_zero_short" />    
     
-
-    <!-- replay with logged state est -->
-    <!-- <arg name="bag" default="real_exp/latest.bag" /> -->
-
-
-    <!-- replay with live state est -->
-    <arg name="live_state_est" default="true" />
-    <arg name="bag" default="real_exp/astazero-2020-04-17/odlv_msgs_only/asta_2020-04-17-12-16-58_only_odlv_msgs_.bag" />
     <!-- params -->
     <param name="robot_name" type="string" value="$(arg robot_name)" />
     <param name="system_setup" type="string" value="$(arg system_setup)" />
     <param name="track_name" type="string" value="$(arg track_name)" />
     <rosparam command="load" file="$(find common)/config/vehicles/$(arg robot_name)/config/car.yaml" />
-    <rosparam command="load" file="$(find perception)/config/perception_config.yaml" />  
-    <!-- perception nodes -->
-    <node pkg="perception" type="track_iface.py" name="track_iface" output="screen" > </node>
-    <node pkg="perception" type="state_est_cart.py" name="state_est_cart" output="screen"> </node>
-    <node pkg="perception" type="state_est_frenet.py" name="state_est_frenet" output="screen"> </node>
-    <node pkg="perception" type="road_perception.py" name="road_perception" > </node>
-    
+
+    <!-- introduce new coordinate frame to align camera -->
+    <node pkg="tf" type="static_transform_publisher" name="cam__broadcaster" args="0.2 0 0 -0.04997917 0 0 0.99875026 cam cam_ 100" />    
+
     <!-- play bag -->
-    <node pkg="rosbag" name="rosbag_player" type="play" args="--clock  $(find tamp_logs)/bagfiles/$(arg bag)">
+    <arg name="bag" default="real_exp/astazero-2020-04-30/auto_saarti/asta_2020-04-30-15-59-53_cam_.bag" /> 
+    <!-- <arg name="bag" default="real_exp/astazero-2020-04-30/auto_saarti/asta_2020-04-30-15-06-06.bag" /> -->
+
+    <node pkg="rosbag" name="rosbag_player" type="play" args="--clock --loop  $(find tamp_logs)/bagfiles/$(arg bag)">
         <remap from="/OpenDLV/SensorMsgGPS_log" to="/OpenDLV/SensorMsgGPS"/>
         <remap from="/OpenDLV/SensorMsgCAN_log" to="/OpenDLV/SensorMsgCAN"/>
     </node> 

@@ -1,0 +1,19 @@
+
+simulation_name: "rhino_asta_zero_long"
+
+robot_name: rhino  
+kill_after: 6000   
+
+pkg_config_storage: common # relative paths to config files w.r.t this package
+repetitions:
+- {track_name: asta_gauntlet.sdf, autonomous_stack: }
+
+# stop if we go off the track
+res:
+  checks:
+    is_in_track: false
+
+# Launch files for autonomous missions
+launch_file:
+  rosbag_record: 
+

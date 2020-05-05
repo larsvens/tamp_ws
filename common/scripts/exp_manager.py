@@ -165,9 +165,7 @@ class ExperimentManager:
                 
                 # POPUP SCENARIO
                 if (self.scenario_id in [1,4] ):
-                    self.ctrl_mode = 1 # cruise control
-                    if(self.state.vx > 5):
-                        self.ctrl_mode = 2 # tamp
+                    self.ctrl_mode = 2 # tamp
                     m_obs = self.getobstaclemarker(Xobs,Yobs,self.obs.R[0])
                     m_obs.color.a = 0.3 # transparent before detect
                     if (self.state.s >= self.s_ego_at_popup):
@@ -177,9 +175,7 @@ class ExperimentManager:
                 
                 # REDUCED MU TURN
                 elif(self.scenario_id == 2):
-                    self.ctrl_mode = 1 # pp cruise control from standstill
-                    if(self.state.vx > 5): # todo
-                        self.ctrl_mode = 2 # tamp cruise control when we get up to speed
+                    self.ctrl_mode = 2 # tamp cruise control when we get up to speed
                 
                 # PURE PURSUIT TEST
                 elif(self.scenario_id == 5):

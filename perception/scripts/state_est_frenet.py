@@ -132,6 +132,7 @@ class StateEstFrenet:
         stot_global = self.pathglobal.s[-1]
         dist_sf = np.sqrt( (self.pathglobal.X[0]-self.pathglobal.X[-1])**2 + (self.pathglobal.Y[0]-self.pathglobal.Y[-1])**2)
         self.s_lap = stot_global + dist_sf  
+        rospy.logwarn("state_est_frenet: received pathglobal, s_lap = " + str(self.s_lap))
 
 if __name__ == '__main__':
     sef = StateEstFrenet()
