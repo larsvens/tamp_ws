@@ -389,15 +389,7 @@ Visualization Manager:
       Marker Topic: /lhpt_vis
       Name: lhpt
       Namespaces:
-        "": true
-      Queue Size: 100
-      Value: true
-    - Class: rviz/Marker
-      Enabled: true
-      Marker Topic: /obs_vis
-      Name: obstacle
-      Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -405,7 +397,7 @@ Visualization Manager:
       Marker Topic: /state_text_marker
       Name: state_text
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Alpha: 0.5
@@ -426,13 +418,21 @@ Visualization Manager:
       Marker Topic: /polyfit_vis
       Name: polyfit_vis
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /pose_raw_vis
       Name: pose_raw
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /obs_vis
+      Name: obstacles
       Namespaces:
         {}
       Queue Size: 100
@@ -462,7 +462,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 80.8336716
+      Distance: 57.3801727
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
@@ -477,10 +477,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.875399113
+      Pitch: 0.695399284
       Target Frame: base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.13039804
+      Yaw: 3.12539792
     Saved:
       - Class: rviz/ThirdPersonFollower
         Distance: 24.7596321

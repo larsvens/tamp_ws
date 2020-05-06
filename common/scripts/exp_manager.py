@@ -8,6 +8,8 @@ Description: This node
 
 import numpy as np
 import rospy
+import rospkg
+import yaml
 from common.msg import Path
 from common.msg import Obstacles
 from common.msg import State
@@ -19,6 +21,7 @@ from opendlv_ros.msg import ActuationRequest
 from fssim_common.msg import Cmd
 from std_msgs.msg import Int16
 from visualization_msgs.msg import Marker
+from visualization_msgs.msg import MarkerArray
 from coordinate_transforms import ptsFrenetToCartesian
 
 class ExperimentManager:
@@ -48,7 +51,7 @@ class ExperimentManager:
         self.statesub = rospy.Subscriber("state", State, self.state_callback)
         self.statussub = rospy.Subscriber("saarti_status", SaartiStatus, self.status_callback)
         self.obspub = rospy.Publisher('/obs', Obstacles, queue_size=1)
-        self.obsvispub = rospy.Publisher('/obs_vis', Marker, queue_size=1)
+        self.obsvispub = rospy.Publisher('/obs_vis', MarkerArray, queue_size=1)
         self.ctrl_mode_pub = rospy.Publisher('/ctrl_mode', Int16, queue_size=1)
         self.statetextmarkerpub = rospy.Publisher('/state_text_marker', Marker, queue_size=1)        
         self.musegs_pub = rospy.Publisher('/mu_segments', MuSegments, queue_size=10)
@@ -82,21 +85,27 @@ class ExperimentManager:
         self.traction_adaptive  = rospy.get_param('/traction_adaptive')
         
         # init obstacles
-        self.s_ego_at_popup = rospy.get_param('/s_ego_at_popup')
-        self.s_obs_at_popup = rospy.get_param('/s_obs_at_popup')
-        self.d_obs_at_popup = rospy.get_param('/d_obs_at_popup')
-        self.obs = Obstacles()
-        self.obs.s = [self.s_obs_at_popup]
-        self.obs.d = [self.d_obs_at_popup]
-        self.obs.R = [0.5]
-        wiggleroom = 1.0 # todo param
-        self.obs.Rmgn = [0.5*self.obs.R[0] + 0.5*self.vehicle_width + wiggleroom]
-        Xobs, Yobs = ptsFrenetToCartesian(np.array(self.obs.s), \
-                                          np.array(self.obs.d), \
-                                          np.array(self.pathglobal.X), \
-                                          np.array(self.pathglobal.Y), \
-                                          np.array(self.pathglobal.psi_c), \
-                                          np.array(self.pathglobal.s))
+        obstacle_config_filename = rospy.get_param('/obstacle_config')
+        obstacle_config_filepath = rospkg.RosPack().get_path('common') + '/config/obstacles/' + obstacle_config_filename + '.yaml'
+        with open(obstacle_config_filepath, 'r') as f:
+            self.obstacle_config = yaml.load(f,Loader=yaml.SafeLoader)
+        self.s_ego_at_popup = self.obstacle_config["s_ego_at_popup"] # this has the whole vector of obstacles
+        self.s_obs_at_popup = self.obstacle_config["s_obs_at_popup"]
+        self.d_obs_at_popup = self.obstacle_config["d_obs_at_popup"]
+        self.obstacle_counter = 0 # increases when an obstacle pops
+        self.N_obstacles = len(self.s_obs_at_popup) # increases when an obstacle pops
+        self.obs = Obstacles() # this has the list of popped obstacles
+        self.R_obs = 0.5 # same for all for now
+        wiggleroom = rospy.get_param('/obstacle_wiggleroom')
+        self.Rmgn_obs = 0.5*self.R_obs + 0.5*self.vehicle_width + wiggleroom
+        X_obs_at_popup, Y_obs_at_popup = ptsFrenetToCartesian(np.array(self.s_obs_at_popup), \
+                                                              np.array(self.d_obs_at_popup), \
+                                                              np.array(self.pathglobal.X), \
+                                                              np.array(self.pathglobal.Y), \
+                                                              np.array(self.pathglobal.psi_c), \
+                                                              np.array(self.pathglobal.s))
+        
+        # init ctrl mode
         self.ctrl_mode = 0 # # 0: stop, 1: cruise_ctrl, 2: tamp 
         
         # publish mu segments for track iface
@@ -166,12 +175,23 @@ class ExperimentManager:
                 # POPUP SCENARIO
                 if (self.scenario_id in [1,4] ):
                     self.ctrl_mode = 2 # tamp
-                    m_obs = self.getobstaclemarker(Xobs,Yobs,self.obs.R[0])
-                    m_obs.color.a = 0.3 # transparent before detect
-                    if (self.state.s >= self.s_ego_at_popup):
-                        self.obspub.publish(self.obs)
-                        m_obs.color.a = 1.0 # non-transparent after detect
-                    self.obsvispub.publish(m_obs)
+                    ma_obs = []
+                    for i in range(self.N_obstacles):
+                        m_obs = self.getobstaclemarker(X_obs_at_popup[i],Y_obs_at_popup[i],self.R_obs)
+                        m_obs.id = i
+                        m_obs.color.a = 0.3 # transparent before detect
+                        if (self.state.s >= self.s_ego_at_popup[i]):
+                            if (len(self.obs.s) <= i):
+                                self.obs.s.append(self.s_obs_at_popup[i])
+                                self.obs.d.append(self.d_obs_at_popup[i])
+                                self.obs.X.append(X_obs_at_popup[i])
+                                self.obs.Y.append(Y_obs_at_popup[i])
+                                self.obs.R.append(self.R_obs)
+                                self.obs.Rmgn.append(self.Rmgn_obs)
+                                self.obspub.publish(self.obs)
+                            m_obs.color.a = 1.0 # non-transparent after detect
+                        ma_obs.append(m_obs)
+                    self.obsvispub.publish(MarkerArray(markers=ma_obs))
                 
                 # REDUCED MU TURN
                 elif(self.scenario_id == 2):

@@ -37,3 +37,8 @@ if("double_popup_1" in files_to_generate):
         'd_obs_at_popup': [0.6,-1.0]
     }
     export_as_yaml("double_popup_1", export_path, obs_dict)
+    
+    
+# todo:
+# Random location in test area (one per lap)
+# random in gauntlet 
