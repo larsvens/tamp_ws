@@ -295,23 +295,56 @@ class CtrlInterface:
    
 
     def kinematic_ff_by_pp(self):
-        lhdist_min = 8.0
+        if (self.vx < 7.5):
+            lhdist_min = 6.0
+        else:
+            lhdist_min = 8.0
         lhdist_max = 15.0
-        lhdist_vx = lhdist_min + self.state.vx
+        
+
+        # lhdist by vx and psidot        
+        #lhdist_vx = lhdist_min + self.state.vx
         maxpsidot = np.max(np.abs(self.trajstar.psidot))
-        #rospy.logwarn_throttle(1,"maxpsidot_trajstar = " + str(maxpsidot))
         lhdist_psidot = lhdist_min + 1.25/np.max([maxpsidot,0.001])
-        lhdist = float(np.clip(np.min([lhdist_vx,lhdist_psidot]), a_min = lhdist_min, a_max = lhdist_max))
+        lhdist = float(np.clip(np.min([lhdist_psidot]), a_min = lhdist_min, a_max = lhdist_max))
         s_lh = self.state.s + lhdist
         Xlh = np.interp(s_lh, self.trajstar.s, self.trajstar.X)
-        Ylh = np.interp(s_lh, self.trajstar.s, self.trajstar.Y) 
-        
+        Ylh = np.interp(s_lh, self.trajstar.s, self.trajstar.Y)     
         rho_pp, xarc, yarc = self.pp_curvature(self.trajstar.X[0],
                                                self.trajstar.Y[0],
                                                self.trajstar.psi[0],
                                                Xlh,
-                                               Ylh)       
+                                               Ylh)
         kin_ff_term = rho_pp*(self.lf + self.lr) 
+        
+        # lhdist by min rho
+#        N_lh = 10
+#        lh_dist_vec = np.linspace(lhdist_min,lhdist_max,N_lh)
+#        rho_pp_vec = []
+#        xarc_vec = []
+#        yarc_vec = []
+#        for i in range(N_lh):
+#            lhdist = lh_dist_vec[i]
+#            s_lh = self.state.s + lhdist
+#            Xlh = np.interp(s_lh, self.trajstar.s, self.trajstar.X)
+#            Ylh = np.interp(s_lh, self.trajstar.s, self.trajstar.Y) 
+#            
+#            rho_pp, xarc, yarc = self.pp_curvature(self.trajstar.X[0],
+#                                                   self.trajstar.Y[0],
+#                                                   self.trajstar.psi[0],
+#                                                   Xlh,
+#                                                   Ylh)
+#            rho_pp_vec.append(rho_pp)
+#            xarc_vec.append(xarc)
+#            yarc_vec.append(yarc)
+#        
+#        # select max abs curvature
+#        idx = np.argmax(np.abs(rho_pp_vec)+np.linspace(0.,0.01,N_lh))
+#        rho_pp = rho_pp_vec[idx]
+#        xarc = xarc_vec[idx]
+#        yarc = yarc_vec[idx]
+#        kin_ff_term = rho_pp*(self.lf + self.lr) 
+        
         # publish vis marker
         m_arc = self.getpolyfitmarker(xarc, yarc)
         self.polyfitpub.publish(m_arc)
@@ -364,12 +397,17 @@ class CtrlInterface:
         
         # return curve for visualization
         if(rho_pp != 0.):
-            R = np.clip(1./rho_pp, a_min = -1000000, a_max = 1000000)
+            R = np.clip(1./rho_pp, a_min = -10000, a_max = 10000)
         else:
-            R = 1000000
-        t = np.linspace(0.,2*lh_angle,10)
-        xarc = R*np.sin(t[0:-1])
-        yarc = R-R*np.cos(t[0:-1])
+            R = 10000
+        Nvis = 10
+        if(np.abs(lh_angle) > 0.005):
+            t = np.linspace(0.,2*lh_angle,Nvis)
+            xarc = R*np.sin(t)
+            yarc = R-R*np.cos(t)
+        else:
+            xarc = np.linspace(0.,lh_dist,Nvis)
+            yarc = np.zeros(Nvis)
         
         return rho_pp, xarc, yarc
 
