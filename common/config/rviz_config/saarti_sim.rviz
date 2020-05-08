@@ -389,7 +389,7 @@ Visualization Manager:
       Marker Topic: /lhpt_vis
       Name: lhpt
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -397,7 +397,7 @@ Visualization Manager:
       Marker Topic: /state_text_marker
       Name: state_text
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Alpha: 0.5
@@ -418,7 +418,7 @@ Visualization Manager:
       Marker Topic: /polyfit_vis
       Name: polyfit_vis
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -461,26 +461,21 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz/ThirdPersonFollower
-      Distance: 57.3801727
+      Angle: -1.19499981
+      Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Focal Point:
-        X: 4.56180429
-        Y: -0.0146507621
-        Z: 0
-      Focal Shape Fixed Size: false
-      Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.695399284
+      Scale: 10
       Target Frame: base_link
-      Value: ThirdPersonFollower (rviz)
-      Yaw: 3.12539792
+      Value: TopDownOrtho (rviz)
+      X: 16.88834
+      Y: -4.45842695
     Saved:
       - Class: rviz/ThirdPersonFollower
         Distance: 24.7596321

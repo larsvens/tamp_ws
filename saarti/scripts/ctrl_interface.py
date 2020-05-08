@@ -295,16 +295,17 @@ class CtrlInterface:
    
 
     def kinematic_ff_by_pp(self):
-        if (self.vx < 7.5):
-            lhdist_min = 6.0
-        else:
-            lhdist_min = 8.0
+#        if (self.state.vx < 7.5):
+#            lhdist_min = 6.0
+#        else:
+#            lhdist_min = 8.0
+        lhdist_min = 6.0
         lhdist_max = 15.0
         
 
         # lhdist by vx and psidot        
         #lhdist_vx = lhdist_min + self.state.vx
-        maxpsidot = np.max(np.abs(self.trajstar.psidot))
+        maxpsidot = np.max(np.abs(self.trajstar.psidot[2:])) # not include first few k
         lhdist_psidot = lhdist_min + 1.25/np.max([maxpsidot,0.001])
         lhdist = float(np.clip(np.min([lhdist_psidot]), a_min = lhdist_min, a_max = lhdist_max))
         s_lh = self.state.s + lhdist
