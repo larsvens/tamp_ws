@@ -31,7 +31,7 @@
     <!-- logging -->
     <node pkg="opendlv_ros" type="sens_msg_remap_node.py" name="sens_msg_remap"/>
     <node pkg="rosbag" name="rosbag_record_exp" type="record" if="$(arg record_rosbag )" output="screen"    
-		args="record -o  $(find tamp_logs)/bagfiles/real_exp/astazero-2020-04-30/asta --duration=5m
+		args="record -o  $(find tamp_logs)/bagfiles/real_exp/astazero-2020-05-12/asta --duration=5m
 			/pathglobal
 			/pathglobal_vis
 			/dlbglobal_vis
