@@ -76,7 +76,7 @@ class CtrlInterface:
         self.delta_out_buffer = np.zeros(self.delta_out_buffer_size)
         self.delta_out_ma_window_size = 5               # 20  1 deactivates        
         self.db_range = 0.0*(np.pi/180)                 # 0.0 deactivates
-        self.delta_out_rate_max = 0.25 # 30.0*(np.pi/180)       # 30 large value deactivates
+        self.delta_out_rate_max = 100 #0.25 # 30.0*(np.pi/180)       # 30 large value deactivates
         
         # postproc acc
         self.db_range_acc = 0.05                        # 0.0 deactivates
@@ -161,7 +161,7 @@ class CtrlInterface:
                 if(dc_out >= self.db_range_acc):        # accelerating
                     self.cmd.acceleration = 40.0*dc_out # (TUNE LONG)
                 elif(dc_out < -self.db_range_acc):      # braking
-                    self.cmd.acceleration = dc_out
+                    self.cmd.acceleration = 1.0*dc_out
                 else:                                   # deadband
                     self.cmd.acceleration = 0.0
  
@@ -206,7 +206,7 @@ class CtrlInterface:
             
         # dynamic feedfwd term (platform dependent)        
         if(self.system_setup == "rhino_real"):
-            dyn_ff_term = 1.0*self.trajstar.Fyf[0]/self.trajstar.Cf[0] #0.75 # 0.9 1.0 in sim with polyfit (TUNE LAT)
+            dyn_ff_term = 1.5*self.trajstar.Fyf[0]/self.trajstar.Cf[0] #0.75 # 0.9 1.0 in sim with polyfit (TUNE LAT)
         elif(self.system_setup == "rhino_fssim"):
             dyn_ff_term = 1.0*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
         elif(self.system_setup == "gotthard_fssim"):
@@ -299,14 +299,15 @@ class CtrlInterface:
 #            lhdist_min = 6.0
 #        else:
 #            lhdist_min = 8.0
-        lhdist_min = 6.0
+        lhdist_min = 7.0
         lhdist_max = 15.0
         
 
         # lhdist by vx and psidot        
         #lhdist_vx = lhdist_min + self.state.vx
         maxpsidot = np.max(np.abs(self.trajstar.psidot[2:])) # not include first few k
-        lhdist_psidot = lhdist_min + 1.25/np.max([maxpsidot,0.001])
+        lhdist_psidot = lhdist_min + 1.3/np.max([maxpsidot,0.001]) # 1.3, 1.5 # gauntlet
+#        lhdist_psidot = lhdist_min + 1.5/np.max([maxpsidot,0.001]) # 1.3, 1.5 # obsavoid
         lhdist = float(np.clip(np.min([lhdist_psidot]), a_min = lhdist_min, a_max = lhdist_max))
         s_lh = self.state.s + lhdist
         Xlh = np.interp(s_lh, self.trajstar.s, self.trajstar.X)

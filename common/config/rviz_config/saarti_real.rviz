@@ -6,7 +6,6 @@ Panels:
       Expanded:
         - /Grid1
         - /TF1/Frames1
-        - /Camera1
         - /Camera1/Visibility1
       Splitter Ratio: 0.587034822
     Tree Height: 505
@@ -391,14 +390,6 @@ Visualization Manager:
       Marker Topic: /lhpt_vis
       Name: lhpt
       Namespaces:
-        "": true
-      Queue Size: 100
-      Value: true
-    - Class: rviz/Marker
-      Enabled: true
-      Marker Topic: /obs_vis
-      Name: obstacle
-      Namespaces:
         {}
       Queue Size: 100
       Value: true
@@ -407,7 +398,7 @@ Visualization Manager:
       Marker Topic: /state_text_marker
       Name: state_text
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Alpha: 0.5
@@ -458,7 +449,7 @@ Visualization Manager:
         dlb: true
         dub: true
         lhpt: true
-        obstacle: true
+        obstacles: true
         pathlocal: true
         polyfit: true
         positionconstraints: true
@@ -473,6 +464,14 @@ Visualization Manager:
       Enabled: true
       Marker Topic: /polyfit_vis
       Name: polyfit
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /obs_vis
+      Name: obstacles
       Namespaces:
         {}
       Queue Size: 100
@@ -517,10 +516,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.530398488
+      Pitch: 0.320398569
       Target Frame: base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.17539978
+      Yaw: 3.08539605
     Saved:
       - Class: rviz/ThirdPersonFollower
         Distance: 24.7596321
