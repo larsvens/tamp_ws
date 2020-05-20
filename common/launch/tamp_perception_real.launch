@@ -48,7 +48,8 @@
 			/mu_gt
 			/state_text_marker
 			/obs
-			/obs_vis
+			/obs_det_vis
+			/obs_undet_vis
 			/trajset_vis
 			/posconstr_vis
 			/trajhat

@@ -389,7 +389,7 @@ Visualization Manager:
       Marker Topic: /lhpt_vis
       Name: lhpt
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -397,7 +397,7 @@ Visualization Manager:
       Marker Topic: /state_text_marker
       Name: state_text
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Alpha: 0.5
@@ -418,7 +418,7 @@ Visualization Manager:
       Marker Topic: /polyfit_vis
       Name: polyfit_vis
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -431,10 +431,18 @@ Visualization Manager:
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /obs_vis
-      Name: obstacles
+      Marker Topic: /obs_undet_vis
+      Name: undetected_obstacles
       Namespaces:
-        {}
+        "": true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /obs_det_vis
+      Name: detected_obstacles
+      Namespaces:
+        "": true
       Queue Size: 100
       Value: true
   Enabled: true
