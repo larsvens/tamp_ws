@@ -18,9 +18,24 @@
     <!-- introduce new coordinate frame to align camera -->
     <node pkg="tf" type="static_transform_publisher" name="cam__broadcaster" args="0.2 0 0 -0.04997917 0 0 0.99875026 cam cam_ 100" />    
 
-    <!-- play bag -->
-    <arg name="bag" default="real_exp/astazero-2020-04-30/auto_saarti/asta_2020-04-30-15-59-53_cam_.bag" /> 
+    <!-- play bag gauntlet without obs -->
+    <!-- <arg name="bag" default="real_exp/astazero-2020-05-12/drone_runs/selected_runs_gauntlet_no_obs/asta_2020-05-12-14-44-53.bag" /> -->
+    <!-- <arg name="bag" default="real_exp/astazero-2020-05-12/drone_runs/selected_runs_gauntlet_no_obs/asta_2020-05-12-14-49-58.bag" /> -->
+
+    <!-- play bag reduced mu turn -->
+    <!-- <arg name="bag" default="real_exp/astazero-2020-04-30/auto_saarti/asta_2020-04-30-15-59-53_cam_.bag" />  -->
     <!-- <arg name="bag" default="real_exp/astazero-2020-04-30/auto_saarti/asta_2020-04-30-15-06-06.bag" /> -->
+
+    <!-- play bag local min -->
+    <!-- <arg name="bag" default="real_exp/astazero-2020-05-12/coll_avoid_local_min/selected_runs_local_min/asta_2020-05-12-14-02-25.bag" /> -->
+    <!-- <arg name="bag" default="real_exp/astazero-2020-05-12/coll_avoid_local_min/selected_runs_local_min/asta_2020-05-12-14-05-43.bag" /> -->
+
+    <!-- play bag gauntlet with obs -->
+    <arg name="bag" default="real_exp/astazero-2020-05-12/drone_runs/selected_runs_gauntlet_local_min/asta_2020-05-12-16-18-51.bag" /> <!-- saarti -->
+    <!-- <arg name="bag" default="real_exp/astazero-2020-05-12/drone_runs/selected_runs_gauntlet_local_min/asta_2020-05-12-16-22-27.bag" />  rti -->
+
+
+
 
     <node pkg="rosbag" name="rosbag_player" type="play" args="--clock --loop  $(find tamp_logs)/bagfiles/$(arg bag)">
         <remap from="/OpenDLV/SensorMsgGPS_log" to="/OpenDLV/SensorMsgGPS"/>

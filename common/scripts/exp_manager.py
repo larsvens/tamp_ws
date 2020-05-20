@@ -10,6 +10,7 @@ import numpy as np
 import rospy
 import rospkg
 import yaml
+import copy 
 from common.msg import Path
 from common.msg import Obstacles
 from common.msg import State
@@ -98,7 +99,13 @@ class ExperimentManager:
         self.R_obs = 0.5 # same for all for now
         wiggleroom = rospy.get_param('/obstacle_wiggleroom')
         self.Rmgn_obs = 0.5*self.R_obs + 0.5*self.vehicle_width + wiggleroom
-        X_obs_at_popup, Y_obs_at_popup = ptsFrenetToCartesian(np.array(self.s_obs_at_popup), \
+        # wrap self.s_obs_at_popup
+        self.s_obs_at_popup_wrapped = copy.deepcopy(self.s_obs_at_popup)
+        for i in range(len(self.s_obs_at_popup_wrapped)):
+            while(self.s_obs_at_popup_wrapped[i] >= self.s_lap):
+                self.s_obs_at_popup_wrapped[i] -= self.s_lap
+        # compute X and Y postions of obs
+        X_obs_at_popup, Y_obs_at_popup = ptsFrenetToCartesian(np.array(self.s_obs_at_popup_wrapped), \
                                                               np.array(self.d_obs_at_popup), \
                                                               np.array(self.pathglobal.X), \
                                                               np.array(self.pathglobal.Y), \

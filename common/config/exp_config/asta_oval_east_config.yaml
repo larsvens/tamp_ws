@@ -6,17 +6,17 @@ scenario_id: 1 # 1: pop-up, 2: reduced mu turn, 3: racing 4: local min test 5: p
 
 # pop-up obstacle config
 #obstacle_config: no_popup
-obstacle_config: gauntlet_east_single_lap_man
+obstacle_config: oval_east_single_lap_gen
 obstacle_wiggleroom: 1.0
 
 # high friction run (asta_coll_avoid)
-s_begin_mu_segments:  [0.0]
-mu_segment_values:  [0.8]
+s_begin_mu_segments:  [0.0, 244]
+mu_segment_values:  [0.8, 0.4]
 #s_begin_mu_segments:  [0.0, 310]
 #mu_segment_values:  [0.8,0.4]
 s_begin_vxref_segments: [0.0]
-vxref_segment_values: [7.0]
-#vxref_segment_values: [12.0]
+#vxref_segment_values: [7.0]
+vxref_segment_values: [12.0]
 
 # dref
 cc_dref: 0

@@ -393,6 +393,57 @@ def get_triangular_shape_cl(R_curve,l_before_curve):
             Y_cl.append(Y_cl_tmp[i])        
     return np.array(X_cl), np.array(Y_cl)
 
+def get_oval_shape_cl(R_curves,l_straight,l_connect):
+    # params
+    la = l_straight
+    Rta = R_curves
+    l_resetstraight = l_connect
+    
+    # section a (first straight bit)
+    Na = int(la)
+    Xa = np.linspace(0,la,Na)
+    Ya = np.zeros(Na)
+    
+    # section b 
+    Nb = np.ceil(Rta*np.pi)
+    t = np.linspace(np.pi/2,-np.pi/2,Nb)
+    Xb = Rta*np.cos(t) + Xa[-1]
+    Yb = Rta*np.sin(t) - Rta + Ya[-1]
+    
+    # section c
+    lc = la + l_resetstraight
+    Nc = int(lc)
+    Xc = np.linspace(Xb[-1],Xb[-1]-lc,Nc)
+    Yc = np.zeros(Nc) + Yb[-1]
+    
+    # section d
+    Nd = np.ceil(Rta*np.pi) 
+    t = np.linspace(-np.pi/2,-3*np.pi/2,Nd)
+    Xd = Rta*np.cos(t) + Xc[-1]
+    Yd = Rta*np.sin(t) + Yc[-1]+Rta
+    
+    # section e
+    le = l_resetstraight/2.0
+    Ne = int(le)
+    Xe = np.linspace(Xd[-1],0,Ne)
+    Ye = np.zeros(Ne)
+    
+    # concatenate vectors
+    X_cl_tmp = np.concatenate((Xa[0:-1], Xb[0:-1], Xc[0:-1], Xd[0:-1], Xe[0:-1]), axis=0)
+    Y_cl_tmp = np.concatenate((Ya[0:-1], Yb[0:-1], Yc[0:-1], Yd[0:-1], Ye[0:-1]), axis=0)
+    print X_cl_tmp
+    
+    # remove duplicate points
+    threshold_dist = 0.1
+    X_cl = []
+    Y_cl = []
+    for i in range(X_cl_tmp.size-1):
+        dist = np.sqrt((X_cl_tmp[i+1]-X_cl_tmp[i])**2 + (Y_cl_tmp[i+1]-Y_cl_tmp[i])**2)
+        if (dist > threshold_dist):
+            X_cl.append(X_cl_tmp[i])
+            Y_cl.append(Y_cl_tmp[i])        
+    return np.array(X_cl), np.array(Y_cl)
+
 
 def export_as_yaml(track_name, export_path, dict_track):
     file_path = export_path + '/' + track_name + ".yaml"
@@ -478,7 +529,7 @@ def export_as_kml(track_name, export_path, X_cl,Y_cl,origin_pose_utm):
 # Track Generation
 #
 plt.close('all')
-track_name = "asta_gauntlet_east"
+track_name = "asta_coll_avoid"
 
 # export params
 export_path_fssim = "/home/larsvens/ros/tamp__ws/src/fssim/fssim_gazebo/models/track"
@@ -535,10 +586,16 @@ elif(track_name == "asta_coll_avoid"):
       "utm_letter": 'V'
     }
     
-    l_before_curve = 115
-    R_corner = 40
+    #l_before_curve = 115
+    #R_corner = 40
+    #lanewidth = 2.3
+    #X_cl_, Y_cl_ = get_triangular_shape_cl(R_corner,l_before_curve)   
+    
+    l_straight = 350
+    l_connect = 15
+    R_corners = 10
     lanewidth = 2.3
-    X_cl_, Y_cl_ = get_triangular_shape_cl(R_corner,l_before_curve)   
+    X_cl_, Y_cl_ = get_oval_shape_cl(R_corners,l_straight, l_connect)
  
     # rotate track to origin pose utm
     X_cl = X_cl_*np.cos(origin_pose_utm["psi0_utm"]) - Y_cl_*np.sin(origin_pose_utm["psi0_utm"])
@@ -566,7 +623,7 @@ elif(track_name == "asta_local_min"):
     Y_cl = Y_cl_*np.cos(origin_pose_utm["psi0_utm"]) + X_cl_*np.sin(origin_pose_utm["psi0_utm"])
 
 
-if(track_name in ["lokforaregatan","storaholm_gravel_south","rural_test_route_1","asta_gauntlet", "asta_gauntlet_east"]): 
+if(track_name in ["lokforaregatan","storaholm_gravel_south","rural_test_route_1","asta_gauntlet", "asta_gauntlet_east","asta_oval_east"]): 
     filepath = path.join('../config/tracks/ge_exports/' + track_name + '.kml')
     
     if(track_name in ["asta_gauntlet", "asta_gauntlet_east"]): 
@@ -734,6 +791,7 @@ export_as_yaml(track_name, export_path_saarti, dict_track)
 export_as_sdf(track_name, export_path_fssim, dict_track)
 export_as_kml(track_name, export_path_saarti, X_cl,Y_cl,origin_pose_utm)
 print "[INFO] Track generation completed"
+print "[INFO] Track length: " + str(s[-1])
 
 
 

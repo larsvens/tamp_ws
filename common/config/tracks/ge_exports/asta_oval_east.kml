@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>asta_oval_east</name>
+	<gx:CascadingStyle kml:id="__managed_style_218ADAF47C13629D565F">
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://earth.google.com/earth/rpc/cc/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<displayMode>hide</displayMode>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_1B11C6916013629D565F">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://earth.google.com/earth/rpc/cc/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<displayMode>hide</displayMode>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_033C82FC7C13629D565F">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_1B11C6916013629D565F</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_218ADAF47C13629D565F</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Placemark id="0F58A8933513629D565F">
+		<name>asta_oval_east</name>
+		<LookAt>
+			<longitude>12.7743097194508</longitude>
+			<latitude>57.7813167366687</latitude>
+			<altitude>200.1347972195456</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>30.00001346392854</gx:fovy>
+			<range>570.9225870711089</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_033C82FC7C13629D565F</styleUrl>
+		<LineString>
+			<coordinates>
+				12.7730285777366,57.78128067704377,206.1019889613296 12.77288899089348,57.78144656697987,205.6740043966097 12.77275197781685,57.78160824820137,204.9833285691245 12.77263618151327,57.78174619330225,204.5645112287611 12.7725364471953,57.78186813979653,203.9707242725677 12.77246493084756,57.78200270909419,203.3770758415747 12.77252947576215,57.78213654601081,202.5720145266718 12.7727239557351,57.78223785592726,202.2946095525978 12.77296399847141,57.78226061374789,202.1334129903556 12.77317118054954,57.78222919924211,201.9722164281133 12.77336845347038,57.78216593156835,201.5296658173287 12.77360023382559,57.78207883063591,201.0978888532798 12.77382661467314,57.78198764287516,200.4263878138518 12.77405349748917,57.7818974847667,199.7644682799784 12.77425570757435,57.78180770978533,199.4575759007805 12.77441657242187,57.78169548010818,198.9586227278575 12.77453674650469,57.78155498136076,198.7537028495086 12.77457094526208,57.78143110124676,198.5487829711597 12.77456106177917,57.7813142699251,198.7085758725776 12.77453903112353,57.78117244097793,198.9181776896563 12.7745116001748,57.78103712753698,199.330475198481 12.77447781056599,57.78093767978081,199.4748557984303 12.77444041561365,57.78084262381748,200.461429562885 12.77439547439936,57.78075112705552,201.0612106502965 12.77429447977674,57.78065456170331,201.6609917377079 12.77412019985832,57.78059090210338,202.4725114304084 12.77388741913746,57.78056559631158,203.284031123109 12.77364387301703,57.78062098750039,204.7539752740809 12.77346174959574,57.7807390434855,205.4629223055933 12.77336906277055,57.7808529506518,205.6609962257277 12.77327038443986,57.78097979327123,205.8590701458621 12.77317186860004,57.78110467720325,206.3444103552979 12.77307971787415,57.78121965900973,206.1549823099505 
+			</coordinates>
+		</LineString>
+	</Placemark>
+</Document>
+</kml>
