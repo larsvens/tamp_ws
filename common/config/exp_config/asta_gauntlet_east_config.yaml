@@ -5,8 +5,8 @@ t_final: 500.0
 scenario_id: 1 # 1: pop-up, 2: reduced mu turn, 3: racing 4: local min test 5: pp-test 6: tamp test
 
 # pop-up obstacle config
-#obstacle_config: no_popup
-obstacle_config: gauntlet_east_single_lap_man
+obstacle_config: no_popup
+#obstacle_config: gauntlet_east_single_lap_man
 obstacle_wiggleroom: 1.0
 
 # high friction run (asta_coll_avoid)

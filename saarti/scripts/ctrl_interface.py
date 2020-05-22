@@ -302,7 +302,6 @@ class CtrlInterface:
         lhdist_min = 7.0
         lhdist_max = 15.0
         
-
         # lhdist by vx and psidot        
         #lhdist_vx = lhdist_min + self.state.vx
         maxpsidot = np.max(np.abs(self.trajstar.psidot[2:])) # not include first few k
@@ -312,12 +311,28 @@ class CtrlInterface:
         s_lh = self.state.s + lhdist
         Xlh = np.interp(s_lh, self.trajstar.s, self.trajstar.X)
         Ylh = np.interp(s_lh, self.trajstar.s, self.trajstar.Y)     
-        rho_pp, xarc, yarc = self.pp_curvature(self.trajstar.X[0],
-                                               self.trajstar.Y[0],
-                                               self.trajstar.psi[0],
+         
+        # get center point of rear axle
+        Xrac = self.state.X - self.lr*np.cos(self.state.psi) 
+        Yrac = self.state.Y - self.lr*np.sin(self.state.psi)
+        
+        #Xfac = self.state.X + self.lf*np.cos(self.state.psi) 
+        #Yfac = self.state.Y + self.lf*np.sin(self.state.psi)
+        
+#        rho_pp, xarc, yarc = self.pp_curvature(self.trajstar.X[0],
+#                                               self.trajstar.Y[0],
+#                                               self.trajstar.psi[0],
+#                                               Xlh,
+#                                               Ylh)
+        
+        rho_pp, xarc, yarc = self.pp_curvature(Xrac,
+                                               Yrac,
+                                               self.state.psi,
                                                Xlh,
                                                Ylh)
-        kin_ff_term = rho_pp*(self.lf + self.lr) 
+        
+        
+        kin_ff_term = rho_pp*(self.lf + self.lr) *1.5 # TUNING LAT
         
         # lhdist by min rho
 #        N_lh = 10
@@ -405,10 +420,10 @@ class CtrlInterface:
         Nvis = 10
         if(np.abs(lh_angle) > 0.005):
             t = np.linspace(0.,2*lh_angle,Nvis)
-            xarc = R*np.sin(t)
+            xarc = R*np.sin(t) - self.lr
             yarc = R-R*np.cos(t)
         else:
-            xarc = np.linspace(0.,lh_dist,Nvis)
+            xarc = np.linspace(0.,lh_dist,Nvis) - self.lr
             yarc = np.zeros(Nvis)
         
         return rho_pp, xarc, yarc
