@@ -305,7 +305,8 @@ class CtrlInterface:
         # lhdist by vx and psidot        
         #lhdist_vx = lhdist_min + self.state.vx
         maxpsidot = np.max(np.abs(self.trajstar.psidot[2:])) # not include first few k
-        lhdist_psidot = lhdist_min + 1.3/np.max([maxpsidot,0.001]) # 1.3, 1.5 # gauntlet
+        lhdist_psidot = lhdist_min + (0.07*self.state.vx)/np.max([maxpsidot,0.001]) # dpsi/ds # TUNE LAT
+#        lhdist_psidot = lhdist_min + 1.3/np.max([maxpsidot,0.001]) # 1.3, 1.5 # gauntlet
 #        lhdist_psidot = lhdist_min + 1.5/np.max([maxpsidot,0.001]) # 1.3, 1.5 # obsavoid
         lhdist = float(np.clip(np.min([lhdist_psidot]), a_min = lhdist_min, a_max = lhdist_max))
         s_lh = self.state.s + lhdist
