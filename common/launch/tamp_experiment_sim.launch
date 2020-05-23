@@ -19,7 +19,7 @@
     <!-- logging -->
     <arg name="record_rosbag" default="true" />
     <node pkg="rosbag" name="rosbag_record_exp" type="record" if="$(arg record_rosbag )" output="screen"    
-		args="record -O  $(find tamp_logs)/bagfiles/sim_exp/latest --duration=5m
+		args="record -O  $(find tamp_logs)/bagfiles/sim_exp/latest --duration=20m
 			/pathglobal
 			/pathglobal_vis
 			/dlbglobal_vis

@@ -12,7 +12,7 @@ obstacle_wiggleroom: 1.0
 
 # high friction run (asta_coll_avoid)
 s_begin_mu_segments:  [0.0]
-mu_segment_values:  [0.5]
+mu_segment_values:  [0.8]
 s_begin_vxref_segments: [0.0, 320, 375, 700.0]
 vxref_segment_values: [12.0, 3.0, 12.0, 3.0]
 
@@ -43,7 +43,7 @@ vxub_rollout: 20.0
 # 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics), static Cr
 # 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics, Cr from mu and Fz
 traction_adaptive: 1
-mu_nominal: 0.8 # used only when traction_adaptive = 0
+mu_nominal: 0.5 # used only when traction_adaptive = 0
 
 # Force utilization factor
 Ff_util: 0.5 # final test local min

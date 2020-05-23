@@ -41,17 +41,17 @@ if("double_popup_1" in files_to_generate):
 
 if("multiple_popup_10_laps" in files_to_generate):
     N_laps = 10
-    s_lap = 792 # get from track gen script 
+    s_lap = 792.8049693850619 # get from track gen script 
     s_ego_first = 175
-    delta_s_between_popups = 396
+    delta_s_between_popups = s_lap/2.
     s_ego_at_popup = np.arange(s_ego_first,s_lap*N_laps,delta_s_between_popups)
     Nobs = s_ego_at_popup.size
 
     # generate obstacles at random positions ahead of vehicle
     # use fixed seed to get consistency between runs of this script
     np.random.seed(42) 
-    delta_s_base = 20
-    s_pm_range = 1.5
+    delta_s_base = 15
+    s_pm_range = 1.0
     d_pm_range = 1
     s_obs_at_popup = s_ego_at_popup + delta_s_base + s_pm_range*(np.random.rand(Nobs)*2-1)
     d_obs_at_popup = d_pm_range*(np.random.rand(Nobs)*2-1)

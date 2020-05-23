@@ -190,6 +190,7 @@ class ExperimentManager:
                         m_obs = self.getobstaclemarker(X_obs_at_popup[i],Y_obs_at_popup[i],self.R_obs)
                         m_obs.id = i
                         if (self.s_ego_at_popup[i] <= self.state.s <= self.s_obs_at_popup[i] + 25):
+                            self.obs.id.append(i)
                             self.obs.s.append(self.s_obs_at_popup[i])
                             self.obs.d.append(self.d_obs_at_popup[i])
                             self.obs.X.append(X_obs_at_popup[i])
