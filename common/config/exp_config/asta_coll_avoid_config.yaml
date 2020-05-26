@@ -5,16 +5,16 @@ t_final: 500.0
 scenario_id: 1 # 1: pop-up, 2: reduced mu turn, 3: racing 4: local min test 5: pp-test 6: tamp test
 
 # pop-up obstacle config
-#obstacle_config: single_popup_1
+obstacle_config: single_popup_1
 #obstacle_config: double_popup_local_min
-obstacle_config: multiple_popup_10_laps
+#obstacle_config: multiple_popup_10_laps
 obstacle_wiggleroom: 1.0
 
 # high friction run (asta_coll_avoid)
 s_begin_mu_segments:  [0.0]
 mu_segment_values:  [0.8]
 s_begin_vxref_segments: [0.0, 320, 375, 700.0]
-vxref_segment_values: [12.0, 3.0, 12.0, 3.0]
+vxref_segment_values: [10.0, 4.0, 12.0, 4.0]
 
 # dref
 cc_dref: 0
@@ -46,8 +46,8 @@ traction_adaptive: 1
 mu_nominal: 0.5 # used only when traction_adaptive = 0
 
 # Force utilization factor
-Ff_util: 0.5 # final test local min
-Fr_util: 0.5
+Ff_util: 0.8 # final test local min
+Fr_util: 0.8
 #Ff_util: 0.5 # initial tuning runs
 #Fr_util: 0.5
 

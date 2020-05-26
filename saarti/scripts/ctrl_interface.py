@@ -72,9 +72,9 @@ class CtrlInterface:
         self.cc_dref = rospy.get_param('/cc_dref')
         
         # postproc tuning vars (TUNE LAT)
-        self.delta_out_buffer_size = 20
+        self.delta_out_buffer_size = 2
         self.delta_out_buffer = np.zeros(self.delta_out_buffer_size)
-        self.delta_out_ma_window_size = 5               # 20  1 deactivates        
+        self.delta_out_ma_window_size = 1               # 5 20  1 deactivates        
         self.db_range = 0.0*(np.pi/180)                 # 0.0 deactivates
         self.delta_out_rate_max = 100 #0.25 # 30.0*(np.pi/180)       # 30 large value deactivates
         
@@ -206,7 +206,10 @@ class CtrlInterface:
             
         # dynamic feedfwd term (platform dependent)        
         if(self.system_setup == "rhino_real"):
-            dyn_ff_term = 1.5*self.trajstar.Fyf[0]/self.trajstar.Cf[0] #0.75 # 0.9 1.0 in sim with polyfit (TUNE LAT)
+            if (np.abs(self.trajstar.Fyf[0]/self.m) > 3.0): # only apply when turning hard Todo percentage of Fmax?
+                dyn_ff_term = 1.0*self.trajstar.Fyf[0]/self.trajstar.Cf[0] #0.75 # 0.9 1.0 in sim with polyfit (TUNE LAT)
+            else:
+                dyn_ff_term = 0.0
         elif(self.system_setup == "rhino_fssim"):
             dyn_ff_term = 1.0*self.trajstar.Fyf[0]/self.trajstar.Cf[0]
         elif(self.system_setup == "gotthard_fssim"):
@@ -299,13 +302,14 @@ class CtrlInterface:
 #            lhdist_min = 6.0
 #        else:
 #            lhdist_min = 8.0
-        lhdist_min = 7.0
-        lhdist_max = 15.0
+        lhdist_min = 7.0 # 7
+        lhdist_max = 20.0
         
         # lhdist by vx and psidot        
         #lhdist_vx = lhdist_min + self.state.vx
         maxpsidot = np.max(np.abs(self.trajstar.psidot[2:])) # not include first few k
-        lhdist_psidot = lhdist_min + (0.07*self.state.vx)/np.max([maxpsidot,0.001]) # dpsi/ds # TUNE LAT
+#        lhdist_psidot = lhdist_min + (0.07*self.state.vx)/np.max([maxpsidot,0.001]) # dpsi/ds # TUNE LAT
+        lhdist_psidot = lhdist_min + (0.20*self.state.vx)/np.max([maxpsidot,0.001]) # dpsi/ds # TUNE LAT
 #        lhdist_psidot = lhdist_min + 1.3/np.max([maxpsidot,0.001]) # 1.3, 1.5 # gauntlet
 #        lhdist_psidot = lhdist_min + 1.5/np.max([maxpsidot,0.001]) # 1.3, 1.5 # obsavoid
         lhdist = float(np.clip(np.min([lhdist_psidot]), a_min = lhdist_min, a_max = lhdist_max))
@@ -331,9 +335,8 @@ class CtrlInterface:
                                                self.state.psi,
                                                Xlh,
                                                Ylh)
-        
-        
-        kin_ff_term = rho_pp*(self.lf + self.lr) *1.5 # TUNING LAT
+                
+        kin_ff_term = rho_pp*(self.lf + self.lr) * 1.0 # TUNING LAT 1.5
         
         # lhdist by min rho
 #        N_lh = 10

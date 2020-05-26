@@ -390,7 +390,7 @@ Visualization Manager:
       Marker Topic: /lhpt_vis
       Name: lhpt
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -398,7 +398,7 @@ Visualization Manager:
       Marker Topic: /state_text_marker
       Name: state_text
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Alpha: 0.5
@@ -449,6 +449,8 @@ Visualization Manager:
         dlb: true
         dub: true
         lhpt: true
+        obs_det: true
+        obs_undet: true
         obstacles: true
         pathlocal: true
         polyfit: true
@@ -465,7 +467,7 @@ Visualization Manager:
       Marker Topic: /polyfit_vis
       Name: polyfit
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -474,6 +476,22 @@ Visualization Manager:
       Name: obstacles
       Namespaces:
         {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /obs_det_vis
+      Name: obs_det
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /obs_undet_vis
+      Name: obs_undet
+      Namespaces:
+        "": true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -516,10 +534,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.320398569
+      Pitch: 0.305398732
       Target Frame: base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.08539605
+      Yaw: 3.11539674
     Saved:
       - Class: rviz/ThirdPersonFollower
         Distance: 24.7596321

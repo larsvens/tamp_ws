@@ -30,16 +30,16 @@ obstacle_wiggleroom: 1.0
 #vxref_segment_values: [15.0, 10.0, 5.0]
 
 # low friction run (asta_zero_long)
-#s_begin_mu_segments:  [0.0, 275.0, 325.0]
-#mu_segment_values:  [0.8, 0.4, 0.8]
-#s_begin_vxref_segments: [0.0, 315.0, 600.0]
-#vxref_segment_values: [15.0, 10.0, 5.0]
+s_begin_mu_segments:  [0.0, 275.0, 325.0]
+mu_segment_values:  [0.8, 0.4, 0.8]
+s_begin_vxref_segments: [0.0, 315.0, 600.0]
+vxref_segment_values: [12.0, 8.0, 5.0]
 
 # low friction run (asta_zero_short)
-s_begin_mu_segments:  [0.0, 235.0, 295.0]
-mu_segment_values:  [0.8, 0.4, 0.8]
-s_begin_vxref_segments: [0.0, 300.0, 500.0]
-vxref_segment_values: [8.0, 8.0, 5.0]
+#s_begin_mu_segments:  [0.0, 235.0, 295.0]
+#mu_segment_values:  [0.8, 0.4, 0.8]
+#s_begin_vxref_segments: [0.0, 300.0, 500.0]
+#vxref_segment_values: [8.0, 8.0, 5.0]
 
 # dref
 cc_dref: 0
@@ -71,8 +71,8 @@ traction_adaptive: 1
 mu_nominal: 0.8 # used only when traction_adaptive = 0
 
 # Force utilization factor
-Ff_util: 0.8 # final tests
-Fr_util: 0.9
+Ff_util: 0.7 # final tests
+Fr_util: 0.7
 #Ff_util: 0.5 # initial tuning runs
 #Fr_util: 0.5
 

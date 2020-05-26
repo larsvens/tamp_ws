@@ -15,7 +15,7 @@ mu_segment_values:  [0.8]
 #s_begin_mu_segments:  [0.0, 310]
 #mu_segment_values:  [0.8,0.4]
 s_begin_vxref_segments: [0.0]
-vxref_segment_values: [7.0]
+vxref_segment_values: [10.0]
 #vxref_segment_values: [12.0]
 
 # dref
@@ -48,12 +48,12 @@ traction_adaptive: 1
 mu_nominal: 0.8 # used only when traction_adaptive = 0
 
 # Force utilization factor
-#Ff_util: 0.6 # final tests
+#Ff_util: 0.6 # test on 26 tune lat
 #Fr_util: 0.6
-Ff_util: 0.4 # final tests
+Ff_util: 0.4 # final test on 25
 Fr_util: 0.4
-#Ff_util: 0.1 # initial tuning runs
-#Fr_util: 0.1
+#Ff_util: 0.2 # initial tuning runs
+#Fr_util: 0.2
 
 # optimization config
 Wx:  [1000.0, 5000000.0, 1.0, 0.1, 1000000.0, 0.1] # [1000.0, 10000000.0, 1.0, 0.1, 1000000.0, 0.1]
