@@ -34,11 +34,15 @@
     <!-- <arg name="bag" default="real_exp/astazero-2020-05-12/drone_runs/selected_runs_gauntlet_local_min/asta_2020-05-12-16-18-51.bag" />  saarti -->
     <!-- <arg name="bag" default="real_exp/astazero-2020-05-12/drone_runs/selected_runs_gauntlet_local_min/asta_2020-05-12-16-22-27.bag" />  rti -->
 
-    <!-- test 25/26 may -->
-    <arg name="bag" default="real_exp/astazero-2020-05-25/drone_runs/asta_2020-05-25-16-50-59.bag" />
+    <!-- test 25 may -->
+    <!-- <arg name="bag" default="real_exp/astazero-2020-05-25/drone_runs/asta_2020-05-25-16-50-59.bag" /> -->
+
+    <!-- test 26 may -->
+    <arg name="bag" default="real_exp/astazero-2020-05-26/ca_single/drone_runs_single/asta_2020-05-26-13-42-28.bag" /> 
 
 
-    <node pkg="rosbag" name="rosbag_player" type="play" args="--clock --loop  $(find tamp_logs)/bagfiles/$(arg bag)">
+
+    <node pkg="rosbag" name="rosbag_player" type="play" args="--clock --pause --start=30  $(find tamp_logs)/bagfiles/$(arg bag)">
         <remap from="/OpenDLV/SensorMsgGPS_log" to="/OpenDLV/SensorMsgGPS"/>
         <remap from="/OpenDLV/SensorMsgCAN_log" to="/OpenDLV/SensorMsgCAN"/>
     </node> 

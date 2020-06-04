@@ -48,10 +48,12 @@ traction_adaptive: 1
 mu_nominal: 0.8 # used only when traction_adaptive = 0
 
 # Force utilization factor
+Ff_util: 0.8 # test on 26 tune lat
+Fr_util: 0.8
 #Ff_util: 0.6 # test on 26 tune lat
 #Fr_util: 0.6
-Ff_util: 0.4 # final test on 25
-Fr_util: 0.4
+#Ff_util: 0.5 # final test on 25
+#Fr_util: 0.5
 #Ff_util: 0.2 # initial tuning runs
 #Fr_util: 0.2
 

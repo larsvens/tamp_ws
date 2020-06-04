@@ -26,4 +26,20 @@ def angleToContinous(psi):
     psi_out[-1] = psi[-1] + offset
     return psi_out
 
+def getVehicleCorners(X, Y, psi, lf, lr, w):
     
+    R = np.array([[np.cos(psi), np.sin(psi)],
+                  [-np.sin(psi), np.cos(psi)]])
+    
+    dims = np.array([[lf, w/2],
+                     [-lr, w/2],
+                     [-lr, -w/2],
+                     [lf, -w/2]])
+    
+    
+    corners = dims.dot(R);
+    
+    corners[:,0] = corners[:,0] + X
+    corners[:,1] = corners[:,1] + Y
+    
+    return corners[:,0], corners[:,1]

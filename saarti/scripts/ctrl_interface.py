@@ -206,7 +206,7 @@ class CtrlInterface:
             
         # dynamic feedfwd term (platform dependent)        
         if(self.system_setup == "rhino_real"):
-            if (np.abs(self.trajstar.Fyf[0]/self.m) > 3.0): # only apply when turning hard Todo percentage of Fmax?
+            if (np.abs(self.trajstar.Fyf[0]/self.m) > 4.0): # only apply when turning hard Todo percentage of Fmax?
                 dyn_ff_term = 1.0*self.trajstar.Fyf[0]/self.trajstar.Cf[0] #0.75 # 0.9 1.0 in sim with polyfit (TUNE LAT)
             else:
                 dyn_ff_term = 0.0
@@ -336,7 +336,7 @@ class CtrlInterface:
                                                Xlh,
                                                Ylh)
                 
-        kin_ff_term = rho_pp*(self.lf + self.lr) * 1.0 # TUNING LAT 1.5
+        kin_ff_term = rho_pp*(self.lf + self.lr) * 1.3 # TUNING LAT 1.5
         
         # lhdist by min rho
 #        N_lh = 10

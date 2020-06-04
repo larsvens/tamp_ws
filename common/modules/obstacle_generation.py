@@ -49,8 +49,8 @@ if("multiple_popup_10_laps" in files_to_generate):
 
     # generate obstacles at random positions ahead of vehicle
     # use fixed seed to get consistency between runs of this script
-    np.random.seed(42) 
-    delta_s_base = 15
+    np.random.seed(43) 
+    delta_s_base = 16
     s_pm_range = 1.0
     d_pm_range = 1
     s_obs_at_popup = s_ego_at_popup + delta_s_base + s_pm_range*(np.random.rand(Nobs)*2-1)
