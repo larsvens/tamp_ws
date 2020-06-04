@@ -490,7 +490,7 @@ containers::refstruct SAARTI::setRefs(int ref_mode,
 
 // cost evaluation and collision checking of trajset
 std::tuple<int, int> SAARTI::trajset_eval_cost(){
-    float mincost = float(Wslack_)*10;
+    float mincost = float(Wslack_)*1000000;
     int n_collfree = Nd_rollout_*Nvx_rollout_+1;
     int trajhat_idx = -1;
     for (uint i=0;i<trajset_.size();i++) {
@@ -503,7 +503,7 @@ std::tuple<int, int> SAARTI::trajset_eval_cost(){
         for (uint j=0; j<traj.s.size();j++){
             float s = traj.s.at(j);
             float d = traj.d.at(j);
-            //float vx = traj.vx.at(j);
+            float vx = traj.vx.at(j);
 
             // check obstacle (in frenet)
             float dist;
@@ -515,12 +515,13 @@ std::tuple<int, int> SAARTI::trajset_eval_cost(){
             }
 
             // check outside road (in frenet)
-            if((d > dub.at(j)+1.0f) || d < dlb.at(j) -1.0f){
+            if((d > dub.at(j)+1.0f) || d < dlb.at(j) -1.0f){ // todo input
                 exitroad = true;
             }
             // running cost
             float sref = float(refs_.sref.at(j));
-            // float vxref = float(refs_.vxref.at(j));
+            float vxref = refs_.vxref_cc;
+            float dref = refs_.dref_cc;
 
             //cout << "sref before rc add = " << sref << endl;
             //cout << "vxref before rc add = " << vxref << endl;
@@ -528,8 +529,10 @@ std::tuple<int, int> SAARTI::trajset_eval_cost(){
             //cout << "vx before rc add = " << vx << endl;
             //cout << "cost before rc add = " << cost << endl;
 
+            //cost += (sref-s)*float(Wx_.at(0))*(sref-s);
             //cost += (sref-s)*float(Wx_.at(0))*(sref-s) + (vxref-vx)*float(Wx_.at(4))*(vxref-vx);
-            cost += (sref-s)*float(Wx_.at(0))*(sref-s);
+            cost += (sref-s)*float(Wx_.at(0))*(sref-s) + (dref-d)*float(Wx_.at(1))*(dref-d) + (vxref-vx)*float(Wx_.at(4))*(vxref-vx);
+
 
             //cout << "cost after rc add = " << cost << endl;
         }
