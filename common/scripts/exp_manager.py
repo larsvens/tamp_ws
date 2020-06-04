@@ -170,7 +170,7 @@ class ExperimentManager:
                     self.tireparams.header.stamp = rospy.Time.now()
                     self.tireparampub.publish(self.tireparams)
                 
-                # publish current vxref
+                # get current vxref
                 for i in range(self.N_vxref_segments-1):
                     if(self.s_begin_vxref_segments[i] <= s_ego <= self.s_begin_vxref_segments[i+1]):
                         self.vxref_segment_idx = i
@@ -178,7 +178,7 @@ class ExperimentManager:
                 if(s_ego >= self.s_begin_vxref_segments[-1]):
                     self.vxref_segment_idx = self.N_vxref_segments-1
                 self.vxref.data = self.vxref_segment_values[self.vxref_segment_idx]     
-                self.vxref_pub.publish(self.vxref)
+                
                 
                 # POPUP SCENARIO
                 if (self.scenario_id in [1,4] ):
@@ -189,7 +189,8 @@ class ExperimentManager:
                     for i in range(self.N_obstacles):
                         m_obs = self.getobstaclemarker(X_obs_at_popup[i],Y_obs_at_popup[i],self.R_obs)
                         m_obs.id = i
-                        if (self.s_ego_at_popup[i] <= self.state.s <= self.s_obs_at_popup[i] + 25):
+                        # IF OBS DETECTED
+                        if (self.s_ego_at_popup[i] <= self.state.s <= self.s_obs_at_popup[i] + 5):
                             self.obs.id.append(i)
                             self.obs.s.append(self.s_obs_at_popup[i])
                             self.obs.d.append(self.d_obs_at_popup[i])
@@ -199,6 +200,7 @@ class ExperimentManager:
                             self.obs.Rmgn.append(self.Rmgn_obs)
                             m_obs.color.a = 1.0 # non-transparent when detected
                             ma_obs_det.append(m_obs)
+                            self.vxref.data = 1.0 # reduce vx ref at detections
                         else:
                             m_obs.color.a = 0.2 
                             ma_obs_undet.append(m_obs)
@@ -230,6 +232,9 @@ class ExperimentManager:
                 dub = np.interp(self.state.s,self.pathglobal.s,self.pathglobal.dub)
                 if (self.state.d < dlb-1.0 or self.state.d > dub+1.0): # todo get from param
                     self.ctrl_mode = 0 # stop
+                
+                # publis vxref
+                self.vxref_pub.publish(self.vxref)
                 
                 # publish ctrl mode
                 self.ctrl_mode_pub.publish(self.ctrl_mode)

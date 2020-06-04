@@ -27,7 +27,7 @@ if("single_popup_1" in files_to_generate):
     obs_dict = {
         's_ego_at_popup': [160.],
         's_obs_at_popup': [175.],
-        'd_obs_at_popup': [0.5,]
+        'd_obs_at_popup': [0.7,]
     }
     export_as_yaml("single_popup_1", export_path, obs_dict)
 
@@ -49,7 +49,8 @@ if("multiple_popup_10_laps" in files_to_generate):
 
     # generate obstacles at random positions ahead of vehicle
     # use fixed seed to get consistency between runs of this script
-    np.random.seed(43) 
+    rs = 43
+    np.random.seed(rs) 
     delta_s_base = 16
     s_pm_range = 1.0
     d_pm_range = 1
@@ -61,7 +62,7 @@ if("multiple_popup_10_laps" in files_to_generate):
         's_obs_at_popup': s_obs_at_popup.tolist(),
         'd_obs_at_popup': d_obs_at_popup.tolist()
     }
-    export_as_yaml("multiple_popup_10_laps", export_path, obs_dict)
+    export_as_yaml("multiple_popup_10_laps_rs"+str(rs), export_path, obs_dict)
 
         
 if("gauntlet_east_single_lap_gen" in files_to_generate):

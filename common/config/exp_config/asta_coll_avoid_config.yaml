@@ -7,14 +7,14 @@ scenario_id: 1 # 1: pop-up, 2: reduced mu turn, 3: racing 4: local min test 5: p
 # pop-up obstacle config
 #obstacle_config: single_popup_1
 #obstacle_config: double_popup_local_min
-obstacle_config: multiple_popup_10_laps
+obstacle_config: multiple_popup_10_laps_rs43
 obstacle_wiggleroom: 1.0
 
 # high friction run (asta_coll_avoid)
 s_begin_mu_segments:  [0.0]
 mu_segment_values:  [0.8]
 s_begin_vxref_segments: [0.0, 320, 375, 700.0]
-vxref_segment_values: [10.0, 4.0, 10.0, 4.0]
+vxref_segment_values: [10.0, 4.0, 10.0, 4.0] # try higher speed
 
 # dref
 cc_dref: 0
