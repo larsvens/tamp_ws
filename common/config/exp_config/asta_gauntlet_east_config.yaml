@@ -5,13 +5,13 @@ t_final: 500.0
 scenario_id: 1 # 1: pop-up, 2: reduced mu turn, 3: racing 4: local min test 5: pp-test 6: tamp test
 
 # pop-up obstacle config
-obstacle_config: no_popup
-#obstacle_config: gauntlet_east_single_lap_man
+#obstacle_config: no_popup
+obstacle_config: gauntlet_east_single_lap_man
 obstacle_wiggleroom: 1.0
 
 # high friction run (asta_coll_avoid)
-s_begin_mu_segments:  [0.0]
-mu_segment_values:  [0.8]
+s_begin_mu_segments:  [0.0, 215, 270, 375, 430]
+mu_segment_values:  [0.8, 0.4, 0.8, 0.4, 0.8]
 #s_begin_mu_segments:  [0.0, 310]
 #mu_segment_values:  [0.8,0.4]
 s_begin_vxref_segments: [0.0]
@@ -48,8 +48,8 @@ traction_adaptive: 1
 mu_nominal: 0.8 # used only when traction_adaptive = 0
 
 # Force utilization factor
-Ff_util: 0.8 # test on 26 tune lat
-Fr_util: 0.8
+Ff_util: 0.9 # test on 26 tune lat
+Fr_util: 0.9
 #Ff_util: 0.6 # test on 26 tune lat
 #Fr_util: 0.6
 #Ff_util: 0.5 # final test on 25
@@ -58,7 +58,7 @@ Fr_util: 0.8
 #Fr_util: 0.2
 
 # optimization config
-Wx:  [1000.0, 5000000.0, 1.0, 0.1, 1000000.0, 0.1] # [1000.0, 10000000.0, 1.0, 0.1, 1000000.0, 0.1]
+Wx:  [1000.0, 1000000.0, 1.0, 0.1, 1000000.0, 0.1] # [1000.0, 10000000.0, 1.0, 0.1, 1000000.0, 0.1]
 WNx: [1000.0, 100000000.0, 1.0, 0.1, 1000000.0, 0.1]
 Wu: [0.001, 0.1, 0.1]
 Wslack: 100000000

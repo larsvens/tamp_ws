@@ -26,8 +26,8 @@ export_path = "/home/larsvens/ros/tamp__ws/src/saarti/common/config/obstacles" #
 if("single_popup_1" in files_to_generate):
     obs_dict = {
         's_ego_at_popup': [160.],
-        's_obs_at_popup': [175.],
-        'd_obs_at_popup': [0.7,]
+        's_obs_at_popup': [180.],
+        'd_obs_at_popup': [0.8,]
     }
     export_as_yaml("single_popup_1", export_path, obs_dict)
 

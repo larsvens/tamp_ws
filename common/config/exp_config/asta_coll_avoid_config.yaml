@@ -5,16 +5,16 @@ t_final: 500.0
 scenario_id: 1 # 1: pop-up, 2: reduced mu turn, 3: racing 4: local min test 5: pp-test 6: tamp test
 
 # pop-up obstacle config
-#obstacle_config: single_popup_1
-obstacle_config: double_popup_local_min
-#obstacle_config: multiple_popup_10_laps_rs43
+obstacle_config: single_popup_1
+#obstacle_config: double_popup_local_min
+#obstacle_config: multiple_popup_10_laps_rs42
 obstacle_wiggleroom: 1.0
 
 # high friction run (asta_coll_avoid)
 s_begin_mu_segments:  [0.0]
 mu_segment_values:  [0.8]
 s_begin_vxref_segments: [0.0, 320, 375, 700.0]
-vxref_segment_values: [10.0, 4.0, 10.0, 4.0] # try higher speed
+vxref_segment_values: [15.0, 4.0, 15.0, 4.0] # try higher speed
 
 # dref
 cc_dref: 0
@@ -34,7 +34,7 @@ ref_mode: 1
 # Algorithm mode, 
 # 0: RTI
 # 1: SAA-RTI 
-sampling_augmentation: 1
+sampling_augmentation: 0
 Nd_rollout: 10 # multiples of 32 to maximize gpu utilization
 Nvx_rollout: 15
 vxub_rollout: 20.0
@@ -42,13 +42,13 @@ vxub_rollout: 20.0
 # Traction adaptation 
 # 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics), static Cr
 # 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics, Cr from mu and Fz
-traction_adaptive: 1
-mu_nominal: 0.6 # used only when traction_adaptive = 0
+traction_adaptive: 0
+mu_nominal: 0.4 # used only when traction_adaptive = 0
 
 # Force utilization factor
-Ff_util: 0.7 # final test local min
-Fr_util: 0.7
-#Ff_util: 0.5 # initial tuning runs
+Ff_util: 0.9 # multiple popup run
+Fr_util: 0.9
+#Ff_util: 0.5 # local min run?
 #Fr_util: 0.5
 
 # optimization config

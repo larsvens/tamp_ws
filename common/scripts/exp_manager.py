@@ -200,7 +200,7 @@ class ExperimentManager:
                             self.obs.Rmgn.append(self.Rmgn_obs)
                             m_obs.color.a = 1.0 # non-transparent when detected
                             ma_obs_det.append(m_obs)
-                            #   self.vxref.data = 2.0 # reduce vx ref at detections
+                            self.vxref.data = 6.0 # reduce vx ref at detections
                         else:
                             m_obs.color.a = 0.2 
                             ma_obs_undet.append(m_obs)

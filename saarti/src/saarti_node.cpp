@@ -530,8 +530,8 @@ std::tuple<int, int> SAARTI::trajset_eval_cost(){
             //cout << "cost before rc add = " << cost << endl;
 
             //cost += (sref-s)*float(Wx_.at(0))*(sref-s);
-            //cost += (sref-s)*float(Wx_.at(0))*(sref-s) + (vxref-vx)*float(Wx_.at(4))*(vxref-vx);
-            cost += (sref-s)*float(Wx_.at(0))*(sref-s) + (dref-d)*float(Wx_.at(1))*(dref-d) + (vxref-vx)*float(Wx_.at(4))*(vxref-vx);
+            cost += (sref-s)*float(Wx_.at(0))*(sref-s) + (vxref-vx)*float(Wx_.at(4))*(vxref-vx);
+            //cost += (sref-s)*float(Wx_.at(0))*(sref-s) + (dref-d)*float(Wx_.at(1))*(dref-d) + (vxref-vx)*float(Wx_.at(4))*(vxref-vx);
 
 
             //cout << "cost after rc add = " << cost << endl;
@@ -541,11 +541,12 @@ std::tuple<int, int> SAARTI::trajset_eval_cost(){
             //cost = float(Wslack);
             n_collfree -=1;
         }
-//        if(exitroad){
-//            cost += float(Wslack_);
-//            //cost = float(Wslack);
-//            n_collfree -=1;
-//        }
+
+        // discount trajprime (todo make cleaner and configurable)
+        if (i == trajset_.size()-1){
+            cost = 0.3f*cost; // 0.3
+        }
+
         traj.cost = cost;
         //cout << "cost of traj nr " << i << ": " << cost << endl;
         traj.colliding = colliding;
@@ -556,6 +557,8 @@ std::tuple<int, int> SAARTI::trajset_eval_cost(){
             mincost = cost;
             trajhat_idx = int(i);
         }
+
+
     }
     return std::make_tuple(trajhat_idx, n_collfree);
 }
