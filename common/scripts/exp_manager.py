@@ -213,7 +213,7 @@ class ExperimentManager:
                 
                 # REDUCED MU TURN
                 elif(self.scenario_id == 2):
-                    self.ctrl_mode = 2 # tamp cruise control when we get up to speed
+                    self.ctrl_mode = 2 # tamp
                 
                 # PURE PURSUIT TEST
                 elif(self.scenario_id == 5):

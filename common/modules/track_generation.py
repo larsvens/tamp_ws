@@ -529,7 +529,7 @@ def export_as_kml(track_name, export_path, X_cl,Y_cl,origin_pose_utm):
 # Track Generation
 #
 plt.close('all')
-track_name = "asta_coll_avoid"
+track_name = "sh_reduced_mu_turn"
 
 # export params
 export_path_fssim = "/home/larsvens/ros/tamp__ws/src/fssim/fssim_gazebo/models/track"
@@ -623,7 +623,7 @@ elif(track_name == "asta_local_min"):
     Y_cl = Y_cl_*np.cos(origin_pose_utm["psi0_utm"]) + X_cl_*np.sin(origin_pose_utm["psi0_utm"])
 
 
-if(track_name in ["lokforaregatan","storaholm_gravel_south","rural_test_route_1","asta_gauntlet", "asta_gauntlet_east","asta_oval_east"]): 
+if(track_name in ["lokforaregatan","storaholm_gravel_south","rural_test_route_1","asta_gauntlet", "asta_gauntlet_east","asta_oval_east","sh_reduced_mu_turn","sh_coll_avoid"]): 
     filepath = path.join('../config/tracks/ge_exports/' + track_name + '.kml')
     
     if(track_name in ["asta_gauntlet", "asta_gauntlet_east"]): 

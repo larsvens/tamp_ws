@@ -17,10 +17,8 @@ def export_as_yaml(filename, export_path, obs_dict):
     print "[INFO] Saving obstacle config to: ",file_path 
 
 
-files_to_generate = ["single_popup_1","double_popup_1","gauntlet_east_single_lap_gen","oval_east_single_lap_gen","multiple_popup_10_laps"]
+files_to_generate = ["single_popup_1", "single_popup_sh", "double_popup_1","gauntlet_east_single_lap_gen","oval_east_single_lap_gen","multiple_popup_10_laps"]
 export_path = "/home/larsvens/ros/tamp__ws/src/saarti/common/config/obstacles" # all files will be generated in this dir
-
-
 
 
 if("single_popup_1" in files_to_generate):
@@ -30,6 +28,14 @@ if("single_popup_1" in files_to_generate):
         'd_obs_at_popup': [0.8,]
     }
     export_as_yaml("single_popup_1", export_path, obs_dict)
+
+if("single_popup_sh" in files_to_generate):
+    obs_dict = {
+        's_ego_at_popup': [250.],
+        's_obs_at_popup': [265.],
+        'd_obs_at_popup': [0.8,]
+    }
+    export_as_yaml("single_popup_sh", export_path, obs_dict)
 
 if("double_popup_1" in files_to_generate):
     obs_dict = {
