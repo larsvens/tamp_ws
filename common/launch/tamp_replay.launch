@@ -15,15 +15,16 @@
     <param name="track_name" type="string" value="$(arg track_name)" />
     <rosparam command="load" file="$(find common)/config/vehicles/$(arg robot_name)/config/car.yaml" />
 
-    <!-- introduce new coordinate frame to align camera -->
-    <node pkg="tf" type="static_transform_publisher" name="cam__broadcaster" args="0.2 0 0 -0.04997917 0 0 0.99875026 cam cam_ 100" />    
+    <!-- align camera and map (static or dynamic remap) -->
+    <node pkg="tamp_logs" type="cam_tf_remap_node.py" name="cam_tf_remap_node"/> 
+    <!-- <node pkg="tf" type="static_transform_publisher" name="cam__broadcaster" args="0.2 0 0 -0.04997917 0 0 0.99875026 cam cam_ 100" />     -->
 
     <!-- play bag gauntlet without obs -->
     <!-- <arg name="bag" default="real_exp/astazero-2020-05-12/drone_runs/selected_runs_gauntlet_no_obs/asta_2020-05-12-14-44-53.bag" /> -->
     <!-- <arg name="bag" default="real_exp/astazero-2020-05-12/drone_runs/selected_runs_gauntlet_no_obs/asta_2020-05-12-14-49-58.bag" /> -->
 
     <!-- play bag reduced mu turn -->
-    <!-- <arg name="bag" default="real_exp/astazero-2020-04-30/auto_saarti/asta_2020-04-30-15-59-53_cam_.bag" />  -->
+    <!-- <arg name="bag" default="real_exp/astazero-2020-04-30/auto_saarti/asta_2020-04-30-15-59-53_cam_.bag" /> -->
     <!-- <arg name="bag" default="real_exp/astazero-2020-04-30/auto_saarti/asta_2020-04-30-15-06-06.bag" /> -->
 
     <!-- play bag local min -->
@@ -38,11 +39,15 @@
     <!-- <arg name="bag" default="real_exp/astazero-2020-05-25/drone_runs/asta_2020-05-25-16-50-59.bag" /> -->
 
     <!-- test 26 may -->
-    <arg name="bag" default="real_exp/astazero-2020-05-26/ca_single/drone_runs_single/asta_2020-05-26-13-42-28.bag" /> 
+    
+
+    <!-- test 8th june -->
+    <arg name="bag" default="real_exp/astazero-2020-06-08/gauntlet/obs/selected/asta_2020-06-08-15-57-51_adapt_cam_.bag" />
+    <!--<arg name="bag" default="real_exp/astazero-2020-06-08/gauntlet/obs/selected/asta_2020-06-08-15-56-19_static_08_cam_.bag" /> -->
+    <!-- <arg name="bag" default="real_exp/astazero-2020-06-08/gauntlet/obs/selected/asta_2020-06-08-14-41-34_nonadapt_04_cam_.bag" /> -->
 
 
-
-    <node pkg="rosbag" name="rosbag_player" type="play" args="--clock --pause --start=30  $(find tamp_logs)/bagfiles/$(arg bag)">
+    <node pkg="rosbag" name="rosbag_player" type="play" args="--clock  $(find tamp_logs)/bagfiles/$(arg bag)">
         <remap from="/OpenDLV/SensorMsgGPS_log" to="/OpenDLV/SensorMsgGPS"/>
         <remap from="/OpenDLV/SensorMsgCAN_log" to="/OpenDLV/SensorMsgCAN"/>
     </node> 

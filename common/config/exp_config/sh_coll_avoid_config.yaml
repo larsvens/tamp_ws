@@ -13,7 +13,7 @@ obstacle_wiggleroom: 1.0
 s_begin_mu_segments:  [0.0]
 mu_segment_values:  [0.2]
 s_begin_vxref_segments: [0.0]
-vxref_segment_values: [10.0]
+vxref_segment_values: [8.0]
 
 # dref
 cc_dref: 0
@@ -45,13 +45,11 @@ traction_adaptive: 0
 mu_nominal: 0.8 # used only when traction_adaptive = 0
 
 # Force utilization factor
-Ff_util: 0.9 # multiple popup run
+Ff_util: 0.9 
 Fr_util: 0.9
-#Ff_util: 0.5 # local min run?
-#Fr_util: 0.5
 
 # optimization config
-Wx:  [1000.0, 10000000.0, 1.0, 0.1, 1000000.0, 0.1]
+Wx:  [1000.0, 1000000.0, 1.0, 0.1, 1000000.0, 0.1]
 WNx: [1000.0, 100000000.0, 1.0, 0.1, 1000000.0, 0.1]
 Wu: [0.001, 0.1, 0.1]
 Wslack: 100000000
