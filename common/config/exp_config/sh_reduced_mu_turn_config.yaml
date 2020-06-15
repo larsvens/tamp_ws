@@ -11,7 +11,7 @@ obstacle_wiggleroom: 1.0
 
 # low friction run (sh_reduced_mu_turn)
 s_begin_mu_segments:  [0.0]
-mu_segment_values:  [0.2] 
+mu_segment_values:  [0.15] 
 s_begin_vxref_segments: [0.0]
 vxref_segment_values: [8.0]
 
@@ -33,7 +33,7 @@ ref_mode: 1
 # Algorithm mode, 
 # 0: RTI
 # 1: SAA-RTI 
-sampling_augmentation: 1
+sampling_augmentation: 1 # try with esc on and off
 Nd_rollout: 10 # multiples of 32 to maximize gpu utilization
 Nvx_rollout: 15
 vxub_rollout: 20.0

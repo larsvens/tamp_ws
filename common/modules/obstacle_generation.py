@@ -32,8 +32,8 @@ if("single_popup_1" in files_to_generate):
 if("single_popup_sh" in files_to_generate):
     obs_dict = {
         's_ego_at_popup': [250.],
-        's_obs_at_popup': [265.],
-        'd_obs_at_popup': [0.8,]
+        's_obs_at_popup': [280.],
+        'd_obs_at_popup': [0.5,]
     }
     export_as_yaml("single_popup_sh", export_path, obs_dict)
 
