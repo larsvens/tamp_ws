@@ -17,6 +17,7 @@
 
     <!-- align camera and map (static or dynamic remap) -->
     <node pkg="tamp_logs" type="cam_tf_remap_node.py" name="cam_tf_remap_node"/> 
+    <node pkg="tf" type="static_transform_publisher" name="map_broadcaster" args="0 0 0 0 0 0 1 map tamp_map 100" />
     <!-- <node pkg="tf" type="static_transform_publisher" name="cam__broadcaster" args="0.2 0 0 -0.04997917 0 0 0.99875026 cam cam_ 100" />     -->
 
     <!-- play bag gauntlet without obs -->
@@ -46,8 +47,8 @@
     <!--<arg name="bag" default="real_exp/astazero-2020-06-08/gauntlet/obs/selected/asta_2020-06-08-15-56-19_static_08_cam_.bag" /> -->
     <!-- <arg name="bag" default="real_exp/astazero-2020-06-08/gauntlet/obs/selected/asta_2020-06-08-14-41-34_nonadapt_04_cam_.bag" /> -->
 
-    <!-- test sh 12th june -->
-    <arg name="bag" default="real_exp/tamp_selected_runs/single_popup_wet/sh_2020-06-12-11-50-35_nonadapt.bag" />
+    <!-- test sh 12th june (sh_2020-06-12-11-50-35_nonadapt_cam_.bag, sh_2020-06-12-12-02-54_adapt_cam_.bag)   -->
+    <arg name="bag" default="real_exp/tamp_selected_runs/single_popup_wet/sh_2020-06-12-12-02-54_adapt_cam_.bag" />
 
     <node pkg="rosbag" name="rosbag_player" type="play" args="--clock  $(find tamp_logs)/bagfiles/$(arg bag)">
         <remap from="/OpenDLV/SensorMsgGPS_log" to="/OpenDLV/SensorMsgGPS"/>

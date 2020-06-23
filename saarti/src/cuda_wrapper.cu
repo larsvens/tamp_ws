@@ -102,8 +102,8 @@ __global__ void single_rollout(float *trajset_arr,
             // get normal forces front and back and mu
             if(traction_adaptive == 1){
                 float theta = 0; // grade angle todo get from pathlocal via traj
-                Fzf = (1.0f/(lf+lr))*(m*ax*h_cg  - m*g*h_cg*sin(theta) + m*g*lr*cos(theta));
-                Fzr = (1.0f/(lf+lr))*(-m*ax*h_cg + m*g*h_cg*sin(theta) + m*g*lf*cos(theta));
+                Fzf = (1.0f/(lf+lr))*(-m*ax*h_cg  - m*g*h_cg*sin(theta) + m*g*lr*cos(theta));
+                Fzr = (1.0f/(lf+lr))*(m*ax*h_cg + m*g*h_cg*sin(theta) + m*g*lf*cos(theta));
                 mu = mu_path[path_idx]; // get mu from pathlocal at s
             } else { // (traction_adaptive == 0)
                 Fzf = (1.0f/(lf+lr))*(m*g*lr);

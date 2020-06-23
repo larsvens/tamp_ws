@@ -423,8 +423,8 @@ void RtisqpWrapper::rolloutSingleTraj(containers::trajstruct  &traj,
         float Fzr;
         if(traction_adaptive == 1){
             float theta = 0; // grade angle todo get from pathlocal via traj
-            Fzf = (1.0f/(sp.lf+sp.lr))*( sp.m*ax.at(k)*sp.h_cg - sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lr*std::cos(theta));
-            Fzr = (1.0f/(sp.lf+sp.lr))*(-sp.m*ax.at(k)*sp.h_cg + sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lf*std::cos(theta));
+            Fzf = (1.0f/(sp.lf+sp.lr))*(-sp.m*ax.at(k)*sp.h_cg - sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lr*std::cos(theta));
+            Fzr = (1.0f/(sp.lf+sp.lr))*( sp.m*ax.at(k)*sp.h_cg + sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lf*std::cos(theta));
         } else { // (traction_adaptive == 0)
             Fzf = (1.0f/(sp.lf+sp.lr))*(sp.m*sp.g*sp.lr);
             Fzr = (1.0f/(sp.lf+sp.lr))*(sp.m*sp.g*sp.lf);
@@ -576,8 +576,8 @@ void RtisqpWrapper::computeTrajset(vector<containers::trajstruct> &trajset,
             float mu;
             if(traction_adaptive == 1){
                 float theta = 0; // grade angle todo get from pathlocal via traj
-                Fzf = (1.0f/(sp.lf+sp.lr))*( sp.m*traj.ax.at(k)*sp.h_cg - sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lr*std::cos(theta));
-                Fzr = (1.0f/(sp.lf+sp.lr))*(-sp.m*traj.ax.at(k)*sp.h_cg + sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lf*std::cos(theta));
+                Fzf = (1.0f/(sp.lf+sp.lr))*(-sp.m*traj.ax.at(k)*sp.h_cg - sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lr*std::cos(theta));
+                Fzr = (1.0f/(sp.lf+sp.lr))*( sp.m*traj.ax.at(k)*sp.h_cg + sp.m*sp.g*sp.h_cg*std::sin(theta) + sp.m*sp.g*sp.lf*std::cos(theta));
                 // interp to get mu from pathlocal at rollingstate.s
                 vector<float> mu_vec = cpp_utils::interp({rollingstate.s},pathlocal.s,pathlocal.mu,false);
                 mu = mu_vec.at(0);
