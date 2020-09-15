@@ -47,8 +47,12 @@
     <!--<arg name="bag" default="real_exp/astazero-2020-06-08/gauntlet/obs/selected/asta_2020-06-08-15-56-19_static_08_cam_.bag" /> -->
     <!-- <arg name="bag" default="real_exp/astazero-2020-06-08/gauntlet/obs/selected/asta_2020-06-08-14-41-34_nonadapt_04_cam_.bag" /> -->
 
-    <!-- test sh 12th june (sh_2020-06-12-11-50-35_nonadapt_cam_.bag, sh_2020-06-12-12-02-54_adapt_cam_.bag)   -->
-    <arg name="bag" default="real_exp/tamp_selected_runs/single_popup_wet/sh_2020-06-12-12-02-54_adapt_cam_.bag" />
+    <!-- coll avoid test sh 12th june (sh_2020-06-12-11-50-35_nonadapt_cam_.bag, sh_2020-06-12-12-02-54_adapt_cam_.bag)   -->
+    <!-- <arg name="bag" default="real_exp/tamp_selected_runs/single_popup_wet/sh_2020-06-12-12-02-54_adapt_cam_.bag" /> -->
+
+    <!-- turn test sh 12th june (sh_2020-06-12-11-50-35_nonadapt_cam_.bag, sh_2020-06-12-12-02-54_adapt_cam_.bag)   -->
+    <arg name="bag" default="real_exp/tamp_selected_runs/reduced_mu_turn_sh/sh_2020-06-12-10-21-38_adapt_cam_.bag" />
+
 
     <node pkg="rosbag" name="rosbag_player" type="play" args="--clock  $(find tamp_logs)/bagfiles/$(arg bag)">
         <remap from="/OpenDLV/SensorMsgGPS_log" to="/OpenDLV/SensorMsgGPS"/>
