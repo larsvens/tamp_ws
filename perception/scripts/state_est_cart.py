@@ -55,6 +55,79 @@ class pos2DKalmanFilter:
         self.x += np.dot(K, y)
         self.P = self.P - np.dot(K, self.H).dot(self.P)   
     
+class forcesEKF: 
+    # constructor
+    def __init__(self,dt,lf,lr,Iz,m,g,Q_diag_ele):
+        # params 
+        self.dt = dt
+        self.lf = lf
+        self.lr = lr
+        self.Iz = Iz
+        self.m = m
+        self.g = g
+        
+        # init state vector
+        self.x = np.array([[0.], #0 X
+                           [0.], #1 Y
+                           [0.], #2 psi
+                           [0.], #3 psidot
+                           [0.], #4 vx
+                           [0.], #5 vy
+                           [0.], #6 Fyf
+                           [0.], #7 Fyr
+                           [0.]])#8 Fx  
+    
+        # init matrices
+        self.F = np.array([[1., 0., -self.x[4]*np.sin(self.x(2))-self.x[5]*np.cos(self.x[2]), 0., np.cos(self.x[2]), -np.sin(self.x[2]), 0., 0., 0.],
+                           [0., 1., self.x[4]*np.cos(self.x(2))-self.x[5]*np.sin(self.x[2]), 0., np.sin(self.x[2]), np.cos(self.x[2]), 0., 0., 0.],
+                           [0., 0., 1., 1., 0., 0., 0., 0., 0.],
+                           [0., 0., 0., 1., 0., 0., self.lf/self.Iz, -self.lr/self.Iz, 0.],
+                           [0., 0., 0., 0., 1., 0., 0., 0., 1./self.m],
+                           [0., 0., 0., -self.x[4], -self.x[3], 0., 1./self.m, 1./self.m, 1.]])    
+        
+        self.H = np.array([[1.,0.,0.,0.,0.,0.],   # measurement function
+                           [0.,1.,0.,0.,0.,0.],
+                           [0.,0.,1.,0.,0.,0.],
+                           [0.,0.,0.,1.,0.,0.],
+                           [0.,0.,0.,0.,1.,0.],
+                           [0.,0.,0.,0.,0.,1.]])  
+    
+        self.Q = np.diag(Q_diag_ele)
+        self.P = np.copy(self.Q) # init covariance matrix same as Q
+        self.R = np.array([[0.1, 0., 0.], # measurement noise
+                           [0., 0.1, 0.],
+                           [0., 0., 0.1]])
+    
+
+    def predict(self, theta, phi): # input grade (theta) and bank (phi)
+        # nonlinear state update
+        self.x[0] = self.x[0] + self.dt*(self.x[4]*np.cos(self.x[2]) - self.x[5]*np.sin(self.x[2]))
+        self.x[1] = self.x[1] + self.dt*(self.x[4]*np.sin(self.x[2]) + self.x[5]*np.cos(self.x[2]))
+        self.x[2] = self.x[2] + self.dt*(self.x[3])
+        self.x[3] = self.x[3] + self.dt*((1/self.Iz)*(self.lf*self.x[6] - self.lr*self.x[7]))
+        self.x[4] = self.x[4] + self.dt*((1/self.m)*self.x[8] - self.g*np.sin(theta))
+        self.x[5] = self.x[5] + self.dt*((1/self.m)*(self.x[6]+self.x[7])-self.x[4]*self.x[3]+self.g*np.sin(phi))
+        # no updates on 6-8
+        
+        # recompute F at x
+        self.F = np.array([[1., 0., -self.x[4]*np.sin(self.x(2))-self.x[5]*np.cos(self.x[2]), 0., np.cos(self.x[2]), -np.sin(self.x[2]), 0., 0., 0.],
+                           [0., 1., self.x[4]*np.cos(self.x(2))-self.x[5]*np.sin(self.x[2]), 0., np.sin(self.x[2]), np.cos(self.x[2]), 0., 0., 0.],
+                           [0., 0., 1., 1., 0., 0., 0., 0., 0.],
+                           [0., 0., 0., 1., 0., 0., self.lf/self.Iz, -self.lr/self.Iz, 0.],
+                           [0., 0., 0., 0., 1., 0., 0., 0., 1./self.m],
+                           [0., 0., 0., -self.x[4], -self.x[3], 0., 1./self.m, 1./self.m, 1.]])         
+        
+        # update covariance matrix P         
+        self.P = np.dot(self.F, self.P).dot(self.F.T) + self.Q
+
+    def update(self,z):
+        S = np.dot(self.H, self.P).dot(self.H.T) + self.R
+        K = np.dot(self.P, self.H.T).dot(np.linalg.pinv(S))
+        y = z - np.dot(self.H, self.x)
+        self.x += np.dot(K, y)
+        self.P = self.P - np.dot(K, self.H).dot(self.P)   
+
+    
 class StateEstCart:
     # constructor
     def __init__(self):
