@@ -13,7 +13,7 @@
 
     <!-- planning & ctrl nodes -->
     <rosparam command="load" file="$(find saarti)/config/planning_and_ctrl_config.yaml" /> 
-    <node pkg="saarti" type="saarti_node" name="saarti_node" /> 
+    <node pkg="saarti" type="saarti_node" name="saarti_node"/> 
     <node pkg="saarti" type="ctrl_interface.py" name="ctrl_interface"/> 
 
     <!-- logging -->

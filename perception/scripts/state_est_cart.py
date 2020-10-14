@@ -55,7 +55,7 @@ class pos2DKalmanFilter:
         self.x += np.dot(K, y)
         self.P = self.P - np.dot(K, self.H).dot(self.P)   
     
-class forcesEKF: 
+class FullEKF: 
     # constructor
     def __init__(self,dt,lf,lr,Iz,m,g,Q_diag_ele):
         # params 
@@ -78,8 +78,8 @@ class forcesEKF:
                            [0.]])#8 Fx  
     
         # init matrices
-        self.F = np.array([[1., 0., -self.x[4]*np.sin(self.x(2))-self.x[5]*np.cos(self.x[2]), 0., np.cos(self.x[2]), -np.sin(self.x[2]), 0., 0., 0.],
-                           [0., 1., self.x[4]*np.cos(self.x(2))-self.x[5]*np.sin(self.x[2]), 0., np.sin(self.x[2]), np.cos(self.x[2]), 0., 0., 0.],
+        self.F = np.array([[1., 0., -self.x[4]*np.sin(self.x[2])-self.x[5]*np.cos(self.x[2]), 0., np.cos(self.x[2]), -np.sin(self.x[2]), 0., 0., 0.],
+                           [0., 1., self.x[4]*np.cos(self.x[2])-self.x[5]*np.sin(self.x[2]), 0., np.sin(self.x[2]), np.cos(self.x[2]), 0., 0., 0.],
                            [0., 0., 1., 1., 0., 0., 0., 0., 0.],
                            [0., 0., 0., 1., 0., 0., self.lf/self.Iz, -self.lr/self.Iz, 0.],
                            [0., 0., 0., 0., 1., 0., 0., 0., 1./self.m],
@@ -110,8 +110,8 @@ class forcesEKF:
         # no updates on 6-8
         
         # recompute F at x
-        self.F = np.array([[1., 0., -self.x[4]*np.sin(self.x(2))-self.x[5]*np.cos(self.x[2]), 0., np.cos(self.x[2]), -np.sin(self.x[2]), 0., 0., 0.],
-                           [0., 1., self.x[4]*np.cos(self.x(2))-self.x[5]*np.sin(self.x[2]), 0., np.sin(self.x[2]), np.cos(self.x[2]), 0., 0., 0.],
+        self.F = np.array([[1., 0., -self.x[4]*np.sin(self.x[2])-self.x[5]*np.cos(self.x[2]), 0., np.cos(self.x[2]), -np.sin(self.x[2]), 0., 0., 0.],
+                           [0., 1., self.x[4]*np.cos(self.x[2])-self.x[5]*np.sin(self.x[2]), 0., np.sin(self.x[2]), np.cos(self.x[2]), 0., 0., 0.],
                            [0., 0., 1., 1., 0., 0., 0., 0., 0.],
                            [0., 0., 0., 1., 0., 0., self.lf/self.Iz, -self.lr/self.Iz, 0.],
                            [0., 0., 0., 0., 1., 0., 0., 0., 1./self.m],
@@ -144,15 +144,20 @@ class StateEstCart:
         self.h_cg = rospy.get_param('/car/kinematics/h_cg')
         self.m = rospy.get_param('/car/inertia/m')
         self.g = rospy.get_param('/car/inertia/g')
-
+        self.Iz = rospy.get_param('/car/inertia/I_z')
+        
         # init local vars
         self.state_out = State()
         self.live = False # todo incorporate in "system_setup"
         self.ts_latest_pos_update = rospy.Time.now()
 
-        # init kf 
+        # init position KF 
         Qscale = 0.01 
         self.kf = pos2DKalmanFilter(self.dt,Qscale)
+    
+        # init full KF
+        Q_diag_ele = np.array([1,1,1,1,1,1,1,1,1])
+        self.kf_full = FullEKF(self.dt,self.lf,self.lr,self.Iz,self.m,self.g,Q_diag_ele)
     
         # load vehicle dimensions 
         dimsyaml = rospkg.RosPack().get_path('common') + '/config/vehicles/' + self.robot_name + '/config/distances.yaml'
@@ -304,14 +309,25 @@ class StateEstCart:
         z = np.array([[X_raw],
                       [Y_raw]])
         self.kf.predict()
-        self.kf.update(z)      
+        self.kf.update(z)
         self.state_out.X = self.kf.x[0][0]
         self.state_out.Y = self.kf.x[2][0]
 
         # print errors if faulty state estimates
         if(self.state_out.psi < -np.pi or self.state_out.psi > np.pi):
             rospy.logerr("state_est_cart: psi outside interval, psi = " + str(self.state_out.psi))
-
+            
+        # Full KF 
+        
+        z = np.array([[self.state_out.X], #0 X
+                      [self.state_out.Y], #1 Y
+                      [self.state_out.psi], #2 psi
+                      [self.state_out.psidot], #3 psidot
+                      [self.state_out.vx], #4 vx
+                      [self.state_out.vy]])#5 vy
+        self.kf_full.predict()
+        self.kf_full.update(z)
+        
     def get_pose_marker(self,X,Y,psi):
         m = Marker()
         m.header.stamp = rospy.Time.now()
