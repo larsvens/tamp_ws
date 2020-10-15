@@ -57,7 +57,7 @@ class pos2DKalmanFilter:
     
 class FullEKF: 
     # constructor
-    def __init__(self,dt,lf,lr,Iz,m,g,Q_diag_ele):
+    def __init__(self,dt,lf,lr,Iz,m,g,Q_diag_ele,R_diag_ele):
         # params 
         self.dt = dt
         self.lf = lf
@@ -78,45 +78,56 @@ class FullEKF:
                            [0.]])#8 Fx  
     
         # init matrices
-        self.F = np.array([[1., 0., -self.x[4]*np.sin(self.x[2])-self.x[5]*np.cos(self.x[2]), 0., np.cos(self.x[2]), -np.sin(self.x[2]), 0., 0., 0.],
-                           [0., 1., self.x[4]*np.cos(self.x[2])-self.x[5]*np.sin(self.x[2]), 0., np.sin(self.x[2]), np.cos(self.x[2]), 0., 0., 0.],
+        self.F = np.array([[1., 0., -self.x[4,0]*np.sin(self.x[2,0])-self.x[5,0]*np.cos(self.x[2,0]), 0., np.cos(self.x[2,0]), -np.sin(self.x[2,0]), 0., 0., 0.],
+                           [0., 1., self.x[4,0]*np.cos(self.x[2,0])-self.x[5,0]*np.sin(self.x[2,0]), 0., np.sin(self.x[2,0]), np.cos(self.x[2,0]), 0., 0., 0.],
                            [0., 0., 1., 1., 0., 0., 0., 0., 0.],
                            [0., 0., 0., 1., 0., 0., self.lf/self.Iz, -self.lr/self.Iz, 0.],
                            [0., 0., 0., 0., 1., 0., 0., 0., 1./self.m],
-                           [0., 0., 0., -self.x[4], -self.x[3], 0., 1./self.m, 1./self.m, 1.]])    
+                           [0., 0., 0., -self.x[4,0], -self.x[3,0], 1., 1./self.m, 1./self.m, 0.],
+                           [0., 0., 0., 0., 0., 0., 1., 0., 0],
+                           [0., 0., 0., 0., 0., 0., 0., 1., 0],
+                           [0., 0., 0., 0., 0., 0., 0., 0., 1],])    
         
-        self.H = np.array([[1.,0.,0.,0.,0.,0.],   # measurement function
-                           [0.,1.,0.,0.,0.,0.],
-                           [0.,0.,1.,0.,0.,0.],
-                           [0.,0.,0.,1.,0.,0.],
-                           [0.,0.,0.,0.,1.,0.],
-                           [0.,0.,0.,0.,0.,1.]])  
+        self.H = np.array([[1.,0.,0.,0.,0.,0.,0.,0.,0.],   # measurement function
+                           [0.,1.,0.,0.,0.,0.,0.,0.,0.],
+                           [0.,0.,1.,0.,0.,0.,0.,0.,0.],
+                           [0.,0.,0.,1.,0.,0.,0.,0.,0.],
+                           [0.,0.,0.,0.,1.,0.,0.,0.,0.],
+                           [0.,0.,0.,0.,0.,1.,0.,0.,0.]])  
     
         self.Q = np.diag(Q_diag_ele)
         self.P = np.copy(self.Q) # init covariance matrix same as Q
-        self.R = np.array([[0.1, 0., 0.], # measurement noise
-                           [0., 0.1, 0.],
-                           [0., 0., 0.1]])
+        self.R = np.diag(R_diag_ele)
+#        self.R = np.array([[0.1, 0., 0., 0., 0., 0.], # measurement noise
+#                           [0., 0.1, 0., 0., 0., 0.],
+#                           [0., 0., 0.1, 0., 0., 0.],
+#                           [0., 0., 0., 0.1, 0., 0.],
+#                           [0., 0., 0., 0., 0.1, 0.],
+#                           [0., 0., 0., 0., 0., 0.1]])
     
 
     def predict(self, theta, phi): # input grade (theta) and bank (phi)
+        
         # nonlinear state update
-        self.x[0] = self.x[0] + self.dt*(self.x[4]*np.cos(self.x[2]) - self.x[5]*np.sin(self.x[2]))
-        self.x[1] = self.x[1] + self.dt*(self.x[4]*np.sin(self.x[2]) + self.x[5]*np.cos(self.x[2]))
-        self.x[2] = self.x[2] + self.dt*(self.x[3])
-        self.x[3] = self.x[3] + self.dt*((1/self.Iz)*(self.lf*self.x[6] - self.lr*self.x[7]))
-        self.x[4] = self.x[4] + self.dt*((1/self.m)*self.x[8] - self.g*np.sin(theta))
-        self.x[5] = self.x[5] + self.dt*((1/self.m)*(self.x[6]+self.x[7])-self.x[4]*self.x[3]+self.g*np.sin(phi))
+        self.x[0,0] = self.x[0,0] + self.dt*(self.x[4,0]*np.cos(self.x[2,0]) - self.x[5,0]*np.sin(self.x[2,0]))
+        self.x[1,0] = self.x[1,0] + self.dt*(self.x[4,0]*np.sin(self.x[2,0]) + self.x[5,0]*np.cos(self.x[2,0]))
+        self.x[2,0] = self.x[2,0] + self.dt*(self.x[3,0])
+        self.x[3,0] = self.x[3,0] + self.dt*((1/self.Iz)*(self.lf*self.x[6,0] - self.lr*self.x[7,0]))
+        self.x[4,0] = self.x[4,0] + self.dt*((1/self.m)*self.x[8,0] - self.g*np.sin(theta))
+        self.x[5,0] = self.x[5,0] + self.dt*((1/self.m)*(self.x[6,0]+self.x[7,0])-self.x[4,0]*self.x[3,0]+self.g*np.sin(phi))
         # no updates on 6-8
         
         # recompute F at x
-        self.F = np.array([[1., 0., -self.x[4]*np.sin(self.x[2])-self.x[5]*np.cos(self.x[2]), 0., np.cos(self.x[2]), -np.sin(self.x[2]), 0., 0., 0.],
-                           [0., 1., self.x[4]*np.cos(self.x[2])-self.x[5]*np.sin(self.x[2]), 0., np.sin(self.x[2]), np.cos(self.x[2]), 0., 0., 0.],
+        self.F = np.array([[1., 0., -self.x[4,0]*np.sin(self.x[2,0])-self.x[5,0]*np.cos(self.x[2,0]), 0., np.cos(self.x[2,0]), -np.sin(self.x[2,0]), 0., 0., 0.],
+                           [0., 1., self.x[4,0]*np.cos(self.x[2,0])-self.x[5,0]*np.sin(self.x[2,0]), 0., np.sin(self.x[2,0]), np.cos(self.x[2,0]), 0., 0., 0.],
                            [0., 0., 1., 1., 0., 0., 0., 0., 0.],
                            [0., 0., 0., 1., 0., 0., self.lf/self.Iz, -self.lr/self.Iz, 0.],
                            [0., 0., 0., 0., 1., 0., 0., 0., 1./self.m],
-                           [0., 0., 0., -self.x[4], -self.x[3], 0., 1./self.m, 1./self.m, 1.]])         
-        
+                           [0., 0., 0., -self.x[4,0], -self.x[3,0], 1., 1./self.m, 1./self.m, 0.],
+                           [0., 0., 0., 0., 0., 0., 1., 0., 0],
+                           [0., 0., 0., 0., 0., 0., 0., 1., 0],
+                           [0., 0., 0., 0., 0., 0., 0., 0., 1],])        
+    
         # update covariance matrix P         
         self.P = np.dot(self.F, self.P).dot(self.F.T) + self.Q
 
@@ -124,9 +135,12 @@ class FullEKF:
         S = np.dot(self.H, self.P).dot(self.H.T) + self.R
         K = np.dot(self.P, self.H.T).dot(np.linalg.pinv(S))
         y = z - np.dot(self.H, self.x)
+        rospy.logwarn("state_est_cart EKF: x = " + str(self.x))
+        rospy.logwarn("state_est_cart EKF: z = " + str(z))
+        rospy.logwarn("state_est_cart EKF: y = " + str(y))
+        rospy.logwarn("state_est_cart EKF: K = " + str(K))  
         self.x += np.dot(K, y)
         self.P = self.P - np.dot(K, self.H).dot(self.P)   
-
     
 class StateEstCart:
     # constructor
@@ -157,7 +171,8 @@ class StateEstCart:
     
         # init full KF
         Q_diag_ele = np.array([1,1,1,1,1,1,1,1,1])
-        self.kf_full = FullEKF(self.dt,self.lf,self.lr,self.Iz,self.m,self.g,Q_diag_ele)
+        R_diag_ele = 1 * np.array([1,1,1,1,1,1])
+        self.kf_full = FullEKF(self.dt,self.lf,self.lr,self.Iz,self.m,self.g,Q_diag_ele,R_diag_ele)
     
         # load vehicle dimensions 
         dimsyaml = rospkg.RosPack().get_path('common') + '/config/vehicles/' + self.robot_name + '/config/distances.yaml'
@@ -186,6 +201,7 @@ class StateEstCart:
             rospy.logerr("state_est_cart: invalid value of system_setup param, system_setup = " + self.system_setup)
         self.statepub = rospy.Publisher('state_cart', State, queue_size=1)
         self.poserawpub = rospy.Publisher('/pose_raw_vis', Marker, queue_size=1)
+        self.poseFullEKFpub = rospy.Publisher('/pose_full_ekf_vis', Marker, queue_size=1)
         self.tfbr = tf.TransformBroadcaster()
         
         # wait for messages before entering main loop
@@ -213,6 +229,20 @@ class StateEstCart:
             if (self.system_setup == "rhino_real"):
                 self.update_rhino_state()
                 self.statepub.publish(self.state_out)
+
+            # Full EKF 
+            z = np.array([[self.state_out.X], #0 X
+                          [self.state_out.Y], #1 Y
+                          [self.state_out.psi], #2 psi
+                          [self.state_out.psidot], #3 psidot
+                          [self.state_out.vx], #4 vx
+                          [self.state_out.vy]])#5 vy
+            self.kf_full.predict(0.,0,)
+            self.kf_full.update(z)
+
+            # publish ekf pose marker
+            m_ekf = self.get_pose_marker(self.kf_full.x[0,0],self.kf_full.x[1,0],self.kf_full.x[2,0])
+            self.poseFullEKFpub.publish(m_ekf)
                 
             # broadcast tf
             start_tfbc = time.time()
@@ -317,16 +347,6 @@ class StateEstCart:
         if(self.state_out.psi < -np.pi or self.state_out.psi > np.pi):
             rospy.logerr("state_est_cart: psi outside interval, psi = " + str(self.state_out.psi))
             
-        # Full KF 
-        
-        z = np.array([[self.state_out.X], #0 X
-                      [self.state_out.Y], #1 Y
-                      [self.state_out.psi], #2 psi
-                      [self.state_out.psidot], #3 psidot
-                      [self.state_out.vx], #4 vx
-                      [self.state_out.vy]])#5 vy
-        self.kf_full.predict()
-        self.kf_full.update(z)
         
     def get_pose_marker(self,X,Y,psi):
         m = Marker()
