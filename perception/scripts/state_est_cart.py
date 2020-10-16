@@ -76,6 +76,7 @@ class FullEKF:
                            [0.], #6 Fyf
                            [0.], #7 Fyr
                            [0.]])#8 Fx  
+        self.psi_last = self.x[2,0] # help var to handle discontinuity in psi
     
         # init matrices
         self.F = np.array([[1., 0., -self.x[4,0]*np.sin(self.x[2,0])-self.x[5,0]*np.cos(self.x[2,0]), 0., np.cos(self.x[2,0]), -np.sin(self.x[2,0]), 0., 0., 0.],
@@ -134,14 +135,22 @@ class FullEKF:
     def update(self,z):
         S = np.dot(self.H, self.P).dot(self.H.T) + self.R
         K = np.dot(self.P, self.H.T).dot(np.linalg.pinv(S))
+        
+        # handle discontinuity in psi (by making z[2,0] continuos) NOTE: have to do angleToInterval before using estimated heading   
+        # TODO problem on second lap. More general solution needed
+        psis = np.array([self.x[2,0],z[2,0]])
+        psis_cont = angleToContinous(psis) 
+        z[2,0] = psis_cont[1]
+        
+        # do measurement update
         y = z - np.dot(self.H, self.x)
-        rospy.logwarn("state_est_cart EKF: x = " + str(self.x))
-        rospy.logwarn("state_est_cart EKF: z = " + str(z))
-        rospy.logwarn("state_est_cart EKF: y = " + str(y))
-        rospy.logwarn("state_est_cart EKF: K = " + str(K))  
+        #rospy.logwarn("state_est_cart EKF: x = " + str(self.x))
+        #rospy.logwarn("state_est_cart EKF: z = " + str(z))
+        #rospy.logwarn("state_est_cart EKF: y = " + str(y))
+        #rospy.logwarn("state_est_cart EKF: K = " + str(K))  
         self.x += np.dot(K, y)
         self.P = self.P - np.dot(K, self.H).dot(self.P)   
-    
+
 class StateEstCart:
     # constructor
     def __init__(self):
@@ -171,17 +180,13 @@ class StateEstCart:
     
         # init full KF
         Q_diag_ele = np.array([1,1,1,1,1,1,1,1,1])
-        R_diag_ele = 1 * np.array([1,1,1,1,1,1])
+        R_diag_ele = 100 * np.array([1,1,1,1,1,1])
         self.kf_full = FullEKF(self.dt,self.lf,self.lr,self.Iz,self.m,self.g,Q_diag_ele,R_diag_ele)
     
         # load vehicle dimensions 
         dimsyaml = rospkg.RosPack().get_path('common') + '/config/vehicles/' + self.robot_name + '/config/distances.yaml'
         with open(dimsyaml, 'r') as f:
             self.dims = yaml.load(f,Loader=yaml.SafeLoader)   
-       
-        # heading filter
-        self.psi_buffer_size = 20
-        self.psi_buffer = np.zeros(self.psi_buffer_size)
         
         # init subs pubs
         if (self.system_setup == "rhino_real"):
@@ -231,18 +236,29 @@ class StateEstCart:
                 self.statepub.publish(self.state_out)
 
             # Full EKF 
+            self.kf_full.predict(0.,0,)
             z = np.array([[self.state_out.X], #0 X
                           [self.state_out.Y], #1 Y
                           [self.state_out.psi], #2 psi
                           [self.state_out.psidot], #3 psidot
                           [self.state_out.vx], #4 vx
                           [self.state_out.vy]])#5 vy
-            self.kf_full.predict(0.,0,)
             self.kf_full.update(z)
 
             # publish ekf pose marker
-            m_ekf = self.get_pose_marker(self.kf_full.x[0,0],self.kf_full.x[1,0],self.kf_full.x[2,0])
+            X_ekf = self.kf_full.x[0,0]
+            Y_ekf = self.kf_full.x[1,0]
+            psi_ekf = angleToInterval(np.array([self.kf_full.x[2,0]]))[0]
+            m_ekf = self.get_pose_marker(X_ekf,Y_ekf,psi_ekf)
             self.poseFullEKFpub.publish(m_ekf)
+            
+            # TODO publish ekf tire force arrow markers
+
+            
+
+
+
+
                 
             # broadcast tf
             start_tfbc = time.time()
@@ -293,16 +309,6 @@ class StateEstCart:
         heading_raw = self.odlv_gps_msg.yawangle
         psi_raw = (np.pi/180)*(90-heading_raw) 
         psi_raw = angleToInterval(np.array([psi_raw]))[0]
-        
-        # filter psi
-        #psi_raw_cont = angleToContinous(psi_raw)
-        self.psi_buffer = np.roll(self.psi_buffer,1)
-        #self.psi_buffer[0] = psi_raw_cont
-        self.psi_buffer[0] = psi_raw
-        #psi_raw_cont_filtered = np.median(self.psi_buffer)
-        psi_filtered = np.median(self.psi_buffer)
-        #psi_filtered = angleToInterval(psi_raw_cont_filtered)
-        
         
         # convert heading-rate to yawrate
         psidot_raw = -self.odlv_gps_msg.yawrate*(np.pi/180)
@@ -437,6 +443,28 @@ class StateEstCart:
         Fzf = (1.0/(self.lf+self.lr))*(self.m*ax*self.h_cg - self.m*self.g*self.h_cg*np.sin(theta) + self.m*self.g*self.lr*np.cos(theta));
         Fzr = (1.0/(self.lf+self.lr))*(-self.m*ax*self.h_cg + self.m*self.g*self.h_cg*np.sin(theta) + self.m*self.g*self.lf*np.cos(theta));
         return Fzf,Fzr
+
+    def getForceArrowMarker(self,orientation,magnitude,rearward_shift):
+        m = Marker()
+        m.header.stamp = rospy.Time.now()
+        m.header.frame_id = "chassis"
+        m.pose.position.x = -rearward_shift;
+        m.pose.position.y = 0;
+        m.pose.position.z = 0;
+        q = quaternion_from_euler(0, 0, orientation)
+        m.pose.orientation.x = q[0]
+        m.pose.orientation.y = q[1]
+        m.pose.orientation.z = q[2]
+        m.pose.orientation.w = q[3]
+        m.type = m.ARROW;
+        m.scale.x = magnitude;
+        m.scale.y = 0.3;
+        m.scale.z = 0.3;
+        m.color.a = 1.0; 
+        m.color.r = 1.0;
+        m.color.g = 0.0;
+        m.color.b = 1.0;
+        return m
 
     def fssim_state_callback(self, msg):
         self.received_fssim_state = True

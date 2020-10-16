@@ -9,6 +9,7 @@ Description: This node
 import numpy as np
 import rospy
 import rospkg
+from tf.transformations import quaternion_from_euler
 import yaml
 import copy 
 from common.msg import Path
@@ -20,6 +21,7 @@ from std_msgs.msg import Float32
 from fssim_common.msg import TireParams
 from opendlv_ros.msg import ActuationRequest 
 from fssim_common.msg import Cmd
+from fssim_common.msg import CarInfo
 from std_msgs.msg import Int16
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
@@ -59,16 +61,21 @@ class ExperimentManager:
         self.musegs_pub = rospy.Publisher('/mu_segments', MuSegments, queue_size=10)
         self.vxref_pub = rospy.Publisher('/vxref', Float32, queue_size=1)
         self.mu_pub = rospy.Publisher('/mu_gt', Float32, queue_size=1)
+        self.Fyf_vis_pub = rospy.Publisher('/Fyf_vis', Marker, queue_size=1)
+        self.Fyr_vis_pub = rospy.Publisher('/Fyr_vis', Marker, queue_size=1)
+        self.Fx_vis_pub = rospy.Publisher('/Fx_vis', Marker, queue_size=1)
         
-        # if sim initialize tire param publisher
         if(self.system_setup == "rhino_fssim"):
             self.tireparampub = rospy.Publisher('/tire_params', TireParams, queue_size=1)
             self.tireparams = TireParams()
             self.ctrl_sub = rospy.Subscriber("/fssim/cmd", Cmd, self.fssim_cmd_callback)
-            self.cmd_msg = Cmd()        
+            self.cmd_msg = Cmd()
+            self.carinfo_sub = rospy.Subscriber("/fssim/car_info", CarInfo, self.fssim_carinfo_callback)
         if(self.system_setup == "rhino_real"):
             self.ctrl_sub = rospy.Subscriber("/OpenDLV/ActuationRequest", ActuationRequest, self.odlv_cmd_callback)
             self.cmd_msg = ActuationRequest()
+        self.received_cmd_msg = False
+        
         # init misc internal variables
         self.pathglobal = Path()
         self.received_pathglobal = False
@@ -366,6 +373,34 @@ class ExperimentManager:
     def fssim_cmd_callback(self, msg):
         self.cmd_msg = msg
         self.received_cmd_msg = True
+        
+    def fssim_carinfo_callback(self, msg):
+        self.Fyf_vis_pub.publish(self.getForceArrowMarker(np.pi/2., msg.Fy_f/1000.,0))
+        self.Fyr_vis_pub.publish(self.getForceArrowMarker(np.pi/2., msg.Fy_r/1000.,3.4))
+        self.Fx_vis_pub.publish(self.getForceArrowMarker(0, msg.Fx/1000.,1.2))
+        
+    def getForceArrowMarker(self,orientation,magnitude,rearward_shift):
+        m = Marker()
+        m.header.stamp = rospy.Time.now()
+        m.header.frame_id = "chassis"
+        m.pose.position.x = -rearward_shift;
+        m.pose.position.y = 0;
+        m.pose.position.z = 0;
+        q = quaternion_from_euler(0, 0, orientation)
+        m.pose.orientation.x = q[0]
+        m.pose.orientation.y = q[1]
+        m.pose.orientation.z = q[2]
+        m.pose.orientation.w = q[3]
+        m.type = m.ARROW;
+        m.scale.x = magnitude;
+        m.scale.y = 0.3;
+        m.scale.z = 0.3;
+        m.color.a = 1.0; 
+        m.color.r = 1.0;
+        m.color.g = 0.0;
+        m.color.b = 1.0;
+        return m
+        
         
 if __name__ == '__main__':
     em = ExperimentManager()
