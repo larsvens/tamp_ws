@@ -5,6 +5,8 @@
 # system_setup = "rhino_real": /OpenDLV/SensorMsgGPS & /OpenDLV/SensorMsgCAN
 # system_setup = "rhino_fssim": /fssim/base_pose_ground_truth
 
+#from __future__ import division
+
 import numpy as np
 import time
 import utm
@@ -79,22 +81,24 @@ class FullEKF:
         self.psi_last = self.x[2,0] # help var to handle discontinuity in psi
     
         # init matrices
-        self.F = np.array([[1., 0., -self.x[4,0]*np.sin(self.x[2,0])-self.x[5,0]*np.cos(self.x[2,0]), 0., np.cos(self.x[2,0]), -np.sin(self.x[2,0]), 0., 0., 0.],
-                           [0., 1., self.x[4,0]*np.cos(self.x[2,0])-self.x[5,0]*np.sin(self.x[2,0]), 0., np.sin(self.x[2,0]), np.cos(self.x[2,0]), 0., 0., 0.],
-                           [0., 0., 1., 1., 0., 0., 0., 0., 0.],
-                           [0., 0., 0., 1., 0., 0., self.lf/self.Iz, -self.lr/self.Iz, 0.],
-                           [0., 0., 0., 0., 1., 0., 0., 0., 1./self.m],
-                           [0., 0., 0., -self.x[4,0], -self.x[3,0], 1., 1./self.m, 1./self.m, 0.],
-                           [0., 0., 0., 0., 0., 0., 1., 0., 0],
-                           [0., 0., 0., 0., 0., 0., 0., 1., 0],
-                           [0., 0., 0., 0., 0., 0., 0., 0., 1],])    
+        self.F = np.array([[0., 0., -self.x[4,0]*np.sin(self.x[2,0])-self.x[5,0]*np.cos(self.x[2,0]), 0., np.cos(self.x[2,0]), -np.sin(self.x[2,0]), 0., 0., 0.],
+                           [0., 0., self.x[4,0]*np.cos(self.x[2,0])-self.x[5,0]*np.sin(self.x[2,0]), 0., np.sin(self.x[2,0]), np.cos(self.x[2,0]), 0., 0., 0.],
+                           [0., 0., 0., 1., 0., 0., 0., 0., 0.],
+                           [0., 0., 0., 0., 0., 0., self.lf/self.Iz, -self.lr/self.Iz, 0.],
+                           [0., 0., 0., 0., 0., 0., 0., 0., 1./self.m],
+                           [0., 0., 0., -self.x[4,0], -self.x[3,0], 0., 1./self.m, 1./self.m, 0.],
+                           [0., 0., 0., 0., 0., 0., 0., 0., 0],
+                           [0., 0., 0., 0., 0., 0., 0., 0., 0],
+                           [0., 0., 0., 0., 0., 0., 0., 0., 0],])*self.dt + np.eye(9)
         
-        self.H = np.array([[1.,0.,0.,0.,0.,0.,0.,0.,0.],   # measurement function
-                           [0.,1.,0.,0.,0.,0.,0.,0.,0.],
-                           [0.,0.,1.,0.,0.,0.,0.,0.,0.],
-                           [0.,0.,0.,1.,0.,0.,0.,0.,0.],
-                           [0.,0.,0.,0.,1.,0.,0.,0.,0.],
-                           [0.,0.,0.,0.,0.,1.,0.,0.,0.]])  
+#        self.H = np.array([[1.,0.,0.,0.,0.,0.,0.,0.,0.],   # measurement function
+#                           [0.,1.,0.,0.,0.,0.,0.,0.,0.],
+#                           [0.,0.,1.,0.,0.,0.,0.,0.,0.],
+#                           [0.,0.,0.,1.,0.,0.,0.,0.,0.],
+#                           [0.,0.,0.,0.,1.,0.,0.,0.,0.],
+#                           [0.,0.,0.,0.,0.,1.,0.,0.,0.]])  
+    
+        self.H = np.eye(9)
     
         self.Q = np.diag(Q_diag_ele)
         self.P = np.copy(self.Q) # init covariance matrix same as Q
@@ -113,21 +117,23 @@ class FullEKF:
         self.x[0,0] = self.x[0,0] + self.dt*(self.x[4,0]*np.cos(self.x[2,0]) - self.x[5,0]*np.sin(self.x[2,0]))
         self.x[1,0] = self.x[1,0] + self.dt*(self.x[4,0]*np.sin(self.x[2,0]) + self.x[5,0]*np.cos(self.x[2,0]))
         self.x[2,0] = self.x[2,0] + self.dt*(self.x[3,0])
-        self.x[3,0] = self.x[3,0] + self.dt*((1/self.Iz)*(self.lf*self.x[6,0] - self.lr*self.x[7,0]))
-        self.x[4,0] = self.x[4,0] + self.dt*((1/self.m)*self.x[8,0] - self.g*np.sin(theta))
-        self.x[5,0] = self.x[5,0] + self.dt*((1/self.m)*(self.x[6,0]+self.x[7,0])-self.x[4,0]*self.x[3,0]+self.g*np.sin(phi))
-        # no updates on 6-8
+        self.x[3,0] = self.x[3,0] + self.dt*((1./self.Iz)*(self.lf*self.x[6,0] - self.lr*self.x[7,0]))
+        self.x[4,0] = self.x[4,0] + self.dt*((1./self.m)*self.x[8,0] - self.g*np.sin(theta))
+        self.x[5,0] = self.x[5,0] + self.dt*((1./self.m)*(self.x[6,0]+self.x[7,0])-self.x[4,0]*self.x[3,0]+self.g*np.sin(phi))
+        self.x[6,0] = self.x[6,0] + np.random.normal(0.0, self.Q[6,6])
+        self.x[7,0] = self.x[7,0] + np.random.normal(0.0, self.Q[7,7])
+        self.x[8,0] = self.x[8,0] + np.random.normal(0.0, self.Q[8,8])
         
         # recompute F at x
-        self.F = np.array([[1., 0., -self.x[4,0]*np.sin(self.x[2,0])-self.x[5,0]*np.cos(self.x[2,0]), 0., np.cos(self.x[2,0]), -np.sin(self.x[2,0]), 0., 0., 0.],
-                           [0., 1., self.x[4,0]*np.cos(self.x[2,0])-self.x[5,0]*np.sin(self.x[2,0]), 0., np.sin(self.x[2,0]), np.cos(self.x[2,0]), 0., 0., 0.],
-                           [0., 0., 1., 1., 0., 0., 0., 0., 0.],
-                           [0., 0., 0., 1., 0., 0., self.lf/self.Iz, -self.lr/self.Iz, 0.],
-                           [0., 0., 0., 0., 1., 0., 0., 0., 1./self.m],
-                           [0., 0., 0., -self.x[4,0], -self.x[3,0], 1., 1./self.m, 1./self.m, 0.],
-                           [0., 0., 0., 0., 0., 0., 1., 0., 0],
-                           [0., 0., 0., 0., 0., 0., 0., 1., 0],
-                           [0., 0., 0., 0., 0., 0., 0., 0., 1],])        
+        self.F = np.array([[0., 0., -self.x[4,0]*np.sin(self.x[2,0])-self.x[5,0]*np.cos(self.x[2,0]), 0., np.cos(self.x[2,0]), -np.sin(self.x[2,0]), 0., 0., 0.],
+                           [0., 0., self.x[4,0]*np.cos(self.x[2,0])-self.x[5,0]*np.sin(self.x[2,0]), 0., np.sin(self.x[2,0]), np.cos(self.x[2,0]), 0., 0., 0.],
+                           [0., 0., 0., 1., 0., 0., 0., 0., 0.],
+                           [0., 0., 0., 0., 0., 0., self.lf/self.Iz, -self.lr/self.Iz, 0.],
+                           [0., 0., 0., 0., 0., 0., 0., 0., 1./self.m],
+                           [0., 0., 0., -self.x[4,0], -self.x[3,0], 0., 1./self.m, 1./self.m, 0.],
+                           [0., 0., 0., 0., 0., 0., 0., 0., 0],
+                           [0., 0., 0., 0., 0., 0., 0., 0., 0],
+                           [0., 0., 0., 0., 0., 0., 0., 0., 0],])*self.dt + np.eye(9)     
     
         # update covariance matrix P         
         self.P = np.dot(self.F, self.P).dot(self.F.T) + self.Q
@@ -173,15 +179,16 @@ class StateEstCart:
         self.state_out = State()
         self.live = False # todo incorporate in "system_setup"
         self.ts_latest_pos_update = rospy.Time.now()
+        self.psidot_last = 0
 
         # init position KF 
         Qscale = 0.01 
         self.kf = pos2DKalmanFilter(self.dt,Qscale)
     
         # init full KF
-        Q_diag_ele = np.array([1,1,1,1,1,1,1,1,1])
-        R_diag_ele = 100 * np.array([1,1,1,1,1,1])
-        self.kf_full = FullEKF(self.dt,self.lf,self.lr,self.Iz,self.m,self.g,Q_diag_ele,R_diag_ele)
+        Q_diag_ele = np.array([1e0,1e0,1e0,1e0,1e0,1e0,1e1,1e1,1e1])
+        R_diag_ele = np.array([0.1,0.1,0.01,0.01,0.5,0.5,1e3,1e3,1e3]) # approx meas noises (large values for forces since we fake a zero meas)
+        self.ekf_state = FullEKF(self.dt,self.lf,self.lr,self.Iz,self.m,self.g,Q_diag_ele,R_diag_ele)
     
         # load vehicle dimensions 
         dimsyaml = rospkg.RosPack().get_path('common') + '/config/vehicles/' + self.robot_name + '/config/distances.yaml'
@@ -208,6 +215,11 @@ class StateEstCart:
         self.poserawpub = rospy.Publisher('/pose_raw_vis', Marker, queue_size=1)
         self.poseFullEKFpub = rospy.Publisher('/pose_full_ekf_vis', Marker, queue_size=1)
         self.tfbr = tf.TransformBroadcaster()
+        
+        # force arrow markers
+        self.Fyf_vis_pub = rospy.Publisher('/Fyf_est_vis', Marker, queue_size=1)
+        self.Fyr_vis_pub = rospy.Publisher('/Fyr_est_vis', Marker, queue_size=1)
+        self.Fx_vis_pub = rospy.Publisher('/Fx_est_vis', Marker, queue_size=1)
         
         # wait for messages before entering main loop
         if (self.system_setup == "rhino_real"):
@@ -236,30 +248,63 @@ class StateEstCart:
                 self.statepub.publish(self.state_out)
 
             # Full EKF 
-            self.kf_full.predict(0.,0,)
+            self.ekf_state.predict(0.,0,)
             z = np.array([[self.state_out.X], #0 X
                           [self.state_out.Y], #1 Y
                           [self.state_out.psi], #2 psi
                           [self.state_out.psidot], #3 psidot
                           [self.state_out.vx], #4 vx
-                          [self.state_out.vy]])#5 vy
-            self.kf_full.update(z)
+                          [self.state_out.vy], #5 vy
+                          [1.0], # Fyf
+                          [2.0], # Fyr
+                          [3.0],]) # Fx
+            self.ekf_state.update(z)
 
             # publish ekf pose marker
-            X_ekf = self.kf_full.x[0,0]
-            Y_ekf = self.kf_full.x[1,0]
-            psi_ekf = angleToInterval(np.array([self.kf_full.x[2,0]]))[0]
+            X_ekf = self.ekf_state.x[0,0]
+            Y_ekf = self.ekf_state.x[1,0]
+            psi_ekf = angleToInterval(np.array([self.ekf_state.x[2,0]]))[0]
             m_ekf = self.get_pose_marker(X_ekf,Y_ekf,psi_ekf)
             self.poseFullEKFpub.publish(m_ekf)
             
-            # TODO publish ekf tire force arrow markers
+#            # debug print estimated state
+#            rospy.logwarn("state_est_cart: X_ekf = " + str(self.ekf_state.x[0,0]))
+#            rospy.logwarn("state_est_cart: Y_ekf = " + str(self.ekf_state.x[1,0]))
+#            rospy.logwarn("state_est_cart: psi_ekf  = " + str(self.ekf_state.x[2,0]))
+#            rospy.logwarn("state_est_cart: psidot_ekf = " + str(self.ekf_state.x[3,0]))
+#            rospy.logwarn("state_est_cart: vx_ekf = " + str(self.ekf_state.x[4,0]))
+#            rospy.logwarn("state_est_cart: vy_ekf  = " + str(self.ekf_state.x[5,0]))
+     
+        
+            # get pseudo measurement of yaw acc
+            psidotdot_est_tmp = (self.state_out.psidot - self.psidot_last)/self.dt
+            self.psidot_last = self.state_out.psidot
 
+            # Todo acc KF (linear)
+
+            # compute pseudo measurements of tire forces from accelerations
+            Fyf_est, Fxf_est, Fyr_est, Fxr_est = self.get_tire_forces_from_motion(self.state_out.ax,
+                                                                                  self.state_out.ay,
+                                                                                  psidotdot_est_tmp,
+                                                                                  self.state_out.vx,
+                                                                                  self.state_out.psidot,
+                                                                                  self.m,
+                                                                                  self.lf,
+                                                                                  self.lr,
+                                                                                  self.Iz,
+                                                                                  self.state_out.Fzf,
+                                                                                  self.state_out.Fzr)
+  
+            # publish estimated tire force arrow markers
+            #Fyf_est = 0.5*self.m*(self.state_out.ay + self.state_out.psidot*self.state_out.vx)
+            #Fyr_est = 0.5*self.m*(self.state_out.ay + self.state_out.psidot*self.state_out.vx)
+            #Fx_est = self.m*self.state_out.ax
             
-
-
-
-
-                
+            
+            self.Fyf_vis_pub.publish(self.getForceArrowMarker(np.pi/2., Fyf_est/1000.,0))
+            self.Fyr_vis_pub.publish(self.getForceArrowMarker(np.pi/2., Fyr_est/1000.,3.4))
+            self.Fx_vis_pub.publish(self.getForceArrowMarker(0, (Fxf_est+Fxr_est)/1000.,1.2))
+          
             # broadcast tf
             start_tfbc = time.time()
             self.broadcast_dyn_tfs()
@@ -376,6 +421,29 @@ class StateEstCart:
         m.color.b = 0.0;
         return m
 
+
+    def getForceArrowMarker(self,orientation,magnitude,rearward_shift):
+        m = Marker()
+        m.header.stamp = rospy.Time.now()
+        m.header.frame_id = "chassis"
+        m.pose.position.x = -rearward_shift;
+        m.pose.position.y = 0;
+        m.pose.position.z = 0;
+        q = quaternion_from_euler(0, 0, orientation)
+        m.pose.orientation.x = q[0]
+        m.pose.orientation.y = q[1]
+        m.pose.orientation.z = q[2]
+        m.pose.orientation.w = q[3]
+        m.type = m.ARROW;
+        m.scale.x = magnitude;
+        m.scale.y = 0.3;
+        m.scale.z = 0.3;
+        m.color.a = 1.0; 
+        m.color.r = 0.0;
+        m.color.g = 0.0;
+        m.color.b = 0.7;
+        return m
+
     def broadcast_dyn_tfs(self):
         self.tfbr.sendTransform((self.state_out.X, self.state_out.Y, 0),
                                 tf.transformations.quaternion_from_euler(0, 0, self.state_out.psi),
@@ -439,32 +507,25 @@ class StateEstCart:
                                 "right_steering_hinge",
                                 "chassis") 
 
+    def get_tire_forces_from_motion(self,ax,ay,psidotdot,vx,psidot,m,lf,lr,Iz,Fzf,Fzr):
+        # acc --> Fx, Fy, Mz
+        Fx = m*ax # assuming zero grade angle atm
+        Fy = m*(ay+vx*psidot)
+        Mz = Iz*psidotdot
+        # Fy, Mz --> Fyf Fyr
+        Fyr = (lf*Fy-Mz)/lr+lf
+        Fyf = Fy-Fyr
+        # Fzf, Fxr --> Fxf, Fxf (assume Fxi distributed as Fzi)
+        ratio_f = Fzf/(Fzf+Fzr)
+        Fxf = ratio_f*Fx
+        Fxr = (1-ratio_f)*Fx
+        return Fyf, Fxf, Fyr, Fxr
+
     def get_normal_forces_from_motion(self,ax,theta):
-        Fzf = (1.0/(self.lf+self.lr))*(self.m*ax*self.h_cg - self.m*self.g*self.h_cg*np.sin(theta) + self.m*self.g*self.lr*np.cos(theta));
-        Fzr = (1.0/(self.lf+self.lr))*(-self.m*ax*self.h_cg + self.m*self.g*self.h_cg*np.sin(theta) + self.m*self.g*self.lf*np.cos(theta));
+        Fzf = (1.0/(self.lf+self.lr))*(-self.m*ax*self.h_cg - self.m*self.g*self.h_cg*np.sin(theta) + self.m*self.g*self.lr*np.cos(theta));
+        Fzr = (1.0/(self.lf+self.lr))*( self.m*ax*self.h_cg + self.m*self.g*self.h_cg*np.sin(theta) + self.m*self.g*self.lf*np.cos(theta));
         return Fzf,Fzr
 
-    def getForceArrowMarker(self,orientation,magnitude,rearward_shift):
-        m = Marker()
-        m.header.stamp = rospy.Time.now()
-        m.header.frame_id = "chassis"
-        m.pose.position.x = -rearward_shift;
-        m.pose.position.y = 0;
-        m.pose.position.z = 0;
-        q = quaternion_from_euler(0, 0, orientation)
-        m.pose.orientation.x = q[0]
-        m.pose.orientation.y = q[1]
-        m.pose.orientation.z = q[2]
-        m.pose.orientation.w = q[3]
-        m.type = m.ARROW;
-        m.scale.x = magnitude;
-        m.scale.y = 0.3;
-        m.scale.z = 0.3;
-        m.color.a = 1.0; 
-        m.color.r = 1.0;
-        m.color.g = 0.0;
-        m.color.b = 1.0;
-        return m
 
     def fssim_state_callback(self, msg):
         self.received_fssim_state = True
@@ -474,8 +535,8 @@ class StateEstCart:
         self.state_out.psidot = msg.r
         self.state_out.vx = msg.vx
         self.state_out.vy = msg.vy
-        self.state_out.ax = 0. # todo get ax from sim
-        self.state_out.ay = 0.
+        self.state_out.ax = msg.ax
+        self.state_out.ay = msg.ay
         Fzf, Fzr = self.get_normal_forces_from_motion(self.state_out.ax,0.)
         self.state_out.Fzf = Fzf 
         self.state_out.Fzr = Fzr       

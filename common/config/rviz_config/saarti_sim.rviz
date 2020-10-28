@@ -5,6 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /TF1/Frames1
+        - /Fyf_sim1/Status1
       Splitter Ratio: 0.587034822
     Tree Height: 1194
   - Class: rviz/Selection
@@ -448,25 +449,49 @@ Visualization Manager:
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /Fyf_vis
       Name: Fyf_sim
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /Fyr_vis
       Name: Fyr_sim
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: false
+    - Class: rviz/Marker
+      Enabled: false
+      Marker Topic: /Fx_vis
+      Name: Fx_sim
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: false
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /Fyf_est_vis
+      Name: Fyf_est
       Namespaces:
         "": true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
       Enabled: true
-      Marker Topic: /Fx_vis
-      Name: Fx_sim
+      Marker Topic: /Fyr_est_vis
+      Name: Fyr_est
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /Fx_est_vis
+      Name: Fx_est
       Namespaces:
         "": true
       Queue Size: 100
@@ -496,25 +521,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 26.6010513
+      Distance: 14.63696
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -4.64755774
-        Y: -3.1322031
-        Z: 1.07275509e-05
+        X: -2.42437029
+        Y: -0.922324657
+        Z: 7.86652799e-06
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.70479697
+      Pitch: 0.614797831
       Target Frame: base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.32039833
+      Yaw: 3.14040422
     Saved:
       - Class: rviz/ThirdPersonFollower
         Distance: 24.7596321

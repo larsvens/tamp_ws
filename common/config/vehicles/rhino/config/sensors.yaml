@@ -37,9 +37,9 @@ sensors:
       z: 0.15
 
   velocity:
-    noise_vx_sigma:  0.01                # Sigma of gaussian noise on respectible velocity estimate
-    noise_vy_sigma:  0.01                # Sigma of gaussian noise on respectible velocity estimate 
-    noise_r_sigma:   0.01                # Sigma of gaussian noise on respectible velocity estimate
+    noise_vx_sigma:  0.00                # Sigma of gaussian noise on respectible velocity estimate
+    noise_vy_sigma:  0.00                # Sigma of gaussian noise on respectible velocity estimate 
+    noise_r_sigma:   0.00                # Sigma of gaussian noise on respectible velocity estimate
 
   lidar_pipeline:
     enabled: true
