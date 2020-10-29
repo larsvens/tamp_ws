@@ -1,7 +1,8 @@
 # TAMP: Traction Adaptive Motion Planning
 
-Main repo for developing traction adaptive motion planning using sampling augmented adaptive RTI. Under development!    
-The TAMP algorithm uses sampling augmented adaptive RTI to allow dynamically setting the tire force constraints. This enables the motion planner to deal with locally varying traction conditions in critical maneuvers. Details on the algorithm are available here: https://arxiv.org/abs/1903.04240. Simulations are done using https://github.com/AMZ-Driverless/fssim and the RTI solver is exported by the acado toolkit https://github.com/acado/acado. 
+Main repo for developing traction adaptive motion planning using sampling augmented adaptive RTI. Keep in mind this is research code under development and is therefore subject to changes.   
+
+The framework uses sampling augmented adaptive RTI to allow dynamically updating tire force constraints. This enables the motion planner to deal with locally varying traction conditions in aggressive maneuvers. Details on the algorithm are available here: https://arxiv.org/abs/2009.04180 and https://arxiv.org/abs/1903.04240. Simulations are done using https://github.com/AMZ-Driverless/fssim and the RTI solver is exported by the acado toolkit https://github.com/acado/acado.     
 
 ## Example 1: Curve with reduced traction
 <p align="center"> 
@@ -15,11 +16,9 @@ The TAMP algorithm uses sampling augmented adaptive RTI to allow dynamically set
 
 
 ## Setup    
-System configuration: ubuntu 16.04 LTS & ROS Kinetic   
-http://wiki.ros.org/kinetic/Installation/Ubuntu   
-Tested with Python version 2.7.12 and Scipy version 1.2.2
+Test system configuration: ubuntu 16.04 LTS, ROS Kinetic, Python 2.7.12 and Scipy version 1.2.2   
 
-dependencies:   
+Additional dependencies:   
 `apt-get install ros-kinetic-jsk-rviz-plugins`   
 
 clone this repo and fork of fssim to a new catkin workspace   
