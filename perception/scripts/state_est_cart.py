@@ -277,7 +277,7 @@ class StateEstCart:
      
         
             # get pseudo measurement of yaw acc
-            psidotdot_est_tmp = (self.state_out.psidot - self.psidot_last)/self.dt
+            psidotdot_est_tmp =0 #= (self.state_out.psidot - self.psidot_last)/self.dt
             self.psidot_last = self.state_out.psidot
 
             # Todo acc KF (linear)
@@ -513,8 +513,8 @@ class StateEstCart:
         Fy = m*(ay+vx*psidot)
         Mz = Iz*psidotdot
         # Fy, Mz --> Fyf Fyr
-        Fyr = (lf*Fy-Mz)/lr+lf
-        Fyf = Fy-Fyr
+        Fyr = (lf*Fy-Mz)/(lr+lf)
+        Fyf = (lr*Fy+Mz)/(lr+lf) # Fy-Fyr
         # Fzf, Fxr --> Fxf, Fxf (assume Fxi distributed as Fzi)
         ratio_f = Fzf/(Fzf+Fzr)
         Fxf = ratio_f*Fx

@@ -375,8 +375,10 @@ class ExperimentManager:
         self.received_cmd_msg = True
         
     def fssim_carinfo_callback(self, msg):
-        self.Fyf_vis_pub.publish(self.getForceArrowMarker(np.pi/2., msg.Fy_f/1000.,0))
-        self.Fyr_vis_pub.publish(self.getForceArrowMarker(np.pi/2., msg.Fy_r/1000.,3.4))
+        # FyF contains average SINGLE tire force (line 37 in axle.hpp:double avg() const { return (left + right) / 2.0; })
+        # so multiply by 2 to get full Fyf and Fyr 
+        self.Fyf_vis_pub.publish(self.getForceArrowMarker(np.pi/2., 2.0*msg.Fy_f/1000.,0))
+        self.Fyr_vis_pub.publish(self.getForceArrowMarker(np.pi/2., 2.0*msg.Fy_r/1000.,3.4))
         self.Fx_vis_pub.publish(self.getForceArrowMarker(0, msg.Fx/1000.,1.2))
         
     def getForceArrowMarker(self,orientation,magnitude,rearward_shift):
