@@ -1,0 +1,11 @@
+<!-- starts friction est node with live plot gui -->
+
+<launch>
+
+     <!-- start node -->
+     <node pkg="perception" type="friction_est.py" name="friction_est" output="screen"> </node>
+
+     <!-- start live plot gui -->
+     <node name = "rho_live" pkg = "rqt_gui" type = "rqt_gui" output = "screen" args = "--perspective-file $(find perception)/config/rqt/rho_live.perspective"/>
+
+</launch>

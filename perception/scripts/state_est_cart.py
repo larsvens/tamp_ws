@@ -295,6 +295,11 @@ class StateEstCart:
                                                                                   self.state_out.Fzf,
                                                                                   self.state_out.Fzr)
   
+            self.state_out.rhof = np.sqrt(Fxf_est**2 + Fyf_est**2)/self.state_out.Fzf
+            self.state_out.rhor = np.sqrt(Fxr_est**2 + Fyr_est**2)/self.state_out.Fzr
+            
+            
+    
             # publish estimated tire force arrow markers
             #Fyf_est = 0.5*self.m*(self.state_out.ay + self.state_out.psidot*self.state_out.vx)
             #Fyr_est = 0.5*self.m*(self.state_out.ay + self.state_out.psidot*self.state_out.vx)

@@ -15,3 +15,8 @@ dt_state_est_frenet: 0.02
 dt_road_perception: 0.25
 N_pathlocal: 100
 ds_pathlocal: 1.0
+s_rel_start_pathlocal: 25 # distance behind vehicle where local path starts
+
+# friction_est
+N_buffer_fe: 50 # -> 1s @ dt=0.2
+idx_lh: 10 # -> 1s @ dt = 0.1

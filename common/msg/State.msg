@@ -12,4 +12,6 @@ float32 ax
 float32 ay
 float32 Fzf
 float32 Fzr
+float32 rhof
+float32 rhor
 bool stop

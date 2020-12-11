@@ -25,7 +25,7 @@ from geometry_msgs.msg import PolygonStamped
 from jsk_recognition_msgs.msg import PolygonArray
 import time
 
-class Perception:
+class RoadPerception:
     # constructor
     def __init__(self):
         # init node subs pubs
@@ -50,6 +50,7 @@ class Perception:
         # params of local path
         self.N = rospy.get_param('/N_pathlocal')
         self.ds = rospy.get_param('/ds_pathlocal')
+        self.s_rel_start_pathlocal = rospy.get_param('/s_rel_start_pathlocal')
 
         # set static vehicle params
         self.setRosParams()
@@ -68,9 +69,9 @@ class Perception:
             print "perception: waiting for state"
             self.rate.sleep()
 
-        print "perception: running main with: "
-        print "perception: lap length: ", self.s_lap
-        print "perception: length of local path: ", self.N*self.ds
+        print "road perception: running main with: "
+        print "road perception: lap length: ", self.s_lap
+        print "road perception: length of local path: ", self.N*self.ds
         
         # Main loop
         while not rospy.is_shutdown():
@@ -114,8 +115,11 @@ class Perception:
        
         stot_local = self.N*self.ds
         #self.smin_local = max(self.state.s-1, 0.0)
-        self.smin_local = self.state.s
-        #print "smin_local = ", self.smin_local
+        self.smin_local = self.state.s-self.s_rel_start_pathlocal
+        # at the start - make sure smin_local > 0
+        if(self.smin_local < 0):
+            self.smin_local = 0 
+
         smax_local = self.smin_local+stot_local
         s = np.linspace(self.smin_local,smax_local,self.N)
         
@@ -211,7 +215,7 @@ class Perception:
         self.received_state = True
 
 if __name__ == '__main__':
-    lse = Perception()
+    rp = RoadPerception()
     try:
         rospy.spin()
     except KeyboardInterrupt:

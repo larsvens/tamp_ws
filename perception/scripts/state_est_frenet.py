@@ -65,7 +65,8 @@ class StateEstFrenet:
         self.state_out.ay = self.state_cart.ay
         self.state_out.Fzf = self.state_cart.Fzf
         self.state_out.Fzr = self.state_cart.Fzr
-        
+        self.state_out.rhof = self.state_cart.rhof
+        self.state_out.rhor = self.state_cart.rhor        
         # get s, d and deltapsi
         s,d = ptsCartesianToFrenet(np.array([self.state_out.X]), \
                                    np.array([self.state_out.Y]), \

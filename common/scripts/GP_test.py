@@ -16,7 +16,7 @@ def f(x):
 
 # Mesh the input space for evaluations of the real function, the prediction and
 # its MSE
-x = np.atleast_2d(np.linspace(0, 10, 1000)).T
+x = np.atleast_2d(np.linspace(0, 10, 100)).T
 
 # Instantiate a Gaussian Process model
 kernel = C(10.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
@@ -42,6 +42,9 @@ gp.fit(X, y)
 
 # Make the prediction on the meshed x-axis (ask for MSE as well)
 y_pred, sigma = gp.predict(x, return_std=True)
+
+print(y_pred.size)
+print(sigma.size)
 
 # Plot the function, the prediction and the 95% confidence interval based on
 # the MSE
