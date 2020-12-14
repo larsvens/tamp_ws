@@ -1,4 +1,4 @@
-# perception config
+# perception config (todo give each node separate cfg)
 
 # track_iface
 dt_track_iface: 1.0
@@ -17,6 +17,4 @@ N_pathlocal: 100
 ds_pathlocal: 1.0
 s_rel_start_pathlocal: 25 # distance behind vehicle where local path starts
 
-# friction_est
-N_buffer_fe: 50 # -> 1s @ dt=0.2
-idx_lh: 10 # -> 1s @ dt = 0.1
+
