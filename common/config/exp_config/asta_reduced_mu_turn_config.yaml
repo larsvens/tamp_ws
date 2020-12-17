@@ -67,7 +67,7 @@ vxub_rollout: 20.0
 # Traction adaptation 
 # 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics), static Cr
 # 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics, Cr from mu and Fz
-traction_adaptive: 1
+traction_adaptive: 0
 mu_nominal: 0.8 # used only when traction_adaptive = 0
 
 # Force utilization factor

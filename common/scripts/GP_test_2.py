@@ -38,9 +38,12 @@ def posterior(Xtrain, ytrain, Xtest, l2=0.1, noise_var_train=1e-6,sigma_f=1.0):
 
 
 Xtrain, ytrain = generate_noisy_points()
-Xtest, ytest = generate_noisy_points_2(100)
-Xtest.sort(axis=0)
-mean, sd, K = posterior(Xtrain,ytrain, Xtest,3.5,0.01,0.25)
+#Xtest, ytest = generate_noisy_points_2(100)
+#Xtest.sort(axis=0)
+#Xtest = np.linspace(-3,5,100)
+Ntest = 100
+Xtest = np.reshape(np.linspace(-3,5,Ntest), (Ntest, 1))
+mean, sd, K = posterior(Xtrain,ytrain, Xtest,3.5,0.001,0.25)
 print(mean, sd)
 
 
