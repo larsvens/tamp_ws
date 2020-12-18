@@ -1,4 +1,4 @@
 # friction_est
-N_buffer_fe: 50 # -> 1s @ dt=0.2
-idx_lh: 2 #  dt = 0.1
+N_buffer_fe: 100
+idx_lh: 3 
 mu_sigma_nominal: 0.1

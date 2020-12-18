@@ -22,7 +22,7 @@ import rospy
 from common.msg import State
 from common.msg import Trajectory
 from common.msg import MuEst
-from std_msgs.msg import Float32
+
 class FrictionEstimation:
     # constructor
     def __init__(self):
@@ -33,6 +33,7 @@ class FrictionEstimation:
         # params
         self.N_buffer = rospy.get_param('/N_buffer_fe')
         self.N_est = 100
+        self.ds_est = 1.0
         self.idx_lh = rospy.get_param('/idx_lh')
         self.mu_mean_nominal = rospy.get_param('/mu_nominal')
         self.mu_sigma_nominal = rospy.get_param('/mu_sigma_nominal')
@@ -53,19 +54,21 @@ class FrictionEstimation:
         self.mu_est.s = np.zeros(self.N_est)
         self.mu_est.mu_est_mean = np.zeros(self.N_est)
         self.mu_est.mu_est_sigma = np.zeros(self.N_est)
-                
-        self.rho_diff_pub = rospy.Publisher("/rho_diff", Float32, queue_size=1)
         
         
         # init node vars
-        self.s_perceived_buffer = np.zeros(self.N_buffer)
-        self.rhof_perceived_buffer = np.zeros(self.N_buffer)
-        self.rhor_perceived_buffer = np.zeros(self.N_buffer)
+        self.s_planned_buffer = np.zeros(self.N_buffer)
+        self.rhof_planned_buffer = np.zeros(self.N_buffer)
+        self.rhor_planned_buffer = np.zeros(self.N_buffer)
+        
+        self.s_vec = np.zeros(int(self.N_est/2.))
+        self.rhof_perceived_vec = np.zeros(int(self.N_est/2.))
+        self.rhof_planned_vec = np.zeros(int(self.N_est/2.))
+        self.count_state_callback = np.longlong(0)
 
-        self.s_planned_buffer = np.zeros(self.N_buffer*2) # 
-        self.rhof_planned_buffer = np.zeros(self.N_buffer*2)
-        self.rhor_planned_buffer = np.zeros(self.N_buffer*2)
-        self.rhof_planned = np.zeros(self.N_buffer)
+        
+        
+        #self.rhof_planned = np.zeros(self.N_buffer)
         
         # init live plot
         self.do_live_plot = True
@@ -106,32 +109,28 @@ class FrictionEstimation:
         # main loop - only live plot
         t = time.time()
         while not rospy.is_shutdown():
-                        
-            # set the prior (TODO SHIFT FWD INSTEAD OF RESETTING)
-            #mu_est_mean_prior = self.mu_mean_nominal*np.ones(self.N_buffer) 
-            #mu_est_sigma_prior = self.mu_sigma_nominal*np.ones(self.N_buffer)
-            self.mu_est.s = np.linspace(self.s_perceived_buffer[0],self.s_perceived_buffer[-1] + (self.s_perceived_buffer.max()-self.s_perceived_buffer.min()),self.N_est) 
             
+            # update measurement
+            self.s_train = np.array([])
+            self.mu_train = np.array([])
+            mgn = 0.1
+            for i in range(self.s_vec.size):
+                if (self.rhof_perceived_vec[i] < self.rhof_planned_vec[i]*self.Ff_util - mgn):
+                    self.s_train = np.append(self.s_train,self.s_vec[i])
+                    self.mu_train = np.append(self.mu_train,self.rhof_perceived_vec[i])
+                    
+            # set prior
+            self.mu_est.s = np.linspace(self.state.s-0.5*self.N_est*self.ds_est, self.state.s+0.5*self.N_est*self.ds_est, self.N_est)             
             self.mu_est.mu_est_mean = 0.6*np.ones(self.N_est) 
             self.mu_est.mu_est_sigma = 0.2*np.ones(self.N_est)
-                        
-            # extract measurements from buffers
-            mgn = 0.1
-            s_train = []
-            mu_train = []
-            for i in range(self.N_buffer):
-                if(self.rhof_perceived_buffer[i] < self.rhof_planned[i]*self.Ff_util - mgn ):
-                    #self.mu_est.mu_est_mean[i] = self.rhof_perceived_buffer[i]
-                    s_train.append(self.s_perceived_buffer[i])
-                    mu_train.append(self.rhof_perceived_buffer[i])
             
             # GP regression
-            if (len(s_train) > 0):
-                s_train = np.reshape(s_train,(len(s_train),1))
-                mu_train = np.reshape(mu_train,(len(mu_train),1))
+            if (self.s_train.size > 0):
+                s_train_cv = np.reshape(self.s_train,(self.s_train.size,1))
+                mu_train_cv = np.reshape(self.mu_train,(self.mu_train.size,1))
                 
-                s_est = np.reshape(self.mu_est.s,(len(self.mu_est.s),1))
-                mean, sigma, K = self.posterior(s_train,mu_train,s_est,5.0,0.01,0.25)
+                s_est_cv = np.reshape(self.mu_est.s,(self.mu_est.s.size,1))
+                mean, sigma, K = self.posterior(s_train_cv,mu_train_cv,s_est_cv,5.0,0.01,0.25)
                 
                 self.mu_est.mu_est_mean = mean.flatten()
                 self.mu_est.mu_est_sigma = sigma.flatten()
@@ -139,17 +138,16 @@ class FrictionEstimation:
                 self.mu_est.header.stamp = rospy.Time.now()
                 self.mu_est_pub.publish(self.mu_est)
             
-            
-            
+            # update plot
             if self.do_live_plot:
-                x_axis_buf = self.s_perceived_buffer-self.state.s
+                x_axis_buf = self.s_vec-self.state.s
                 x_axis_est = self.mu_est.s-self.state.s
                 
                 rho_perceived_ln.set_xdata(x_axis_buf)
-                rho_perceived_ln.set_ydata(self.rhof_perceived_buffer)
+                rho_perceived_ln.set_ydata(self.rhof_perceived_vec)
                 
                 rho_planned_ln.set_xdata(x_axis_buf) 
-                rho_planned_ln.set_ydata(self.rhof_planned) 
+                rho_planned_ln.set_ydata(self.rhof_planned_vec) 
                 
                 #rospy.loginfo("friction_est: len x: " + str(len(x_axis)))
                 #y_axis = np.array(self.mu_est.mu_est_mean) + 1.96*np.array(self.mu_est.mu_est_sigma)
@@ -165,7 +163,7 @@ class FrictionEstimation:
                 conf_intv_lb_ln.set_ydata(self.mu_est.mu_est_mean - 1.96*np.array(self.mu_est.mu_est_sigma))
                 
                 plt.pause(0.0001)
-                ax.set_xlim([x_axis_buf[0], -x_axis_buf[0]])
+                ax.set_xlim([-60, 60])
                 
                 rospy.loginfo("friction_est: looptime plot update: " + str(time.time() - t))
                 t = time.time()
@@ -178,14 +176,6 @@ class FrictionEstimation:
         
         if(self.state.vx > 1.0): # avoid issues at low speed (also we wont have useful data at very low speeds)
             
-            # update buffers
-            self.s_perceived_buffer = np.roll(self.s_perceived_buffer,-1)
-            self.s_perceived_buffer[-1] = self.state.s
-            self.rhof_perceived_buffer = np.roll(self.rhof_perceived_buffer,-1)
-            self.rhof_perceived_buffer[-1] = self.state.rhof
-#            self.rhor_perceived_buffer = np.roll(self.rhor_perceived_buffer,1)
-#            self.rhor_perceived_buffer[0] = self.state.rhor
-            
             s_lh = self.trajstar.s[self.idx_lh]
             rhof_lh = np.sqrt(self.trajstar.Fxf[self.idx_lh]**2 + self.trajstar.Fyf[self.idx_lh]**2)/self.trajstar.Fzf[self.idx_lh]
             #rhor_lh = np.sqrt(self.trajstar.Fxr[self.idx_lh]**2 + self.trajstar.Fyr[self.idx_lh]**2)/self.trajstar.Fzr[self.idx_lh]
@@ -197,29 +187,32 @@ class FrictionEstimation:
             #self.rhor_planned_buffer[0] = rhor_lh
             
             # interp if buffers are filled
-            if (np.count_nonzero(self.s_perceived_buffer) == self.s_perceived_buffer.size and
-                np.count_nonzero(self.s_planned_buffer) == self.s_planned_buffer.size):
-                
-                # error if interpolation intervals do not overlap
-                mgn = 0.5   
-                if (self.s_perceived_buffer[0] < self.s_planned_buffer[0]-mgn):
-                    rospy.logerr("friction est: improper overlap: s_perceived_buffer[0] = " + str(self.s_perceived_buffer[0]) + ", s_planned_buffer[0] = " + str(self.s_planned_buffer[0]))
-                if (self.s_perceived_buffer[-1] > self.s_planned_buffer[-1]+mgn):
-                    rospy.logerr("friction est: improper overlap: s_perceived_buffer[-1] = " + str(self.s_perceived_buffer[-1]) + ", s_planned_buffer[-1] = " + str(self.s_planned_buffer[-1]))
-                                
-                
-                # interpolate planned 
-                self.rhof_planned = np.interp(self.s_perceived_buffer, self.s_planned_buffer, self.rhof_planned_buffer)
-                #rhor_planned = np.interp(self.s_perceived_buffer, self.s_planned_buffer, self.rhor_planned_buffer)
+            #if (np.count_nonzero(self.s_planned_buffer) == self.s_planned_buffer.size):
+            if (self.s_planned_buffer.min() < self.state.s and self.s_planned_buffer.max() > self.state.s):    
+                rhof_planned = np.interp(self.state.s, self.s_planned_buffer, self.rhof_planned_buffer)
+            else:
+                rhof_planned = float('Nan')
+                rospy.logerr("friction est: self.state.s not in interval, state.s = " + str(self.state.s) + ", s_planned_buffer[0] = " + str(self.s_planned_buffer[0]) + ", s_planned_buffer[-1] = " + str(self.s_planned_buffer[-1]))
 
-                # pub rho diff 
-                msg = Float32()
-                msg.data = self.rhof_planned[-1] - self.rhof_perceived_buffer[-1]
-                self.rho_diff_pub.publish(msg)
+            # update rho vectors 
+            #if (self.count_state_callback%10 == 0):
+            if (self.state.s > self.s_vec[-1] + self.ds_est):
+                self.s_vec = np.roll(self.s_vec,-1)
+                self.s_vec[-1] = self.state.s
+    
+                self.rhof_perceived_vec = np.roll(self.rhof_perceived_vec,-1)
+                self.rhof_perceived_vec[-1] = self.state.rhof
+                
+                self.rhof_planned_vec = np.roll(self.rhof_planned_vec,-1)
+                self.rhof_planned_vec[-1] = rhof_planned
            
-                
+                # cut tail of vectors
+    #            idx = self.s_vec < self.state.s - 0.5*self.N_est*self.ds_est
+    #            self.s_vec = self.s_vec[idx]
+    #            self.rhof_perceived_vec = self.rhof_perceived_vec[idx]
+    #            self.rhof_planned_vec = self.rhof_planned_vec[idx]
 
-               
+        self.count_state_callback += 1
 
 
     def posterior(self, Xtrain, ytrain, Xtest, l2=0.1, noise_var_train=1e-6,sigma_f=1.0):
