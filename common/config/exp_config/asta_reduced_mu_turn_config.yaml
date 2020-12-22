@@ -33,7 +33,7 @@ obstacle_wiggleroom: 1.0
 s_begin_mu_segments:  [0.0, 270.0, 330.0]
 mu_segment_values:  [0.8, 0.4, 0.8] 
 s_begin_vxref_segments: [0.0, 315.0, 600.0]
-vxref_segment_values: [12.0, 8.0, 5.0]
+vxref_segment_values: [12.0, 12.0, 4.5]
 
 # low friction run (asta_zero_short)
 #s_begin_mu_segments:  [0.0, 235.0, 295.0]
@@ -75,8 +75,8 @@ mu_nominal: 0.8 # used only when traction_adaptive = 0
 #Fr_util: 0.8
 #Ff_util: 0.5 # initial tuning runs
 #Fr_util: 0.5
-Ff_util: 1.0 # sim
-Fr_util: 1.0
+Ff_util: 0.9 # sim
+Fr_util: 0.9
 
 # optimization config
 Wx:  [1000.0, 5000000.0, 1.0, 0.1, 1000000.0, 0.1]

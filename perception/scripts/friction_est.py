@@ -91,7 +91,7 @@ class FrictionEstimation:
             ax.set_xlabel('s (m)')
             ax.set_ylabel('mu')
             
-            ax.set_ylim([0,1])
+            ax.set_ylim([-0.1,1.1])
             plt.ion()
             plt.show()  
 
@@ -113,16 +113,16 @@ class FrictionEstimation:
             # update measurement
             self.s_train = np.array([])
             self.mu_train = np.array([])
-            mgn = 0.1
+            mgn = 0.2
             for i in range(self.s_vec.size):
-                if (self.rhof_perceived_vec[i] < self.rhof_planned_vec[i]*self.Ff_util - mgn):
+                if (self.rhof_perceived_vec[i] < self.rhof_planned_vec[i] - mgn):
                     self.s_train = np.append(self.s_train,self.s_vec[i])
                     self.mu_train = np.append(self.mu_train,self.rhof_perceived_vec[i])
                     
             # set prior
             self.mu_est.s = np.linspace(self.state.s-0.5*self.N_est*self.ds_est, self.state.s+0.5*self.N_est*self.ds_est, self.N_est)             
-            self.mu_est.mu_est_mean = 0.6*np.ones(self.N_est) 
-            self.mu_est.mu_est_sigma = 0.2*np.ones(self.N_est)
+            self.mu_est.mu_est_mean = self.mu_mean_nominal*np.ones(self.N_est) 
+            self.mu_est.mu_est_sigma = self.mu_sigma_nominal*np.ones(self.N_est)
             
             # GP regression
             if (self.s_train.size > 0):
@@ -130,7 +130,9 @@ class FrictionEstimation:
                 mu_train_cv = np.reshape(self.mu_train,(self.mu_train.size,1))
                 
                 s_est_cv = np.reshape(self.mu_est.s,(self.mu_est.s.size,1))
-                mean, sigma, K = self.posterior(s_train_cv,mu_train_cv,s_est_cv,5.0,0.01,0.25)
+                #mean, sigma, K = self.posterior(s_train_cv,mu_train_cv,s_est_cv,500.0,0.01,self.mu_sigma_nominal,self.mu_mean_nominal)
+                mean, cov = self.posterior_(s_est_cv, s_train_cv, mu_train_cv, l=25.0, sigma_f=self.mu_sigma_nominal, sigma_y=1e-2,Y_offset=self.mu_mean_nominal)
+                sigma = np.sqrt(np.diag(cov))
                 
                 self.mu_est.mu_est_mean = mean.flatten()
                 self.mu_est.mu_est_sigma = sigma.flatten()
@@ -174,7 +176,7 @@ class FrictionEstimation:
         self.state = msg
         self.received_state = True
         
-        if(self.state.vx > 1.0): # avoid issues at low speed (also we wont have useful data at very low speeds)
+        if(self.state.vx > 5.0): # avoid issues at low speed (also we wont have useful data at very low speeds)
             
             s_lh = self.trajstar.s[self.idx_lh]
             rhof_lh = np.sqrt(self.trajstar.Fxf[self.idx_lh]**2 + self.trajstar.Fyf[self.idx_lh]**2)/self.trajstar.Fzf[self.idx_lh]
@@ -182,7 +184,8 @@ class FrictionEstimation:
             self.s_planned_buffer = np.roll(self.s_planned_buffer,-1)
             self.s_planned_buffer[-1] = s_lh
             self.rhof_planned_buffer = np.roll(self.rhof_planned_buffer,-1)
-            self.rhof_planned_buffer[-1] = rhof_lh
+            self.rhof_planned_buffer[-1] = rhof_lh*self.Ff_util # compensate
+            
             #self.rhor_planned_buffer = np.roll(self.rhor_planned_buffer,1)
             #self.rhor_planned_buffer[0] = rhor_lh
             
@@ -215,24 +218,70 @@ class FrictionEstimation:
         self.count_state_callback += 1
 
 
-    def posterior(self, Xtrain, ytrain, Xtest, l2=0.1, noise_var_train=1e-6,sigma_f=1.0):
-        ytrain_zeromean = ytrain-np.mean(ytrain)
-        
-        # compute the mean at our test points.
-        Ntrain = len(Xtrain)
-        K = self.kernel(Xtrain, Xtrain, l2,sigma_f)
-        L = np.linalg.cholesky(K + noise_var_train*np.eye(Ntrain))
-        Lk = np.linalg.solve(L, self.kernel(Xtrain, Xtest, l2,sigma_f))
-        mean = np.dot(Lk.T, np.linalg.solve(L, ytrain_zeromean)) + np.mean(ytrain)
-        # compute the variance at our test points.
-        K_ = self.kernel(Xtest, Xtest, l2,sigma_f)
-        sd = np.sqrt(np.diag(K_) - np.sum(Lk**2, axis=0))
-        return (mean, sd, K)
+#    def posterior(self, Xtrain, ytrain, Xtest, l2=0.1, noise_var_train=1e-6,sigma_f=1.0,yoffset=0.8):
+#        #ytrain_zeromean = ytrain-np.mean(ytrain)
+#        ytrain_shifted = ytrain-yoffset
+#        # compute the mean at our test points.
+#        Ntrain = len(Xtrain)
+#        K = self.kernel(Xtrain, Xtrain, l2,sigma_f)
+#        L = np.linalg.cholesky(K + noise_var_train*np.eye(Ntrain))
+#        Lk = np.linalg.solve(L, self.kernel(Xtrain, Xtest, l2,sigma_f))
+#        #mean = np.dot(Lk.T, np.linalg.solve(L, ytrain_zeromean)) + np.mean(ytrain)
+#        mean = np.dot(Lk.T, np.linalg.solve(L, ytrain_shifted)) + yoffset
+#        # compute the variance at our test points.
+#        K_ = self.kernel(Xtest, Xtest, l2,sigma_f)
+#        
+#        sd = np.sqrt(np.diag(K_) - np.sum(Lk**2, axis=0))
+#        return (mean, sd, K)
 
-    def kernel(self,x, y, l2=0.1, sigma_f=1.0):
-        sqdist = np.sum(x**2,1).reshape(-1,1) + \
-                 np.sum(y**2,1) - 2*np.dot(x, y.T)
-        return sigma_f**2 * np.exp(-.5 * (1/l2) * sqdist)                
+
+    def posterior_(self, X_s, X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8,Y_offset=0.0):
+        """        
+        Args:
+            X_s: New input locations (n x d).
+            X_train: Training locations (m x d).
+            Y_train: Training targets (m x 1).
+            l: Kernel length parameter.
+            sigma_f: Kernel vertical variation parameter.
+            sigma_y: Noise parameter.
+        
+        Returns:
+            Posterior mean vector (n x d) and covariance matrix (n x n).
+        """
+        Y_train_shifted = Y_train - Y_offset
+        
+        K = self.kernel_(X_train, X_train, l, sigma_f) + sigma_y**2 * np.eye(len(X_train))
+        K_s = self.kernel_(X_train, X_s, l, sigma_f)
+        K_ss = self.kernel_(X_s, X_s, l, sigma_f) + sigma_y**2 * np.eye(len(X_s))
+        K_inv = np.linalg.pinv(K)
+        
+        mu_s = K_s.T.dot(K_inv).dot(Y_train_shifted) + Y_offset
+        cov_s = K_ss - K_s.T.dot(K_inv).dot(K_s)
+    
+        return mu_s, cov_s
+
+
+
+#    def kernel(self,x, y, l2=0.1, sigma_f=1.0):
+#        sqdist = np.sum(x**2,1).reshape(-1,1) + \
+#                 np.sum(y**2,1) - 2*np.dot(x, y.T)
+#        return sigma_f**2 * np.exp(-.5 * (1/l2) * sqdist)                
+
+
+    def kernel_(self,X1, X2, l=1.0, sigma_f=1.0):
+        """
+        Isotropic squared exponential kernel.
+        
+        Args:
+            X1: Array of m points (m x d).
+            X2: Array of n points (n x d).
+    
+        Returns:
+            (m x n) matrix.
+        """
+        sqdist = np.sum(X1**2, 1).reshape(-1, 1) + np.sum(X2**2, 1) - 2 * np.dot(X1, X2.T)
+        return sigma_f**2 * np.exp(-0.5 / l**2 * sqdist)
+
                 
     def trajstar_callback(self, msg):
         self.trajstar = msg
