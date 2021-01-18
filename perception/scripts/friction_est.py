@@ -66,7 +66,7 @@ class FrictionEstimation:
         self.rhof_planned_vec = np.zeros(int(self.N_est/2.))
         self.count_state_callback = np.longlong(0)
 
-        
+        self.cov_last = np.array([[],[]])
         
         #self.rhof_planned = np.zeros(self.N_buffer)
         
@@ -118,27 +118,52 @@ class FrictionEstimation:
                 if (self.rhof_perceived_vec[i] < self.rhof_planned_vec[i] - mgn):
                     self.s_train = np.append(self.s_train,self.s_vec[i])
                     self.mu_train = np.append(self.mu_train,self.rhof_perceived_vec[i])
-                    
-            # set prior
-            self.mu_est.s = np.linspace(self.state.s-0.5*self.N_est*self.ds_est, self.state.s+0.5*self.N_est*self.ds_est, self.N_est)             
-            self.mu_est.mu_est_mean = self.mu_mean_nominal*np.ones(self.N_est) 
-            self.mu_est.mu_est_sigma = self.mu_sigma_nominal*np.ones(self.N_est)
-            
+                                
             # GP regression
+            self.mu_est.s = np.linspace(self.state.s-0.5*self.N_est*self.ds_est, self.state.s+0.5*self.N_est*self.ds_est, self.N_est)             
             if (self.s_train.size > 0):
                 s_train_cv = np.reshape(self.s_train,(self.s_train.size,1))
                 mu_train_cv = np.reshape(self.mu_train,(self.mu_train.size,1))
                 
                 s_est_cv = np.reshape(self.mu_est.s,(self.mu_est.s.size,1))
                 #mean, sigma, K = self.posterior(s_train_cv,mu_train_cv,s_est_cv,500.0,0.01,self.mu_sigma_nominal,self.mu_mean_nominal)
-                mean, cov = self.posterior_(s_est_cv, s_train_cv, mu_train_cv, l=25.0, sigma_f=self.mu_sigma_nominal, sigma_y=1e-2,Y_offset=self.mu_mean_nominal)
+                mean, cov = self.posterior_(X_s = s_est_cv, 
+                                            X_train = s_train_cv, 
+                                            Y_train = mu_train_cv, 
+                                            l = 25.0, 
+                                            sigma_f = self.mu_sigma_nominal, 
+                                            sigma_y = 0.1,
+                                            prior_mean = self.mu_mean_nominal,
+                                            prior_cov = self.cov_last)
+                
+                rospy.logwarn("friction_est: diag(cov) = " + str(np.diag(cov)))
+                
                 sigma = np.sqrt(np.diag(cov))
+                
                 
                 self.mu_est.mu_est_mean = mean.flatten()
                 self.mu_est.mu_est_sigma = sigma.flatten()
                 
-                self.mu_est.header.stamp = rospy.Time.now()
-                self.mu_est_pub.publish(self.mu_est)
+#                # shift and store covariance matrix
+#                self.cov_last = cov
+#                #roll rows down
+#                self.cov_last = np.roll(self.cov_last, 1, axis=0)
+#                self.cov_last[0,:] = np.zeros(self.N_est)
+#                # roll colums rgt
+#                self.cov_last = np.roll(self.cov_last, 1, axis=1)
+#                self.cov_last[:,0] = np.zeros(self.N_est)
+#                # set variance at [0,0]
+#                self.cov_last[0,0] = self.mu_sigma_nominal**2
+
+                
+            else:
+                self.mu_est.mu_est_mean = self.mu_mean_nominal*np.ones(self.N_est) 
+                self.mu_est.mu_est_sigma = self.mu_sigma_nominal*np.ones(self.N_est)
+                self.cov_last = np.array([[],[]])
+                 
+            self.mu_est.header.stamp = rospy.Time.now()
+            self.mu_est_pub.publish(self.mu_est)
+
             
             # update plot
             if self.do_live_plot:
@@ -235,7 +260,7 @@ class FrictionEstimation:
 #        return (mean, sd, K)
 
 
-    def posterior_(self, X_s, X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8,Y_offset=0.0):
+    def posterior_(self, X_s, X_train, Y_train, l=1.0, sigma_f=1.0, sigma_y=1e-8,prior_mean=0.0,prior_cov=np.array([[],[]])):
         """        
         Args:
             X_s: New input locations (n x d).
@@ -248,17 +273,21 @@ class FrictionEstimation:
         Returns:
             Posterior mean vector (n x d) and covariance matrix (n x n).
         """
-        Y_train_shifted = Y_train - Y_offset
+        Y_train_shifted = Y_train - prior_mean
         
         K = self.kernel_(X_train, X_train, l, sigma_f) + sigma_y**2 * np.eye(len(X_train))
-        K_s = self.kernel_(X_train, X_s, l, sigma_f)
-        K_ss = self.kernel_(X_s, X_s, l, sigma_f) + sigma_y**2 * np.eye(len(X_s))
         K_inv = np.linalg.pinv(K)
+        K_s = self.kernel_(X_train, X_s, l, sigma_f)
         
-        mu_s = K_s.T.dot(K_inv).dot(Y_train_shifted) + Y_offset
+        if (prior_cov.size == 0):
+            K_ss = self.kernel_(X_s, X_s, l, sigma_f) + sigma_y**2 * np.eye(len(X_s))
+        else:
+            K_ss = prior_cov.copy()
+        
+        mean_s = K_s.T.dot(K_inv).dot(Y_train_shifted) + prior_mean
         cov_s = K_ss - K_s.T.dot(K_inv).dot(K_s)
-    
-        return mu_s, cov_s
+
+        return mean_s, cov_s
 
 
 
