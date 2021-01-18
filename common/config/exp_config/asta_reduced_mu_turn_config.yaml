@@ -33,7 +33,7 @@ obstacle_wiggleroom: 1.0
 s_begin_mu_segments:  [0.0, 270.0, 330.0]
 mu_segment_values:  [0.8, 0.4, 0.8] 
 s_begin_vxref_segments: [0.0, 315.0, 600.0]
-vxref_segment_values: [12.0, 12.0, 4.5]
+vxref_segment_values: [15.0, 12.0, 4.5]
 
 # low friction run (asta_zero_short)
 #s_begin_mu_segments:  [0.0, 235.0, 295.0]
@@ -67,8 +67,23 @@ vxub_rollout: 20.0
 # Traction adaptation 
 # 0: nominal value of mu from param mu_nominal and static tire force constraints (no pitch dynamics), static Cr
 # 1: takes mu estimate from pathlocal struct and computes normal forces from pitch dynamics, Cr from mu and Fz
-traction_adaptive: 0
+traction_adaptive: 1
 mu_nominal: 0.8 # used only when traction_adaptive = 0
+
+# friction estimation mode (for exp1)
+# 0: ground truth (same as camera only GT)
+# 1: local only (GT)
+# 2: local only (with noise)
+# 3: camera only (with noice)
+# 4: local + camera (GP)
+mu_est_mode: 3
+
+# conservative or agressive (for exp2) 
+# -1: conservative  
+# 0: neutral
+# 1: aggressive
+conservativeness_level: 0
+
 
 # Force utilization factor
 #Ff_util: 0.8 # final tests
@@ -88,3 +103,8 @@ Wslack: 100000000
 K:   [0.000, 2954.774, 87597.099, 2566.325, 0.000, 5751.643,
       0.688, 0.000, 0.000, 0.000, 2178.309, 0.000,
       0.688, 0.000, 0.000, 0.000, 2178.309, 0.000]
+
+
+
+
+

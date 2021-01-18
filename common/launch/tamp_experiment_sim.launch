@@ -11,7 +11,8 @@
     <!-- experiment manager node -->
     <node pkg="common" type="exp_manager.py" name="experiment_manager"  required="true" output="screen"> </node>
 
-    <!-- planning & ctrl nodes -->
+    <!-- road percept, planning & ctrl nodes -->
+    <node pkg="perception" type="road_perception.py" name="road_perception"> </node>
     <rosparam command="load" file="$(find saarti)/config/planning_and_ctrl_config.yaml" /> 
     <node pkg="saarti" type="saarti_node" name="saarti_node"/> 
     <node pkg="saarti" type="ctrl_interface.py" name="ctrl_interface"/> 

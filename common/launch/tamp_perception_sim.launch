@@ -24,7 +24,6 @@
     <node pkg="perception" type="track_iface.py" name="track_iface"> </node>
     <node pkg="perception" type="state_est_cart.py" name="state_est_cart"> </node>
     <node pkg="perception" type="state_est_frenet.py" name="state_est_frenet"> </node>
-    <node pkg="perception" type="road_perception.py" name="road_perception"> </node>
   
     <!-- visualization -->
     <param name="robot_description_simple" command="$(find xacro)/xacro --inorder $(arg urdf_model)" />

@@ -51,7 +51,12 @@ class RoadPerception:
         self.N = rospy.get_param('/N_pathlocal')
         self.ds = rospy.get_param('/ds_pathlocal')
         self.s_rel_start_pathlocal = rospy.get_param('/s_rel_start_pathlocal')
-
+        
+        # params of friction est emulation
+        self.mu_est_mode = rospy.get_param('/mu_est_mode')
+        self.cons_level = rospy.get_param('/conservativeness_level')
+        self.set_mu_est_errors() 
+        
         # set static vehicle params
         self.setRosParams()
 
@@ -141,10 +146,39 @@ class RoadPerception:
         self.pathlocal.theta_c =        np.interp(s,self.pathrolling.s,self.pathrolling.theta_c)
         self.pathlocal.kappa_c =        np.interp(s,self.pathrolling.s,self.pathrolling.kappa_c)
         self.pathlocal.kappaprime_c =   np.interp(s,self.pathrolling.s,self.pathrolling.kappaprime_c)
-        self.pathlocal.mu =             np.interp(s,self.pathrolling.s,self.pathrolling.mu)
+        
         self.pathlocal.dub =            np.interp(s,self.pathrolling.s,self.pathrolling.dub)
         self.pathlocal.dlb =            np.interp(s,self.pathrolling.s,self.pathrolling.dlb)
-        
+
+        # set mu        
+        mu_gt = np.interp(s,self.pathrolling.s,self.pathrolling.mu)
+        self.pathlocal.mu = self.emulateFrictionEst(self.pathlocal.s,
+                                                    mu_gt,
+                                                    self.mu_est_mode,
+                                                    self.cons_level,
+                                                    self.local_est_error,
+                                                    self.predictive_est_error)   
+
+
+    def emulateFrictionEst(self,s_pl,mu_gt,mu_est_mode,cons_level,local_est_error,predictive_est_error):
+        if(mu_est_mode == 0): # GT  
+            return mu_gt
+        if(mu_est_mode == 1): # local only (GT)
+            mu_est_at_ego = np.interp(self.state.s,s_pl,mu_gt)
+            return mu_est_at_ego*np.ones_like(mu_gt)
+        if(mu_est_mode == 2): # local with error
+            mu_est_at_ego = np.interp(self.state.s,s_pl,mu_gt) + local_est_error
+            return mu_est_at_ego*np.ones_like(mu_gt)
+        if(mu_est_mode == 3): # predictive with error (camera)
+            return mu_gt + predictive_est_error
+        if(mu_est_mode == 4): # GP merge
+            return mu_gt # TODO INTEGRATE GP HERE
+
+    def set_mu_est_errors(self):
+        # todo set randomly from some distribution
+        self.local_est_error = -0.05
+        self.predictive_est_error = -0.2 
+
     def pathLocalToPolArr(self):
         pa = PolygonArray()
         pa.header.stamp = rospy.Time.now()
