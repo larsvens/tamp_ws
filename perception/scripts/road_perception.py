@@ -25,6 +25,8 @@ from geometry_msgs.msg import PolygonStamped
 from jsk_recognition_msgs.msg import PolygonArray
 import time
 
+import GPy
+
 class RoadPerception:
     # constructor
     def __init__(self):
@@ -62,6 +64,7 @@ class RoadPerception:
 
         # local vars
         self.pathrolling = Path() # used to run several laps
+        self.kern = GPy.kern.RBF(input_dim=1, variance=1., lengthscale=10.)
 
         # wait for messages before entering main loop
         while(not self.received_pathglobal):
@@ -161,6 +164,14 @@ class RoadPerception:
 
 
     def emulateFrictionEst(self,s_pl,mu_gt,mu_est_mode,cons_level,local_est_error,predictive_est_error):
+        
+        # TODO conditions for available local est
+        # TODO compute cam error from classes
+        
+        N_pl_50 = int(50.0/self.ds)
+        s_pl_50 = s_pl[0:N_pl_50]
+        mu_gt_50 = mu_gt[0:N_pl_50]
+        
         if(mu_est_mode == 0): # GT  
             return mu_gt
         if(mu_est_mode == 1): # local only (GT)
@@ -172,12 +183,28 @@ class RoadPerception:
         if(mu_est_mode == 3): # predictive with error (camera)
             return mu_gt + predictive_est_error
         if(mu_est_mode == 4): # GP merge
-            return mu_gt # TODO INTEGRATE GP HERE
+            
+            
+            abs_errors_Y = 0.025*np.ones_like(s_pl_50)
+            abs_errors_Y[0] = 0.0001
+            abs_errors_Y[1] = 0.0001
+            mean, std_dev = self.het_gp_regression(self.kern, s_pl_50, mu_gt_50, abs_errors_Y)
+            
+            mu_est = mu_gt
+            mu_est[0:N_pl_50] = mean.reshape(1, -1)
+            return mu_est 
 
     def set_mu_est_errors(self):
         # todo set randomly from some distribution
         self.local_est_error = -0.05
         self.predictive_est_error = -0.2 
+
+    def het_gp_regression(self, kern, X_train, Y_train, abs_errors_Y):
+        m = GPy.models.GPHeteroscedasticRegression(X_train[:,None],Y_train[:,None],kern)
+        m['.*het_Gauss.variance'] = abs_errors_Y[:,None] #Set the noise parameters to the error in Y
+        mu, var = m._raw_predict(m.X)
+        
+        return mu, np.sqrt(var)
 
     def pathLocalToPolArr(self):
         pa = PolygonArray()
@@ -211,7 +238,7 @@ class RoadPerception:
         #pa.color.b = 0.0
         
         return pa
-        
+ 
     def setRosParams(self):
         self.m = rospy.get_param('/car/inertia/m')
         self.g = rospy.get_param('/car/inertia/g')

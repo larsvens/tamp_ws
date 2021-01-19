@@ -76,7 +76,7 @@ mu_nominal: 0.8 # used only when traction_adaptive = 0
 # 2: local only (with noise)
 # 3: camera only (with noice)
 # 4: local + camera (GP)
-mu_est_mode: 3
+mu_est_mode: 4
 
 # conservative or agressive (for exp2) 
 # -1: conservative  
