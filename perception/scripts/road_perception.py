@@ -68,7 +68,7 @@ class RoadPerception:
         self.pathrolling = Path() # used to run several laps
         self.kern = GPy.kern.RBF(input_dim=1, variance=1., lengthscale=10.)
         self.N_pl_50 = int(50.0/self.ds)
-
+        self.mu_est_local = rospy.get_param('/mu_nominal')
         
         # init live plot mu est
         if self.do_live_plot:
@@ -197,20 +197,29 @@ class RoadPerception:
         
         # TODO conditions for available local est
         # TODO compute cam error from classes
+        
                 
         if(mu_est_mode == 0): # GT  
             return mu_gt
         if(mu_est_mode == 1): # local only (GT)
-            mu_est_local = np.interp(self.state.s,s_pl,mu_gt)
-            return mu_est_local*np.ones_like(mu_gt)
+            mu_gt_local = np.interp(self.state.s,s_pl,mu_gt)
+            if(self.local_available(mu_gt_local)):
+                self.mu_est_local = mu_gt_local
+            return self.mu_est_local*np.ones_like(mu_gt) # if not available return persistent var without update
         if(mu_est_mode == 2): # local with error
-            mu_est_local = np.interp(self.state.s,s_pl,mu_gt) + local_est_error
-            return mu_est_local*np.ones_like(mu_gt)
+            mu_gt_local = np.interp(self.state.s,s_pl,mu_gt)
+            if(self.local_available(mu_gt_local)):
+                self.mu_est_local = mu_gt_local + local_est_error
+            return self.mu_est_local*np.ones_like(mu_gt)
         if(mu_est_mode == 3): # predictive with error (camera)
             return mu_gt + predictive_est_error
         if(mu_est_mode == 4): # GP merge
-            # emulate mu estimates
-            mu_est_local = np.interp(self.state.s,s_pl,mu_gt) + local_est_error
+            
+            # emulate local and pred mu estimates
+            mu_gt_local = np.interp(self.state.s,s_pl,mu_gt)
+            loc_av = self.local_available(mu_gt_local)
+            if(loc_av):
+                self.mu_est_local = mu_gt_local + local_est_error
             mu_est_pred = mu_gt + predictive_est_error
 
             # cut out for camera range
@@ -220,11 +229,11 @@ class RoadPerception:
             
             # merge and specify uncertainty in individual measurements (TODO CLEANUP)
             mu_est_merged = mu_est_pred_50
-            mu_est_merged[0] = mu_est_local
-            mu_est_merged[1] = mu_est_local
             abs_errors_Y = 0.03*np.ones_like(s_pl_50)
-            abs_errors_Y[0] = 0.002
-            abs_errors_Y[1] = 0.002
+            if(loc_av):
+                mu_est_merged[0] = self.mu_est_local
+                abs_errors_Y[0] = 0.005
+
             gp_posterior_mean, gp_posterior_std_dev = self.het_gp_regression(self.kern, s_pl_50, mu_est_pred_50, abs_errors_Y)
             
             mu_est = np.zeros_like(mu_gt)
@@ -236,7 +245,7 @@ class RoadPerception:
             if self.do_live_plot:
                 
                 self.mu_est_local_ln.set_xdata(np.array([self.state.s]))
-                self.mu_est_local_ln.set_ydata(np.array([mu_est_local]))
+                self.mu_est_local_ln.set_ydata(np.array([self.mu_est_local]))
                 
                 self.mu_est_pred_ln.set_xdata(s_pl_50) 
                 self.mu_est_pred_ln.set_ydata(mu_est_pred_50) 
@@ -258,7 +267,15 @@ class RoadPerception:
     def set_mu_est_errors(self):
         # todo set randomly from some distribution
         self.local_est_error = -0.05
-        self.predictive_est_error = -0.2 
+        self.predictive_est_error = 0.2 
+
+    def local_available(self,mu_gt):
+        a = np.sqrt(self.state.ax**2+self.state.ay**2)
+        g = 9.81
+        if (a > 0.5*g*mu_gt):
+            return True
+        else:
+            return False
 
     def het_gp_regression(self, kern, X_train, Y_train, abs_errors_Y):
         m = GPy.models.GPHeteroscedasticRegression(X_train[:,None],Y_train[:,None],kern)

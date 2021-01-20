@@ -30,7 +30,7 @@ obstacle_wiggleroom: 1.0
 #vxref_segment_values: [15.0, 10.0, 5.0]
 
 # low friction run (asta_zero_long)
-s_begin_mu_segments:  [0.0, 170.0, 330.0]
+s_begin_mu_segments:  [0.0, 230.0, 330.0]
 mu_segment_values:  [0.8, 0.4, 0.8] 
 s_begin_vxref_segments: [0.0, 315.0, 600.0]
 vxref_segment_values: [15.0, 12.0, 4.5]
@@ -75,7 +75,7 @@ mu_nominal: 0.8 # used when traction_adaptive = 0 and as initial mu est
 # 1: local only (GT)
 # 2: local only (with noise)
 # 3: camera only (with noice)
-# 4: local + camera (GP)
+# 4: merged local + camera (GP)
 mu_est_mode: 4
 do_live_plot_mu_est: 1
 
