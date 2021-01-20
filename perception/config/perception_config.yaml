@@ -13,8 +13,8 @@ dt_state_est_frenet: 0.02
 
 # road percept
 dt_road_perception: 0.25
-N_pathlocal: 100
-ds_pathlocal: 1.0
-s_rel_start_pathlocal: 25 # distance behind vehicle where local path starts
+N_pathlocal: 50
+ds_pathlocal: 2.0
+s_rel_start_pathlocal: 10 # distance behind vehicle where local path starts
 
 

@@ -26,6 +26,7 @@ from jsk_recognition_msgs.msg import PolygonArray
 import time
 
 import GPy
+import matplotlib.pyplot as plt
 
 class RoadPerception:
     # constructor
@@ -57,6 +58,7 @@ class RoadPerception:
         # params of friction est emulation
         self.mu_est_mode = rospy.get_param('/mu_est_mode')
         self.cons_level = rospy.get_param('/conservativeness_level')
+        self.do_live_plot = rospy.get_param('/do_live_plot_mu_est')
         self.set_mu_est_errors() 
         
         # set static vehicle params
@@ -65,6 +67,34 @@ class RoadPerception:
         # local vars
         self.pathrolling = Path() # used to run several laps
         self.kern = GPy.kern.RBF(input_dim=1, variance=1., lengthscale=10.)
+        self.N_pl_50 = int(50.0/self.ds)
+
+        
+        # init live plot mu est
+        if self.do_live_plot:
+
+            fig = plt.figure(num=None, figsize=(24, 12), dpi=80, facecolor='w', edgecolor='k')
+            self.ax = fig.add_subplot(111)
+            line_objs = self.ax.plot(np.arange(self.N_pl_50),np.zeros(self.N_pl_50),'b.',
+                                     np.arange(self.N_pl_50),np.zeros(self.N_pl_50),'r.',
+                                     np.arange(self.N_pl_50),np.zeros(self.N_pl_50),'k-', 
+                                     np.arange(self.N_pl_50),np.zeros(self.N_pl_50),'k--', 
+                                     np.arange(self.N_pl_50),np.zeros(self.N_pl_50),'k--',ms = 20,lw = 5)
+
+            self.mu_est_local_ln = line_objs[0]
+            self.mu_est_pred_ln = line_objs[1]
+            self.mu_est_gp_mean_ln = line_objs[2]
+            self.mu_est_gp_ub_ln = line_objs[3]
+            self.mu_est_gp_lb_ln = line_objs[4]
+            
+            self.ax.legend(['local','pred', 'gp-mean', 'gp-itv'])
+            self.ax.set_xlabel('s (m)')
+            self.ax.set_ylabel('mu')
+            
+            self.ax.set_ylim([-0.1,1.1])
+            plt.ion()
+            plt.show()  
+
 
         # wait for messages before entering main loop
         while(not self.received_pathglobal):
@@ -167,31 +197,62 @@ class RoadPerception:
         
         # TODO conditions for available local est
         # TODO compute cam error from classes
-        
-        N_pl_50 = int(50.0/self.ds)
-        s_pl_50 = s_pl[0:N_pl_50]
-        mu_gt_50 = mu_gt[0:N_pl_50]
-        
+                
         if(mu_est_mode == 0): # GT  
             return mu_gt
         if(mu_est_mode == 1): # local only (GT)
-            mu_est_at_ego = np.interp(self.state.s,s_pl,mu_gt)
-            return mu_est_at_ego*np.ones_like(mu_gt)
+            mu_est_local = np.interp(self.state.s,s_pl,mu_gt)
+            return mu_est_local*np.ones_like(mu_gt)
         if(mu_est_mode == 2): # local with error
-            mu_est_at_ego = np.interp(self.state.s,s_pl,mu_gt) + local_est_error
-            return mu_est_at_ego*np.ones_like(mu_gt)
+            mu_est_local = np.interp(self.state.s,s_pl,mu_gt) + local_est_error
+            return mu_est_local*np.ones_like(mu_gt)
         if(mu_est_mode == 3): # predictive with error (camera)
             return mu_gt + predictive_est_error
         if(mu_est_mode == 4): # GP merge
+            # emulate mu estimates
+            mu_est_local = np.interp(self.state.s,s_pl,mu_gt) + local_est_error
+            mu_est_pred = mu_gt + predictive_est_error
+
+            # cut out for camera range
+            idx_ego = np.argmin(np.abs(s_pl-self.state.s))
+            s_pl_50 = s_pl[idx_ego:idx_ego+self.N_pl_50]
+            mu_est_pred_50 = mu_est_pred[idx_ego:idx_ego+self.N_pl_50]
             
+            # merge and specify uncertainty in individual measurements (TODO CLEANUP)
+            mu_est_merged = mu_est_pred_50
+            mu_est_merged[0] = mu_est_local
+            mu_est_merged[1] = mu_est_local
+            abs_errors_Y = 0.03*np.ones_like(s_pl_50)
+            abs_errors_Y[0] = 0.002
+            abs_errors_Y[1] = 0.002
+            gp_posterior_mean, gp_posterior_std_dev = self.het_gp_regression(self.kern, s_pl_50, mu_est_pred_50, abs_errors_Y)
             
-            abs_errors_Y = 0.025*np.ones_like(s_pl_50)
-            abs_errors_Y[0] = 0.0001
-            abs_errors_Y[1] = 0.0001
-            mean, std_dev = self.het_gp_regression(self.kern, s_pl_50, mu_gt_50, abs_errors_Y)
+            mu_est = np.zeros_like(mu_gt)
+            mu_est[idx_ego:idx_ego+self.N_pl_50] = gp_posterior_mean.reshape(1, -1)
+            mu_est[0:idx_ego] = gp_posterior_mean[0] # todo replace with history
+            mu_est[idx_ego+self.N_pl_50:] = gp_posterior_mean[-1]  # set remainder of pathlocal same as furthest est
             
-            mu_est = mu_gt
-            mu_est[0:N_pl_50] = mean.reshape(1, -1)
+            # update live plot
+            if self.do_live_plot:
+                
+                self.mu_est_local_ln.set_xdata(np.array([self.state.s]))
+                self.mu_est_local_ln.set_ydata(np.array([mu_est_local]))
+                
+                self.mu_est_pred_ln.set_xdata(s_pl_50) 
+                self.mu_est_pred_ln.set_ydata(mu_est_pred_50) 
+                
+                self.mu_est_gp_mean_ln.set_xdata(s_pl_50)
+                self.mu_est_gp_mean_ln.set_ydata(gp_posterior_mean)
+                
+                self.mu_est_gp_ub_ln.set_xdata(s_pl_50)
+                self.mu_est_gp_ub_ln.set_ydata(gp_posterior_mean + 1.96*gp_posterior_std_dev)
+                
+                self.mu_est_gp_lb_ln.set_xdata(s_pl_50)
+                self.mu_est_gp_lb_ln.set_ydata(gp_posterior_mean - 1.96*gp_posterior_std_dev)
+                
+                plt.pause(0.0001)
+                self.ax.set_xlim([np.min(s_pl_50), np.max(s_pl_50)])
+            
             return mu_est 
 
     def set_mu_est_errors(self):
