@@ -87,6 +87,14 @@ class RoadPerception:
             self.mu_est_gp_ub_ln = line_objs[3]
             self.mu_est_gp_lb_ln = line_objs[4]
             
+            # Hignlight active estimate
+            if(self.cons_level == -1):
+                self.mu_est_gp_lb_ln.set_color('m')
+            elif(self.cons_level == 0):
+                self.mu_est_gp_mean_ln.set_color('m')
+            elif(self.cons_level == 1):
+                self.mu_est_gp_ub_ln.set_color('m')
+            
             self.ax.legend(['local','pred', 'gp-mean', 'gp-itv'])
             self.ax.set_xlabel('s (m)')
             self.ax.set_ylabel('mu')
@@ -195,9 +203,7 @@ class RoadPerception:
 
     def emulateFrictionEst(self,s_pl,mu_gt,mu_est_mode,cons_level,local_est_error,predictive_est_error):
         
-        # TODO conditions for available local est
-        # TODO compute cam error from classes
-        
+        # TODO compute cam error from classes?     
                 
         if(mu_est_mode == 0): # GT  
             return mu_gt
@@ -236,17 +242,29 @@ class RoadPerception:
 
             gp_posterior_mean, gp_posterior_std_dev = self.het_gp_regression(self.kern, s_pl_50, mu_est_pred_50, abs_errors_Y)
             
+            if(self.cons_level == -1):
+                gp_est = gp_posterior_mean - gp_posterior_std_dev
+            elif(self.cons_level == 0):
+                gp_est = gp_posterior_mean
+            elif(self.cons_level == 1):
+                gp_est = gp_posterior_mean + gp_posterior_std_dev
+            
+            
             mu_est = np.zeros_like(mu_gt)
-            mu_est[idx_ego:idx_ego+self.N_pl_50] = gp_posterior_mean.reshape(1, -1)
-            mu_est[0:idx_ego] = gp_posterior_mean[0] # todo replace with history
-            mu_est[idx_ego+self.N_pl_50:] = gp_posterior_mean[-1]  # set remainder of pathlocal same as furthest est
+            mu_est[idx_ego:idx_ego+self.N_pl_50] = gp_est.reshape(1, -1)
+            mu_est[0:idx_ego] = gp_est[0] # todo replace with history
+            mu_est[idx_ego+self.N_pl_50:] = gp_est[-1]  # set remainder of pathlocal same as furthest est
             
             # update live plot
             if self.do_live_plot:
                 
-                self.mu_est_local_ln.set_xdata(np.array([self.state.s]))
-                self.mu_est_local_ln.set_ydata(np.array([self.mu_est_local]))
-                
+                if(loc_av):
+                    self.mu_est_local_ln.set_xdata(np.array([self.state.s]))
+                    self.mu_est_local_ln.set_ydata(np.array([self.mu_est_local]))
+                else:
+                    self.mu_est_local_ln.set_xdata(np.array([]))
+                    self.mu_est_local_ln.set_ydata(np.array([]))
+                    
                 self.mu_est_pred_ln.set_xdata(s_pl_50) 
                 self.mu_est_pred_ln.set_ydata(mu_est_pred_50) 
                 

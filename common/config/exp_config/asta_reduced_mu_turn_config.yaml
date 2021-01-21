@@ -83,7 +83,7 @@ do_live_plot_mu_est: 1
 # -1: conservative  
 # 0: neutral
 # 1: aggressive
-conservativeness_level: 0
+conservativeness_level: -1
 
 
 # Force utilization factor
