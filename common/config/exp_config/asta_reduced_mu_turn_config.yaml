@@ -41,6 +41,9 @@ vxref_segment_values: [15.0, 12.0, 4.5]
 #s_begin_vxref_segments: [0.0, 300.0, 500.0]
 #vxref_segment_values: [8.0, 8.0, 5.0]
 
+# sim pause (empty if no pauses or real exp)
+s_sim_pause:  [270, 300.0, 330.0]
+
 # dref
 cc_dref: 0
 
@@ -76,7 +79,7 @@ mu_nominal: 0.8 # used when traction_adaptive = 0 and as initial mu est
 # 2: local only (with noise)
 # 3: camera only (with noice)
 # 4: merged local + camera (GP)
-mu_est_mode: 4
+mu_est_mode: 0
 do_live_plot_mu_est: 1
 
 # conservative or agressive (for exp2) 

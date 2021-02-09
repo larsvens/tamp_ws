@@ -1,8 +1,6 @@
 <!-- Run single experiment. Takes exp config file as argument-->
 
 <launch>
-    <!-- simtime 
-    <param name="use_sim_time" value="true" /> -->
 
     <!-- load rosparams --> 
     <arg name="exp_config" default="asta_reduced_mu_turn_config.yaml"/> 
@@ -10,6 +8,9 @@
     
     <!-- experiment manager node -->
     <node pkg="common" type="exp_manager.py" name="experiment_manager"  required="true" output="screen"> </node>
+
+    <!-- gazebo pauser node -->
+    <node pkg="common" type="gazebo_pauser.py" name="gazebo_pauser"  required="true" output="screen"> </node>
 
     <!-- road percept, planning & ctrl nodes -->
     <node pkg="perception" type="road_perception.py" name="road_perception"> </node>

@@ -384,21 +384,21 @@ Visualization Manager:
       Queue Size: 100
       Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /lhpt_vis
       Name: lhpt
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /state_text_marker
       Name: state_text
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Alpha: 0.5
       Class: jsk_rviz_plugin/PolygonArray
       Color: 149; 149; 149
@@ -413,13 +413,13 @@ Visualization Manager:
       only border: false
       show normal: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /polyfit_vis
       Name: polyfit_vis
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /pose_raw_vis
@@ -445,13 +445,13 @@ Visualization Manager:
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /pose_full_ekf_vis
       Name: pose_full_ekf
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
       Enabled: false
       Marker Topic: /Fyf_vis
@@ -524,26 +524,21 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz/ThirdPersonFollower
-      Distance: 47.9154396
+      Angle: -1.18499994
+      Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Focal Point:
-        X: -4.6410718
-        Y: -1.94158411
-        Z: 7.86652799e-06
-      Focal Shape Fixed Size: true
-      Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.314798743
+      Scale: 34.7855072
       Target Frame: base_link
-      Value: ThirdPersonFollower (rviz)
-      Yaw: 3.09040737
+      Value: TopDownOrtho (rviz)
+      X: -2.05474377
+      Y: -28.3224144
     Saved:
       - Class: rviz/ThirdPersonFollower
         Distance: 24.7596321

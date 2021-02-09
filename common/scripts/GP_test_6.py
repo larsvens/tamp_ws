@@ -11,16 +11,16 @@ pb.close('all')
 
 # Noisy training data
 
-X_train = np.linspace(0.0, 50, 50)
+X_train = np.linspace(0.0, 50, 30)
 X_train = np.concatenate((np.array([-3]),X_train)) # include local mu est history 
 mu_est_at_s = 0.9
-Y_train = np.concatenate((np.array([mu_est_at_s,mu_est_at_s]),0.8*np.ones(25),0.4*np.ones(24)))
+Y_train = np.concatenate((np.array([mu_est_at_s,mu_est_at_s]),0.8*np.ones(15),0.4*np.ones(14)))
 abs_error = 0.025*np.ones_like(X_train)
 abs_error[0] = 0.0001
 abs_error[1] = 0.0001
 
 #kern = GPy.kern.MLP(1) + GPy.kern.Bias(1)
-kern = GPy.kern.RBF(input_dim=1, variance=1., lengthscale=10.)
+kern = GPy.kern.RBF(input_dim=1, variance=1., lengthscale=15.)
 
 t0= time.clock()
 
