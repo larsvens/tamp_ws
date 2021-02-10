@@ -14,15 +14,12 @@ import yaml
 import rospy
 import tf
 import rospkg
-from fssim_common.msg import State as fssimState
 from common.msg import State
 from common.msg import OriginPoseUTM
 from visualization_msgs.msg import Marker
 from tf.transformations import quaternion_from_euler
 from util import angleToInterval
 from util import angleToContinous
-from opendlv_ros.msg import SensorMsgGPS
-from opendlv_ros.msg import SensorMsgCAN 
 
 class pos2DKalmanFilter:
     # constructor
@@ -174,6 +171,15 @@ class StateEstCart:
         self.m = rospy.get_param('/car/inertia/m')
         self.g = rospy.get_param('/car/inertia/g')
         self.Iz = rospy.get_param('/car/inertia/I_z')
+
+        if(self.system_setup == "rhino_real"):
+            from opendlv_ros.msg import SensorMsgGPS
+            from opendlv_ros.msg import SensorMsgCAN 
+
+        elif(self.system_setup == "rhino_fssim" or self.system_setup == "gotthard_fssim"):
+            from fssim_common.msg import State as fssimState
+
+
         
         # init local vars
         self.state_out = State()

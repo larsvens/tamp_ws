@@ -1,0 +1,41 @@
+<!-- launches saarti node along with perception and control nodes-->
+
+<launch>
+    
+
+    <!-- args -->
+    <arg name="robot_name" default="svea" />
+    <arg name="urdf_model" default="$(find common)/config/vehicles/$(arg robot_name)/urdf/car.urdf" />
+    <arg name="system_setup" default="svea" />
+    <arg name="track_name" default="asta_zero_long" />
+
+    <!-- params -->
+    <param name="robot_name" type="string" value="$(arg robot_name)" />
+    <param name="system_setup" type="string" value="$(arg system_setup)" /> 
+    <param name="track_name" type="string" value="$(arg track_name)" />	
+    <rosparam command="load" file="$(find common)/config/vehicles/$(arg robot_name)/config/car.yaml" />
+    <rosparam command="load" file="$(find perception)/config/perception_config.yaml" />
+
+    <!-- load experiment rosparams from file --> 
+    <arg name="exp_config" default="asta_reduced_mu_turn_config.yaml"/> 
+    <rosparam command="load" file="$(find common)/config/exp_config/$(arg exp_config)" />
+
+
+    <!-- perception nodes -->
+    <!-- <node pkg="perception" type="track_iface.py" name="track_iface"> </node> -->
+    <!-- <node pkg="perception" type="state_est_cart.py" name="state_est_cart"> </node> -->
+    <!-- <node pkg="perception" type="state_est_frenet.py" name="state_est_frenet"> </node> -->
+    <!-- <node pkg="perception" type="road_perception.py" name="road_perception"> </node> -->
+    
+
+    <!-- planning & ctrl nodes -->
+    <rosparam command="load" file="$(find saarti)/config/planning_and_ctrl_config.yaml" /> 
+    <node pkg="saarti" type="saarti_node" name="saarti_node"/> 
+    <node pkg="saarti" type="ctrl_interface.py" name="ctrl_interface"/>
+
+
+    <!-- TODO: experiment manager (central supervisor node that tells the others what to do) -->
+
+   
+</launch>
+

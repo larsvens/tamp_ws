@@ -20,8 +20,6 @@ import rospy
 from common.msg import Trajectory
 from common.msg import Path
 from common.msg import State
-from fssim_common.msg import Cmd as FssimCmd
-from opendlv_ros.msg import ActuationRequest 
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 from std_msgs.msg import Float32
@@ -48,9 +46,11 @@ class CtrlInterface:
         self.vx_errorpub = rospy.Publisher('/vx_error_vis', Float32, queue_size=1)
         self.rate = rospy.Rate(1/self.dt)
         if(self.system_setup == "rhino_real"):
+            from opendlv_ros.msg import ActuationRequest 
             self.cmdpub = rospy.Publisher('/OpenDLV/ActuationRequest', ActuationRequest, queue_size=1)
             self.cmd = ActuationRequest()
         elif(self.system_setup == "rhino_fssim" or self.system_setup == "gotthard_fssim"):
+            from fssim_common.msg import Cmd as FssimCmd
             self.cmdpub = rospy.Publisher('/fssim/cmd', FssimCmd, queue_size=1)
             self.cmd = FssimCmd()
         
