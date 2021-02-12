@@ -392,13 +392,13 @@ Visualization Manager:
       Queue Size: 100
       Value: false
     - Class: rviz/Marker
-      Enabled: false
+      Enabled: true
       Marker Topic: /state_text_marker
       Name: state_text
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
-      Value: false
+      Value: true
     - Alpha: 0.5
       Class: jsk_rviz_plugin/PolygonArray
       Color: 149; 149; 149
@@ -433,7 +433,7 @@ Visualization Manager:
       Marker Topic: /obs_undet_vis
       Name: undetected_obstacles
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -534,7 +534,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 34.7855072
+      Scale: 27.1102638
       Target Frame: base_link
       Value: TopDownOrtho (rviz)
       X: -2.05474377

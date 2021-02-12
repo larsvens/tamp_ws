@@ -73,21 +73,18 @@ vxub_rollout: 20.0
 traction_adaptive: 1
 mu_nominal: 0.8 # used when traction_adaptive = 0 and as initial mu est
 
-# friction estimation mode (for exp1)
-# 0: ground truth (same as camera only GT)
-# 1: local only (GT)
-# 2: local only (with noise)
-# 3: camera only (with noice)
-# 4: merged local + camera (GP)
-mu_est_mode: 0
-do_live_plot_mu_est: 1
-
-# conservative or agressive (for exp2) 
+# conservative or agressive mu est
 # -1: conservative  
 # 0: neutral
 # 1: aggressive
 conservativeness_level: -1
+do_live_plot_mu_est: 1 
 
+
+# worst case errors and availability threshold for friction estimates
+wce_pred: -0.15
+wce_local: -0.025
+availability_th_local: 0.5
 
 # Force utilization factor
 #Ff_util: 0.8 # final tests
@@ -107,8 +104,6 @@ Wslack: 100000000
 K:   [0.000, 2954.774, 87597.099, 2566.325, 0.000, 5751.643,
       0.688, 0.000, 0.000, 0.000, 2178.309, 0.000,
       0.688, 0.000, 0.000, 0.000, 2178.309, 0.000]
-
-
 
 
 

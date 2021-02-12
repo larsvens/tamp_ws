@@ -257,7 +257,7 @@ class ExperimentManager:
                     acc = self.cmd_msg.acceleration
                 elif(self.system_setup == "rhino_fssim"):
                     delta = self.cmd_msg.delta
-                    acc = self.cmd_msg.dc   
+                    acc = self.state.ax   
                 else:
                     delta = 0
                     acc = 0                     

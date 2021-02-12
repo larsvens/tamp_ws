@@ -2,6 +2,15 @@
 
 <launch>
 
+    <!-- set mu est mode / log filename 
+        # 0 pred_gt: ground truth (same as camera only GT)
+        # 1 local_gt: local only (GT)
+        # 2 local_wce: local only (with noise)
+        # 3 pred_wce: camera only (with noise)
+        # 4 gpmrg_wce: merged local + camera (GP)-->
+    <arg name="mu_est_mode" default="pred_gt"/> 
+    <param name="mu_est_mode" type="string" value="$(arg mu_est_mode)" />
+
     <!-- load rosparams --> 
     <arg name="exp_config" default="asta_reduced_mu_turn_config.yaml"/> 
     <rosparam command="load" file="$(find common)/config/exp_config/$(arg exp_config)" />
@@ -21,7 +30,7 @@
     <!-- logging -->
     <arg name="record_rosbag" default="true" />
     <node pkg="rosbag" name="rosbag_record_exp" type="record" if="$(arg record_rosbag )" output="screen"    
-		args="record -O  $(find tamp_logs)/bagfiles/sim_exp/latest --duration=20m
+		args="record -O  $(find tamp_logs)/bagfiles/sim_exp/TAMP_gp_paper/latest/$(arg mu_est_mode) --duration=5m
 			/pathglobal
 			/pathglobal_vis
 			/dlbglobal_vis
