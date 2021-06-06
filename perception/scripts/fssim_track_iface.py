@@ -53,6 +53,8 @@ class TrackInterface:
         cl_X = []
         cl_Y = []
         for i in range(len(self.track.cones_left)):
+            if cl_X.count(self.track.cones_left[i].x) and cl_Y.count(self.track.cones_left[i].y):
+                continue
             cl_X.append(self.track.cones_left[i].x)
             cl_Y.append(self.track.cones_left[i].y)            
         cl_X = np.array(cl_X)
@@ -62,6 +64,8 @@ class TrackInterface:
         cr_X = []
         cr_Y = []
         for i in range(len(self.track.cones_right)):    
+            if cr_X.count(self.track.cones_right[i].x) and cr_Y.count(self.track.cones_right[i].y):
+                continue
             cr_X.append(self.track.cones_right[i].x)
             cr_Y.append(self.track.cones_right[i].y) 
         cr_X = np.array(cr_X)
